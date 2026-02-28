@@ -1,0 +1,56 @@
+/* ===================================
+   src/css/tokens/spacing.css
+   SPACE SYSTEM TOKENS (REM Based - 1rem = 16px)
+   ================================= */
+
+:root {
+   /* Base Scale 
+   */
+   --space-half: 0.125rem; /* 2px */
+   --space-1: 0.25rem;   /* 4px */
+   --space-2: 0.5rem;    /* 8px */
+   --space-3: 0.75rem;   /* 12px */
+   --space-4: 1rem;      /* 16px */
+   --space-5: 1.25rem;   /* 20px */
+   --space-6: 1.5rem;    /* 24px */
+   --space-7: 1.75rem;   /* 28px */
+   --space-8: 2rem;      /* 32px */
+   --space-9: 2.25rem;   /* 36px */
+   --space-10: 2.5rem;   /* 40px */
+   --space-12: 3rem;     /* 48px */
+   --space-16: 4rem;     /* 64px */
+
+   /* Padding Semantic - Trục dọc (Y - Top/Bottom) 
+   */
+   --pad-y-1: var(--space-2);  /* 8px */
+   --pad-y-2: var(--space-3);  /* 12px */
+   --pad-y-3: var(--space-4);  /* 16px */
+   --pad-y-4: var(--space-6);  /* 24px */
+   
+   /* Padding Semantic - Trục ngang (X - Left/Right) */
+   --pad-x-1: var(--space-2);  /* 8px */
+   --pad-x-2: var(--space-3);  /* 12px */
+   --pad-x-3: var(--space-4);  /* 16px */
+   --pad-x-4: var(--space-6);  /* 24px */
+
+   /* Margin Semantic - Trục dọc (Y - Top/Bottom) 
+   */
+   --margin-y-1: var(--space-2);  /* 8px */
+   --margin-y-2: var(--space-3);  /* 12px */
+   --margin-y-3: var(--space-4);  /* 16px */
+   --margin-y-4: var(--space-6);  /* 24px */
+   
+   /* Margin Semantic - Trục ngang (X - Left/Right) */
+   --margin-x-1: var(--space-2);  /* 8px */
+   --margin-x-2: var(--space-3);  /* 12px */
+   --margin-x-3: var(--space-4);  /* 16px */
+   --margin-x-4: var(--space-6);  /* 24px */
+
+   /* Layout Spacing Semantic
+      Khoảng cách phân tách các section lớn trên trang
+   */
+   --section-gap-sm: var(--space-6);   /* 24px */
+   --section-gap-md: var(--space-8);   /* 32px */
+   --section-gap-lg: var(--space-12);  /* 48px */
+   --section-gap-xl: var(--space-16);  /* 64px */
+}

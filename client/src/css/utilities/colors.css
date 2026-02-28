@@ -1,0 +1,57 @@
+/* =======================================
+    src/css/utilities/colors.css
+    Color & Syntax Utilities
+========================================== */
+
+/* 1. TEXT COLOR UTILITIES
+   Dùng để ép màu chữ trực tiếp vào một dòng text bấ kỳ
+*/
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.text-inverse   { color: var(--white); }
+
+/* Báo cáo trạng thái (Utility) */
+.text-success   { color: var(--color-success); }
+.text-error     { color: var(--color-error); }
+.text-warning   { color: var(--color-warning); }
+.text-info      { color: var(--color-info); }
+
+/* 2. BACKGROUND COLOR UTILITIES
+   Dùng để gài màu nền cực nhanh
+*/
+.bg-body    { background-color: var(--bg-body); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-card    { background-color: var(--bg-card); }
+.bg-badge   { background-color: var(--bg-badge); }
+
+/* Báo cáo nền trạng thái (Utility) */
+/* (Thường dùng cho các nhãn Badge hoặc thông báo Box Alert) */
+.bg-success { background-color: var(--color-success); color: var(--white); }
+.bg-error   { background-color: var(--color-error); color: var(--white); }
+.bg-warning { background-color: var(--color-warning); color: var(--gray-800); }
+
+
+/* ===================================
+   3. CODE SYNTAX HIGHLIGHTING CLASSES
+   Dùng để tô màu các đoạn lệnh/code block
+=================================== */
+
+/* Bạn nhớ bọc toàn bộ code trong cái hộp này để nó có nền đẹp */
+.code-block {
+  background-color: var(--code-bg);
+  padding: var(--pad-y-md) var(--pad-x-md);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-x: auto;
+}
+
+.code-program   { color: var(--code-program); }
+.code-keyword   { color: var(--code-keyword); }
+.code-value     { color: var(--code-value); }
+.code-string    { color: var(--code-string); }
+.code-parameter { color: var(--code-parameter); }
+.code-func      { color: var(--code-func); }
+.code-comment   { color: var(--code-comment); font-style: italic; }
+.code-text      { color: var(--code-text); }

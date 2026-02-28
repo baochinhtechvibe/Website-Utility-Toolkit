@@ -1,0 +1,12 @@
+/* ===================================
+   src/css/tokens/breakpoints.css
+   ================================= */
+
+:root {
+   /* Dùng cho JS hoặc Media Query (bằng PostCSS nếu có) */
+   --bp-sm: 640px;   /* Điện thoại lớn / Tablet dọc */
+   --bp-md: 768px;   /* Tablet ngang (iPad) / Laptop nhỏ */
+   --bp-lg: 1024px;  /* Laptop phổ thông */
+   --bp-xl: 1280px;  /* Màn hình Desktop lớn */
+   --bp-2xl: 1536px; /* Màn hình Ultrawide / 4K */
+}

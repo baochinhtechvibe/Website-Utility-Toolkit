@@ -1,0 +1,42 @@
+/* =======================================
+    src/css/layout/container.css
+    Responsive Center-Aligned Container Box
+========================================== */
+.container {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: var(--pad-x-md, 1rem);
+}
+
+
+@media (min-width: 640px) {
+    .container {
+        max-width: 600px;
+        padding-inline: var(--pad-x-lg, 1.5rem);
+    }
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 720px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container {
+        max-width: 960px;
+    }
+}
+
+@media (min-width: 1280px) {
+    .container {
+        max-width: 1200px;
+        padding-inline: var(--space-8, 2rem);
+    }
+}
+
+@media (min-width: 1536px) {
+    .container {
+        max-width: 1320px;
+    }
+}

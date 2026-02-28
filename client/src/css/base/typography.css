@@ -1,0 +1,41 @@
+/* =======================================
+    src/css/base/typography.css: Typography Base
+========================================== */
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-family: var(--font-serif);
+    color: var(--text-heading);
+    line-height: var(--leading-tight);
+}
+
+/* Ánh xạ chuẩn với biến clamp() trong token */
+h1 { font-size: var(--text-6xl); } /* 36px -> 60px */
+h2 { font-size: var(--text-5xl); } /* 28px -> 48px */
+h3 { font-size: var(--text-2xl); } /* 24px -> 30px */
+h4 { font-size: var(--text-xl);  } /* 20px -> 24px */
+h5 { font-size: var(--text-lg);  } /* 18px (cố định) */
+h6 { font-size: var(--text-base);} /* 16px (cố định) */
+
+/* Text elements */
+p {
+    margin: 0;
+}
+
+/* Các thẻ in-line thường gặp */
+small {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+strong {
+    font-weight: var(--font-bold);
+}
+
+a {
+    color: var(--brand-primary);
+}
+
+a:hover {
+    text-decoration: underline;
+}

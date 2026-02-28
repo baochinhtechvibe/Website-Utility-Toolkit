@@ -1,0 +1,61 @@
+/* =======================================
+    src/css/token/colors.semantic.css: Color Semantic Token
+========================================== */
+
+:root {
+
+     /* 1. MÀU NỀN (Backgrounds)
+      ------------------------ */
+   --bg-body: var(--white);            /* Nền của toàn bộ trang màng hình */
+   --bg-surface: var(--gray-50);       /* Nền của các section nổi lên nhẹ */
+   --bg-card: var(--gray-100);         /* Nền của Card */
+   --bg-badge: var(--gray-300);        /* Nền của các nhãn dán nhỏ */
+   --bg-overlay: color-mix(in srgb, black 15%, transparent);  /* Nền tối khi mở Modal/Popup */
+    
+   /* 2. MÀU CHỮ & ICON (Content)
+      ------------------------ */
+   --text-primary: var(--slate-800);    /* Chữ chính, tiêu đề H1-H6, nội dung quan trọng */
+   --text-secondary: var(--neutral-700);  /* Chữ phụ, đoạn văn bản (p), mô tả, nội dung thẻ */
+   --text-muted: var(--neutral-500);      /* Chữ mờ, chú thích, thông tin kém quan trọng */
+   --text-inverse: var(--white);       /* Chữ nằm trên nền màu tối/đậm */
+   --text-link: var(--blue-600);
+   --text-link-hover: var(--blue-800);
+   
+   /* 3. ĐƯỜNG VIỀN & DÒNG KẺ (Borders & Dividers)
+      ------------------------ */
+   --border-subtle: var(--gray-200);   /* Viền mờ cho các block chung */
+   --border-default: var(--gray-300);  /* Viền mặc định cho Card, Input */
+   --border-strong: var(--gray-400);   /* Đương Line chia tách rõ ràng */
+
+      /* 4. MÀU TRẠNG THÁI (States/Feedback)
+      (Dùng chung cho toàn hệ thống để báo lỗi, thành công...)
+      ------------------------ */
+   --color-success: var(--green-600);
+   --color-error: var(--red-600);
+   --color-warning: var(--yellow-500);
+   --color-info: var(--blue-500);
+
+    /* Gradient */
+    --gradient-brand: linear-gradient(90deg,
+            var(--stale-800) 0%,
+            var(--yellow-400) 40%,
+            var(--gray-400) 50%,
+            var(--yellow-400) 60%,
+            var(--stale-800) 100%);
+
+    --border-color-default: var(--gray-300);
+
+       /* 5. CODE SYNTAX HIGHLIGHTING
+      Dùng cho các thẻ <pre> hoặc <code> hiển thị dòng lệnh
+      ------------------------ */
+   --code-program: var(--orange-600);   /* Tên chương trình (VD: chmod) */
+   --code-keyword: var(--blue-500);     /* Từ khóa (VD: sudo, chown) */
+   --code-value: var(--orange-400);     /* Số liệu (VD: 777, 644) */
+   --code-string: var(--green-400);     /* Chuỗi văn bản ("TinoGroup") */
+   --code-parameter: var(--yellow-600); /* Tham số truyền vào (VD: -R, -v) */
+   --code-func: var(--purple-500);      /* Hàm Javascript/Bash */
+   --code-comment: var(--gray-400);     /* Dòng chú thích (# Đây là comment) */
+   --code-text: var(--gray-600);        /* Dấu ngoặc, dấu phẩy, chữ thường */
+   --code-bg: var(--gray-100);          /* Màu nền của khung thẻ chứa code */
+
+}

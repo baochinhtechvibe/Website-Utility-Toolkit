@@ -1,0 +1,54 @@
+/* src/css/main.css */
+
+/* ===================================
+   1. TOKENS & THEMES
+   ================================= */
+@import './tokens/colors.palette.css';
+@import './tokens/colors.semantic.css';
+@import './tokens/spacing.css';
+@import './tokens/typography.css';
+@import './tokens/radius.css';
+@import './tokens/shadows.css';
+@import './tokens/transitions.css';
+@import './tokens/z-index.css';
+
+@import './themes/dark.css';
+
+/* ===================================
+   2. BASE
+   ================================= */
+@import './base/reset.css';
+@import './base/base.css';
+@import './base/fonts.css';
+@import './base/typography.css';
+@import './base/accessibility.css';
+
+/* ===================================
+   3. LAYOUT
+   ================================= */
+@import './layout/container.css';
+@import './layout/grid.css';
+@import './layout/header.css';
+@import './layout/footer.css';
+
+/* ===================================
+   4. COMPONENTS
+   ================================= */
+@import './components/button.css';
+@import './components/badge.css';
+@import './components/card.css';
+
+/* ===================================
+   5. PAGES & TOOLS
+   ================================= */
+@import './pages/home.css';
+@import './tools/dns.css';
+@import './tools/ssl.css';
+
+
+/* ===================================
+   6. UTILITIES
+   ================================= */
+@import './utilities/helper.css';
+@import './utilities/spacing.css';
+@import './utilities/colors.css';

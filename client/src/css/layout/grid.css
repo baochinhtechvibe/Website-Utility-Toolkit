@@ -1,0 +1,148 @@
+/* =======================================
+    src/css/layout/grid.css
+    Flexbox 12-Column Grid System 
+========================================== */
+
+:root {
+  /* Khai báo độ rộng khe hở mặc định (Gutter) giữa các cột */
+  /* Ở đây mình link nó vào biến --space-4 (1rem/16px) của tokens */
+  --grid-gutter-x: var(--space-4, 1rem);
+  --grid-gutter-y: 0;
+}
+
+/* 1. ROW (Dòng bao chứa các cột) */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  
+  /* Bù trừ Margin âm để đẩy phần Padding của các cột con ra sát mép Container */
+  margin-top: calc(var(--grid-gutter-y) * -1);
+  margin-left: calc(var(--grid-gutter-x) / -2);
+  margin-right: calc(var(--grid-gutter-x) / -2);
+}
+
+/* Xóa khe hở (Gutter) nếu muốn cột dính sát vào nhau */
+.row-no-gutter {
+  --grid-gutter-x: 0;
+  --grid-gutter-y: 0;
+}
+
+/* 2. BASE COLUMN (Thuộc tính chung của mọi thẻ Cột) */
+.row > * {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  
+  /* Chiều rộng mặc định 100% nếu không gọi class col-x cụ thể nào */
+  width: 100%;
+  max-width: 100%;
+  
+  /* Padding tạo khe hở (Gutter) */
+  padding-left: calc(var(--grid-gutter-x) / 2);
+  padding-right: calc(var(--grid-gutter-x) / 2);
+  padding-top: var(--grid-gutter-y);
+}
+
+/* Cột chia rập khuôn tự động (Width sẽ giãn đều nhau dựa trên số lượng thẻ con) */
+.col {
+  flex: 1 0 0%; 
+}
+
+/* Cột tự ôm sát chữ nội dung (Bao nhiêu chữ thì cột rộng bấy nhiêu) */
+.col-auto {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+/* =======================================
+   3. FIXED COLUMNS TIÊU CHUẨN (Mặc định cho Mobile) 
+   (Công thức: N/12 * 100%)
+========================================== */
+
+.col-1  { flex: 0 0 auto; width: 8.33333333%; }
+.col-2  { flex: 0 0 auto; width: 16.66666667%; }
+.col-3  { flex: 0 0 auto; width: 25%; }
+.col-4  { flex: 0 0 auto; width: 33.33333333%; }
+.col-5  { flex: 0 0 auto; width: 41.66666667%; }
+.col-6  { flex: 0 0 auto; width: 50%; }
+.col-7  { flex: 0 0 auto; width: 58.33333333%; }
+.col-8  { flex: 0 0 auto; width: 66.66666667%; }
+.col-9  { flex: 0 0 auto; width: 75%; }
+.col-10 { flex: 0 0 auto; width: 83.33333333%; }
+.col-11 { flex: 0 0 auto; width: 91.66666667%; }
+.col-12 { flex: 0 0 auto; width: 100%; }
+
+/* =======================================
+   4. RESPONSIVE COLUMNS (Chạy theo Breakpoints)
+========================================== */
+
+/* ─── SM: ≥ 640px ─── */
+@media (min-width: 640px) {
+  .col-sm { flex: 1 0 0%; }
+  .col-sm-auto { flex: 0 0 auto; width: auto; }
+  .col-sm-1  { flex: 0 0 auto; width: 8.33333333%; }
+  .col-sm-2  { flex: 0 0 auto; width: 16.66666667%; }
+  .col-sm-3  { flex: 0 0 auto; width: 25%; }
+  .col-sm-4  { flex: 0 0 auto; width: 33.33333333%; }
+  .col-sm-5  { flex: 0 0 auto; width: 41.66666667%; }
+  .col-sm-6  { flex: 0 0 auto; width: 50%; }
+  .col-sm-7  { flex: 0 0 auto; width: 58.33333333%; }
+  .col-sm-8  { flex: 0 0 auto; width: 66.66666667%; }
+  .col-sm-9  { flex: 0 0 auto; width: 75%; }
+  .col-sm-10 { flex: 0 0 auto; width: 83.33333333%; }
+  .col-sm-11 { flex: 0 0 auto; width: 91.66666667%; }
+  .col-sm-12 { flex: 0 0 auto; width: 100%; }
+}
+
+/* ─── MD: ≥ 768px ─── */
+@media (min-width: 768px) {
+  .col-md { flex: 1 0 0%; }
+  .col-md-auto { flex: 0 0 auto; width: auto; }
+  .col-md-1  { flex: 0 0 auto; width: 8.33333333%; }
+  .col-md-2  { flex: 0 0 auto; width: 16.66666667%; }
+  .col-md-3  { flex: 0 0 auto; width: 25%; }
+  .col-md-4  { flex: 0 0 auto; width: 33.33333333%; }
+  .col-md-5  { flex: 0 0 auto; width: 41.66666667%; }
+  .col-md-6  { flex: 0 0 auto; width: 50%; }
+  .col-md-7  { flex: 0 0 auto; width: 58.33333333%; }
+  .col-md-8  { flex: 0 0 auto; width: 66.66666667%; }
+  .col-md-9  { flex: 0 0 auto; width: 75%; }
+  .col-md-10 { flex: 0 0 auto; width: 83.33333333%; }
+  .col-md-11 { flex: 0 0 auto; width: 91.66666667%; }
+  .col-md-12 { flex: 0 0 auto; width: 100%; }
+}
+
+/* ─── LG: ≥ 1024px ─── */
+@media (min-width: 1024px) {
+  .col-lg { flex: 1 0 0%; }
+  .col-lg-auto { flex: 0 0 auto; width: auto; }
+  .col-lg-1  { flex: 0 0 auto; width: 8.33333333%; }
+  .col-lg-2  { flex: 0 0 auto; width: 16.66666667%; }
+  .col-lg-3  { flex: 0 0 auto; width: 25%; }
+  .col-lg-4  { flex: 0 0 auto; width: 33.33333333%; }
+  .col-lg-5  { flex: 0 0 auto; width: 41.66666667%; }
+  .col-lg-6  { flex: 0 0 auto; width: 50%; }
+  .col-lg-7  { flex: 0 0 auto; width: 58.33333333%; }
+  .col-lg-8  { flex: 0 0 auto; width: 66.66666667%; }
+  .col-lg-9  { flex: 0 0 auto; width: 75%; }
+  .col-lg-10 { flex: 0 0 auto; width: 83.33333333%; }
+  .col-lg-11 { flex: 0 0 auto; width: 91.66666667%; }
+  .col-lg-12 { flex: 0 0 auto; width: 100%; }
+}
+
+/* ─── XL: ≥ 1280px ─── */
+@media (min-width: 1280px) {
+  .col-xl { flex: 1 0 0%; }
+  .col-xl-auto { flex: 0 0 auto; width: auto; }
+  .col-xl-1  { flex: 0 0 auto; width: 8.33333333%; }
+  .col-xl-2  { flex: 0 0 auto; width: 16.66666667%; }
+  .col-xl-3  { flex: 0 0 auto; width: 25%; }
+  .col-xl-4  { flex: 0 0 auto; width: 33.33333333%; }
+  .col-xl-5  { flex: 0 0 auto; width: 41.66666667%; }
+  .col-xl-6  { flex: 0 0 auto; width: 50%; }
+  .col-xl-7  { flex: 0 0 auto; width: 58.33333333%; }
+  .col-xl-8  { flex: 0 0 auto; width: 66.66666667%; }
+  .col-xl-9  { flex: 0 0 auto; width: 75%; }
+  .col-xl-10 { flex: 0 0 auto; width: 83.33333333%; }
+  .col-xl-11 { flex: 0 0 auto; width: 91.66666667%; }
+  .col-xl-12 { flex: 0 0 auto; width: 100%; }
+}

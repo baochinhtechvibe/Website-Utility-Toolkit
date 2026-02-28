@@ -1,0 +1,84 @@
+/* =======================================
+    src/css/base/reset.css: Reset CSS
+========================================== */
+
+/* Box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Root setup */
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Body base */
+body {
+  min-height: 100vh; /* Tốt hơn 100% trong một số trường hợp thiết bị di động */
+  margin: 0;
+  padding: 0;
+
+  /* Giữ nền tảng render chữ đẹp của bạn */
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Lists */
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Links (Chỉ reset, không gán màu ở đây) */
+a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Media (Ảnh, SVG mượt mà như bạn viết) */
+img,
+svg,
+video,
+canvas,
+picture {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+
+textarea {
+  resize: vertical;
+}

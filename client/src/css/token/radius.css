@@ -1,0 +1,12 @@
+/* =======================================
+    src/css/token/radius.css: Radius Token
+========================================== */
+
+:root {
+   /* Base Radius */
+   --radius-1: var(--space-1); /* 4px */
+   --radius-2: var(--space-2); /* 8px */
+   --radius-3: var(--space-3); /* 12px */
+   --radius-4: var(--space-4); /* 16px */
+   --radius-full: 999px; /* Full Radius */
+}

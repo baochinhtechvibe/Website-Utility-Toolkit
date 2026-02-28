@@ -1,0 +1,81 @@
+/* =======================================
+    src/css/base/accessibility.css
+    Accessibility Rules (A11y)
+========================================== */
+
+/* 1. GIẢM CHUYỂN ĐỘNG (REDUCED MOTION) 
+   Dành cho người dùng bị hội chứng tiền đình, chóng mặt. 
+   Họ thường bật tính năng "Reduce Motion" trong cài đặt Windows/Mac.
+*/
+@media (prefers-reduced-motion: reduce) {
+  /* Tắt toàn bộ Animation do CSS Keyframes tạo ra */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 2. CHẾ ĐỘ TƯƠNG PHẢN CAO (HIGH CONTRAST)
+   Dành cho người mắc tật khúc xạ mắt hoặc làm việc ngoài trời nắng gắt.
+   Hệ điều hành của họ sẽ ép tính năng này lên trình duyệt.
+*/
+@media (prefers-contrast: high) {
+  :root {
+    /* Ép viền Card, Nút bấm nét to, rõ ràng hơn */
+    --border-1: 2px !important; 
+    --border-2: 3px !important;
+    --border-default: var(--gray-600) !important; /* Đậm màu viền lên */
+  }
+
+  /* Đảm bảo link luôn có gạch chân để nhìn rõ chữ nào bấm được */
+  a {
+    text-decoration: underline;
+  }
+
+  /* Ẩn các hộp đổ bóng để tránh nhòe mắt */
+  * {
+    box-shadow: none !important;
+  }
+}
+
+/* 3. CHẾ ĐỘ TỐI ƯU DATA (REDUCED DATA)
+   Áp dụng trên Mobile 3G yếu, người dùng bật chặn tải.
+*/
+@media (prefers-reduced-data: reduce) {
+  /* Có thể cài đặt: Không tải font web nặng, không tự play video nền... */
+  /* Ở CSS thuần, có thể dùng để ẩn bớt các ảnh background trang trí (nếu muốn) */
+  .footer-background-image {
+    background-image: none !important;
+  }
+}
+
+/* 4. VISUALLY HIDDEN (SCREEN READERS ONLY)
+   Ẩn element về mặt đồ họa nhưng máy đọc nội dung vẫn đọc được!
+*/
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 5. GHI ĐÈ GIAO DIỆN FOCUS */
+:focus-visible {
+  outline: 2px solid var(--brand-primary, var(--blue-500));
+  outline-offset: 2px;
+}
+
+/* Các Input bị disable không nên cho bấm TAB vào được */
+[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

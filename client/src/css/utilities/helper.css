@@ -1,0 +1,180 @@
+/* =======================================
+   utilities/helper.css
+   Global Utility Helpers
+======================================= */
+
+/* ==================================================
+   1. DISPLAY
+================================================== */
+
+.d-none         { display: none !important; }
+.d-block        { display: block !important; }
+.d-inline       { display: inline !important; }
+.d-inline-block { display: inline-block !important; }
+.d-flex         { display: flex !important; }
+.d-inline-flex  { display: inline-flex !important; }
+.d-grid         { display: grid !important; }
+
+/* ==================================================
+   2. FLEXBOX
+================================================== */
+
+/* Direction */
+.flex-row    { flex-direction: row !important; }
+.flex-col    { flex-direction: column !important; }
+
+/* Wrap */
+.flex-wrap   { flex-wrap: wrap !important; }
+.flex-nowrap { flex-wrap: nowrap !important; }
+
+/* Flex grow */
+.flex-1      { flex: 1 1 0% !important; }
+.flex-auto   { flex: 1 1 auto !important; }
+.flex-none   { flex: none !important; }
+
+/* Justify */
+.justify-start   { justify-content: flex-start !important; }
+.justify-center  { justify-content: center !important; }
+.justify-end     { justify-content: flex-end !important; }
+.justify-between { justify-content: space-between !important; }
+.justify-around  { justify-content: space-around !important; }
+
+/* Align items */
+.items-start   { align-items: flex-start !important; }
+.items-center  { align-items: center !important; }
+.items-end     { align-items: flex-end !important; }
+.items-stretch { align-items: stretch !important; }
+
+/* Align self */
+.self-start  { align-self: flex-start !important; }
+.self-center { align-self: center !important; }
+.self-end    { align-self: flex-end !important; }
+
+/* ==================================================
+   3. SIZING
+================================================== */
+
+.w-full   { width: 100% !important; }
+.w-auto   { width: auto !important; }
+.w-fit    { width: fit-content !important; }
+.w-screen { width: 100vw !important; }
+.w-min    { width: min-content !important; }
+.w-max    { width: max-content !important; }
+
+.h-full   { height: 100% !important; }
+.h-auto   { height: auto !important; }
+.h-fit    { height: fit-content !important; }
+.h-screen { height: 100vh !important; }
+
+.min-h-0     { min-height: 0 !important; }
+.min-w-0     { min-width: 0 !important; }
+
+/* ==================================================
+   4. TYPOGRAPHY
+================================================== */
+
+.text-left    { text-align: left !important; }
+.text-center  { text-align: center !important; }
+.text-right   { text-align: right !important; }
+
+.uppercase    { text-transform: uppercase !important; }
+.lowercase    { text-transform: lowercase !important; }
+.capitalize   { text-transform: capitalize !important; }
+
+.font-normal   { font-weight: var(--font-normal) !important; }
+.font-medium   { font-weight: var(--font-medium) !important; }
+.font-semibold { font-weight: var(--font-semibold) !important; }
+.font-bold     { font-weight: var(--font-bold) !important; }
+
+.truncate {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* ==================================================
+   5. BORDER & SHADOW
+================================================== */
+
+.rounded-none { border-radius: 0 !important; }
+.rounded-sm   { border-radius: var(--radius-sm, 0.25rem) !important; }
+.rounded-md   { border-radius: var(--radius-md, 0.5rem) !important; }
+.rounded-lg   { border-radius: var(--radius-lg, 0.75rem) !important; }
+.rounded-xl   { border-radius: var(--radius-xl, 1rem) !important; }
+.rounded-full { border-radius: 9999px !important; }
+
+.shadow-none { box-shadow: none !important; }
+.shadow-sm   { box-shadow: var(--shadow-sm) !important; }
+.shadow-md   { box-shadow: var(--shadow-md) !important; }
+.shadow-lg   { box-shadow: var(--shadow-lg) !important; }
+
+/* ==================================================
+   6. POSITIONING
+================================================== */
+
+.static   { position: static !important; }
+.relative { position: relative !important; }
+.absolute { position: absolute !important; }
+.fixed    { position: fixed !important; }
+.sticky   { position: sticky !important; }
+
+/* Inset */
+.inset-0 { inset: 0 !important; }
+
+/* Edges */
+.top-0    { top: 0 !important; }
+.right-0  { right: 0 !important; }
+.bottom-0 { bottom: 0 !important; }
+.left-0   { left: 0 !important; }
+
+/* Centering helpers */
+.top-half    { top: 50% !important; }
+.left-half   { left: 50% !important; }
+.translate-y-half { transform: translateY(-50%) !important; }
+.translate-x-half { transform: translateX(-50%) !important; }
+.translate-center {
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Z-index */
+.z-hide     { z-index: var(--z-hide) !important; }
+.z-base     { z-index: var(--z-base) !important; }
+.z-elevated { z-index: var(--z-elevated) !important; }
+.z-dropdown { z-index: var(--z-dropdown) !important; }
+.z-sticky   { z-index: var(--z-sticky) !important; }
+.z-fixed    { z-index: var(--z-fixed) !important; }
+.z-modal    { z-index: var(--z-modal) !important; }
+
+/* ==================================================
+   7. OVERFLOW & MISC
+================================================== */
+
+.overflow-hidden  { overflow: hidden !important; }
+.overflow-auto    { overflow: auto !important; }
+.overflow-visible { overflow: visible !important; }
+
+.opacity-0   { opacity: 0 !important; }
+.opacity-50  { opacity: 0.5 !important; }
+.opacity-100 { opacity: 1 !important; }
+
+.pointer-events-none { pointer-events: none !important; }
+.pointer-events-auto { pointer-events: auto !important; }
+
+.cursor-pointer      { cursor: pointer !important; }
+.cursor-not-allowed  { cursor: not-allowed !important; }
+
+/* ==================================================
+   8. TRANSITION
+================================================== */
+
+.transition {
+  transition: all var(--transition-base, 200ms) ease-in-out !important;
+}
+
+.transition-fast {
+  transition: all var(--transition-fast, 150ms) ease-in-out !important;
+}
+
+.transition-none {
+  transition: none !important;
+}

@@ -1,0 +1,27 @@
+/* ===================================
+   src/css/tokens/z-index.css
+   Z-INDEX SCALE (Bản đồ độ cao trục Z)
+   ================================= */
+
+:root {
+   --z-hide: -1;        /* Giấu một lớp xuống nền sâu nhất */
+   --z-auto: auto;
+   --z-base: 0;         /* Mặt đất bằng phẳng (Body, Text bình thường) */
+   
+   /* 1. LAYER TƯƠNG TÁC (Tách khỏi luồng bình thường) */
+   --z-elevated: 10;    /* Card khi bị Hover sẽ nổi lên một chút đè lên text xung quanh */
+   
+   /* 2. LAYER ĐIỀU HƯỚNG CỐ ĐỊNH */
+   --z-dropdown: 100;   /* Menu xổ xuống (Ví dụ: bấm vào Profile ra menu) */
+   --z-sticky: 200;     /* Thanh Sidebar dính, Table Header dính khi cuộn */
+   --z-fixed: 300;      /* Thanh Navigation Header cố định ở đỉnh màn hình */
+
+   /* 3. LAYER PHỦ TOÀN BỘ MÀN HÌNH (Block the UI) */
+   --z-modal-backdrop: 400; /* Cái màn đen mờ phủ lên màn hình khi bật Modal */
+   --z-modal: 500;          /* Khung trắng Modal (Form, Xác nhận...) nằm trên màn đen */
+   
+   /* 4. LAYER PHỤ SUẤT HIỆN QUA TẤT CẢ */
+   --z-popover: 600;    /* Hộp Tooltip nhỏ khi đưa chuột vào biểu tượng "i" Info */
+   --z-toast: 700;      /* Thông báo báo lỗi/thành công nhảy từ góc màn hình (Toast/Notification) */
+   --z-tooltip: 800;    /* Lớp hiển thị cao nhất cho User Guide */
+}
