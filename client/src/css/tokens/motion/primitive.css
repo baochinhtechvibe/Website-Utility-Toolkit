@@ -1,0 +1,22 @@
+/* =======================================
+   src/css/tokens/motion.primitive.css
+========================================== */
+
+:root {
+
+  /* Duration scale */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+
+  /* Easing */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-linear: linear;
+  --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+
+  /* Composite */
+  --transition-base: var(--duration-base) var(--ease-standard);
+  --transition-fast: var(--duration-fast) var(--ease-standard);
+  --transition-slow: var(--duration-slow) var(--ease-standard);
+}

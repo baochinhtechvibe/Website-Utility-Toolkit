@@ -1,0 +1,76 @@
+/* =======================================
+    src/css/components/button.css
+    Button Component
+========================================== */
+
+/* 1. KHUNG XƯƠNG (BASE COMPONENT) */
+.btn {
+    /* CHÌA KHÓA: Gọi 4 biến cục bộ rỗng (Có fallback về màu mặc định ngay tại đây) */
+    --btn-bg: var(--overlay-gray);
+    --btn-border: var(--gray-500);
+    --btn-text: var(--gray-900);
+    --btn-hover-bg: var(--overlay-gray); /* Nếu nút có hover đổi màu thì truyền vào đây */
+
+    /* Áp dụng 4 biến đó vào thuộc tính thật */
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    color: var(--btn-text);
+
+    /* Cấu hình hình dáng dùng chung (Spacing, Radius, Font-weight...) */
+    padding: var(--pad-y-sm) var(--pad-x-md);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-medium);
+    transition: all var(--transition-fast) ease;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Hiệu ứng hover cho KHUNG XƯƠNG (Viết đúng 1 lần duy nhất) */
+.btn:hover {
+    background: var(--btn-hover-bg);
+    /* Nếu muốn hover tối hơn, tự xử lý ở class modifier */
+}
+
+
+/* =======================================
+   2. CÁC BIẾN THỂ MÀU SẮC (MODIFIERS)
+========================================== */
+
+/* .btn mặc định là màu xám rồi, không cần viết lại .btn-default làm gì cho tốn code */
+
+/* Nút Success */
+.btn-success {
+    --btn-bg: var(--overlay-green);
+    --btn-border: var(--green-500);
+    --btn-text: var(--green-900);
+    --btn-hover-bg: var(--green-200); 
+}
+
+/* Nút Share */
+.btn-share {
+    --btn-bg: var(--overlay-blue);
+    --btn-border: var(--blue-500);
+    --btn-text: var(--blue-900);
+}
+
+/* Nút Danger */
+.btn-danger {
+    --btn-bg: var(--overlay-red);
+    --btn-border: var(--red-500);
+    --btn-text: var(--red-900);
+}
+
+/* Nút Warning */
+.btn-warning {
+    --btn-bg: var(--overlay-yellow);
+    --btn-border: var(--yellow-500);
+    --btn-text: var(--yellow-900);
+}
+
+
+.btn-outline {
+    --btn-bg: transparent; /* Tắt nền */
+    --btn-hover-bg: var(--gray-100);
+}

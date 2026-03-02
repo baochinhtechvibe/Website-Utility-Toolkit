@@ -3,20 +3,23 @@
 /* ===================================
    1. TOKENS & THEMES
    ================================= */
-@import './tokens/colors.palette.css';
-@import './tokens/colors.semantic.css';
+@import './tokens/border/primitive.css';
+@import './tokens/border/semantic.css';
+@import './tokens/color/palette.css';
+@import './tokens/color/semantic.css';
+@import './tokens/motion/primitive.css';
+@import './tokens/radius/primitive.css';
+@import './tokens/shadow/primitive.css';
+@import './tokens/shadow/semantic.css';
+@import './tokens/typography/typography.css';
+@import './tokens/typography/icon.css';
+@import './tokens/breakpoints.css';
 @import './tokens/spacing.css';
-@import './tokens/typography.css';
-@import './tokens/radius.css';
-@import './tokens/shadows.css';
-@import './tokens/transitions.css';
 @import './tokens/z-index.css';
-
-@import './themes/dark.css';
-
 /* ===================================
    2. BASE
    ================================= */
+@import './base/animations.css';
 @import './base/reset.css';
 @import './base/base.css';
 @import './base/fonts.css';
@@ -39,7 +42,7 @@
 @import './components/card.css';
 
 /* ===================================
-   5. PAGES & TOOLS
+   6. PAGES & TOOLS
    ================================= */
 @import './pages/home.css';
 @import './tools/dns.css';

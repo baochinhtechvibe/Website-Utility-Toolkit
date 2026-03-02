@@ -1,9 +1,0 @@
-/* =======================================
-    src/css/token/transitions.css: Transitions Token
-========================================== */
-
-:root {
-   --transition-base: 200ms ease-in-out;
-   --transition-fast: 150ms ease-in-out;
-   --transition-slow: 300ms ease-in-out;
-}

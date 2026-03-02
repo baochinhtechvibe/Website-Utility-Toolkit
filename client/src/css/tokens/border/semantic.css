@@ -1,0 +1,29 @@
+/* =======================================
+   src/css/tokens/borders.semantic.css
+   Semantic Border Tokens
+========================================== */
+
+:root {
+
+  /* ===== Default UI Border ===== */
+  --border-default-width: var(--border-width-1);
+  --border-default-style: solid;
+  --border-default-color: var(--color-border);
+
+  --border-default:
+    var(--border-default-width)
+    var(--border-default-style)
+    var(--border-default-color);
+
+  /* ===== Strong Border ===== */
+  --border-strong:
+    var(--border-width-2)
+    solid
+    var(--color-border-strong);
+
+  /* ===== Subtle Border ===== */
+  --border-subtle:
+    var(--border-width-1)
+    solid
+    var(--color-border-subtle);
+}

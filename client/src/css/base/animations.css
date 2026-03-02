@@ -1,0 +1,22 @@
+/* ===== Header Brand animations ===== */
+
+html {
+  scroll-behavior: smooth;
+}
+@keyframes text-shine {
+  0% {
+    background-position-x: 150%;
+  }
+
+  25% {
+    background-position-x: 0%;
+  }
+
+  45% {
+    background-position-x: -150%;
+  }
+
+  100% {
+    background-position-x: -150%;
+  }
+}

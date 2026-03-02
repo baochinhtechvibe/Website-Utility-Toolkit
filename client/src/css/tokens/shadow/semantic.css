@@ -1,0 +1,53 @@
+/* =======================================
+   Shadow Token System
+   Layer: Design Token
+   ======================================= */
+
+:root {
+
+    --elevation-card: var(--shadow-2);
+    --elevation-dropdown: var(--shadow-3);
+    --elevation-modal: var(--shadow-4);
+    --elevation-tooltip: var(--shadow-3);
+    --elevation-popover: var(--shadow-3);
+
+    --shadow-accent-blue:
+        0 8px 24px var(--overlay-blue);
+
+    --shadow-accent-green:
+        0 8px 24px var(--overlay-green);
+
+    --shadow-accent-red:
+        0 8px 24px var(--overlay-red);
+
+    --shadow-accent-yellow:
+        0 8px 24px var(--overlay-yellow);
+
+    --shadow-accent-purple:
+
+
+        --shadow-accent-blue: 0 8px 24px var(--overlay-blue);
+
+    --shadow-accent-green:
+        0 8px 24px var(--overlay-green);
+
+    --shadow-accent-red:
+        0 8px 24px var(--overlay-red);
+
+    --shadow-accent-yellow:
+        0 8px 24px var(--overlay-yellow);
+
+    --shadow-accent-purple:
+        0 8px 24px var(--overlay-purple);
+
+
+
+    --shadow-focus:
+        0 0 0 3px var(--overlay-blue);
+
+    --shadow-focus-error:
+        0 0 0 3px var(--overlay-red);
+
+    --shadow-focus-success:
+        0 0 0 3px var(--overlay-green);
+}

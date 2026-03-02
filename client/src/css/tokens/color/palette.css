@@ -150,15 +150,15 @@
     --black: #000000;
 
     /* Overlay */
-    --overlay-light: color-mix(in srgb, white 6%, transparent);
-    --overlay-dark: color-mix(in srgb, black 15%, transparent);
-    --overlay-red: color-mix(in srgb, red 20%, transparent);
-    --overlay-green: color-mix(in srgb, green 20%, transparent);
-    --overlay-blue: color-mix(in srgb, blue 20%, transparent);
-    --overlay-yellow: color-mix(in srgb, yellow 20%, transparent);
-    --overlay-orange: color-mix(in srgb, orange 20%, transparent);
-    --overlay-purple: color-mix(in srgb, purple 20%, transparent);
-    --overlay-gray: color-mix(in srgb, gray 20%, transparent);
-    --overlay-slate: color-mix(in srgb, slate 20%, transparent);
-    --overlay-neutral: color-mix(in srgb, neutral 20%, transparent);
+    --overlay-light: color-mix(in srgb, var(--white) 6%, transparent);
+    --overlay-dark: color-mix(in srgb, var(--black) 15%, transparent);
+    --overlay-red: color-mix(in srgb, var(--red-500) 20%, transparent);
+    --overlay-green: color-mix(in srgb, var(--green-500) 20%, transparent);
+    --overlay-blue: color-mix(in srgb, var(--blue-500) 20%, transparent);
+    --overlay-yellow: color-mix(in srgb, var(--yellow-500) 20%, transparent);
+    --overlay-orange: color-mix(in srgb, var(--orange-500) 20%, transparent);
+    --overlay-purple: color-mix(in srgb, var(--purple-500) 20%, transparent);
+    --overlay-gray: color-mix(in srgb, var(--gray-500) 20%, transparent);
+    --overlay-slate: color-mix(in srgb, var(--slate-500) 20%, transparent);
+    --overlay-neutral: color-mix(in srgb, var(--neutral-500) 20%, transparent);
 }

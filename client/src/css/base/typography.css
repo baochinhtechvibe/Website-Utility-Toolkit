@@ -5,17 +5,18 @@
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
     font-family: var(--font-serif);
-    color: var(--text-heading);
+    font-weight: var(--font-extrabold);
+    color: var(--text-primary);
     line-height: var(--leading-tight);
 }
 
 /* Ánh xạ chuẩn với biến clamp() trong token */
-h1 { font-size: var(--text-6xl); } /* 36px -> 60px */
-h2 { font-size: var(--text-5xl); } /* 28px -> 48px */
-h3 { font-size: var(--text-2xl); } /* 24px -> 30px */
-h4 { font-size: var(--text-xl);  } /* 20px -> 24px */
-h5 { font-size: var(--text-lg);  } /* 18px (cố định) */
-h6 { font-size: var(--text-base);} /* 16px (cố định) */
+h1 { font-size: clamp(var(--text-2xl), 4vw, var(--text-5xl)); }
+h2 { font-size: clamp(var(--text-xl), 3vw, var(--text-4xl)); }
+h3 { font-size: clamp(var(--text-lg), 2.5vw, var(--text-2xl)); }
+h4 { font-size: clamp(var(--text-base), 2vw, var(--text-xl)); }
+h5 { font-size: clamp(var(--text-sm), 1.5vw, var(--text-lg)); }
+h6 { font-size: clamp(var(--text-sm), 1vw, var(--text-base)); }
 
 /* Text elements */
 p {

@@ -1,8 +1,0 @@
-/* =======================================
-    src/css/token/shadows.css: Shadow Token
-========================================== */
-
-:root {
-    --shadow-dark: 0 var(--space-1) var(--space-3) var(--overlay-dark);
-    --shadow-yellow: 0 var(--space-2) var(--space-6) var(--overlay-yellow);
-}

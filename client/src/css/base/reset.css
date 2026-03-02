@@ -21,8 +21,6 @@ body {
   margin: 0;
   padding: 0;
 
-  /* Giữ nền tảng render chữ đẹp của bạn */
-  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
