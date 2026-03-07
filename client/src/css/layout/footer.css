@@ -1,0 +1,7 @@
+/* =======================================
+    src/css/layout/footer.css
+    Footer Layout
+========================================== */
+.footer {
+    border-top: var(--border-default);
+}

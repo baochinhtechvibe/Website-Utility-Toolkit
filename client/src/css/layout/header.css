@@ -11,6 +11,8 @@
             var(--gray-400) 50%,
             var(--yellow-400) 60%,
             var(--slate-800) 100%);
+
+    border-bottom: var(--border-default);
 }
 
 .header__wrapper {
@@ -19,7 +21,7 @@
 
 .header__icon {
     color: var(--color-icon);
-    font-size: clamp(var(--icon-md), 5vw, var(--icon-2xl));
+    font-size: var(--icon-hero);
 }
 
 .header__brand {
@@ -33,12 +35,12 @@
 }
 
 .header__subtitle {
-    letter-spacing: var(--tracking-wider);
+    letter-spacing: var(--letter-spacing-wider);
 }
 
 .header__meta {
     display: inline-block;
-    font-size: clamp(var(--text-xs), 2.25vw, var(--text-lg));
+    font-size: var(--text-base);
     max-width: clamp(275px, 60vw, 100%);
 }
 

@@ -4,20 +4,36 @@
 ========================================== */
 
 html {
-  font-size: 16px; 
+  font-size: 16px;
   scroll-behavior: smooth;
 }
 
 body {
   background-color: var(--color-background);
-  color: var(--color-text-primary);
-  
-  font-size: clamp(var(--text-sm), 2.25vw, var(--text-base));
-  font-family: var(--font-sans);
-  font-weight: var(--font-normal);
-  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+  overflow-x: hidden;
+}
 
-  overflow-x: hidden; 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-text-primary);
+}
+
+p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+a {
+  color: var(--brand-primary);
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .wrapper {
@@ -26,8 +42,9 @@ body {
   flex-direction: column;
 }
 
-.main, #main {
-  flex: 1; 
+.main,
+#main {
+  flex: 1;
 }
 
 ::selection {

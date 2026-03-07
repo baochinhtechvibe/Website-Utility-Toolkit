@@ -216,7 +216,7 @@
 .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .grid-auto-fit {
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 /* Responsive Grid (Chạy mượt mà theo Breakpoints) */

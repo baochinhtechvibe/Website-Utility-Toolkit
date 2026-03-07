@@ -1,0 +1,30 @@
+/* ========================================
+   Design Tokens — Gradients
+======================================== */
+
+:root {
+
+    /* Brand Gradients */
+    --gradient-brand: linear-gradient(
+        180deg,
+        #4cbdff 0%,
+        #005ccc 100%
+    );
+
+    /* Utility Gradients */
+    --gradient-blue: linear-gradient(
+        180deg,
+        #4cbdff 0%,
+        #005ccc 100%
+    );
+
+    --gradient-gold-metallic: linear-gradient(
+        277deg,
+        #F4CF00 0%,
+        #FDEE46 20%,
+        #D69400 50%,
+        #FDEE46 80%,
+        #F4CF00 100%
+    );
+
+}

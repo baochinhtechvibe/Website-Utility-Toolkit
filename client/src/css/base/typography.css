@@ -4,39 +4,80 @@
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    font-family: var(--font-serif);
-    font-weight: var(--font-extrabold);
-    color: var(--text-primary);
-    line-height: var(--leading-tight);
+    font-family: var(--font-family-serif);
+    font-weight: var(--font-weight-extrabold);
 }
 
 /* Ánh xạ chuẩn với biến clamp() trong token */
-h1 { font-size: clamp(var(--text-2xl), 4vw, var(--text-5xl)); }
-h2 { font-size: clamp(var(--text-xl), 3vw, var(--text-4xl)); }
-h3 { font-size: clamp(var(--text-lg), 2.5vw, var(--text-2xl)); }
-h4 { font-size: clamp(var(--text-base), 2vw, var(--text-xl)); }
-h5 { font-size: clamp(var(--text-sm), 1.5vw, var(--text-lg)); }
-h6 { font-size: clamp(var(--text-sm), 1vw, var(--text-base)); }
+/* =======================================
+   Base Typography
+======================================= */
 
-/* Text elements */
-p {
-    margin: 0;
+body {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-base);
+  line-height: var(--line-height-normal);
+  font-weight: var(--font-weight-normal);
 }
 
-/* Các thẻ in-line thường gặp */
+
+/* Headings */
+
+h1 {
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+h2 {
+  font-size: var(--text-h2);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+}
+
+h3 {
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+}
+
+h4 {
+  font-size: var(--text-h4);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+}
+
+h5 {
+  font-size: var(--text-h5);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+}
+
+h6 {
+  font-size: var(--text-h6);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+}
+
+
+/* Paragraph */
+
+p {
+  font-size: var(--text-base);
+  line-height: var(--line-height-relaxed);
+}
+
+
+/* Small text */
+
 small {
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--line-height-normal);
 }
 
 strong {
-    font-weight: var(--font-bold);
-}
-
-a {
-    color: var(--brand-primary);
-}
-
-a:hover {
-    text-decoration: underline;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--text-base);
+    line-height: var(--line-height-relaxed);
 }

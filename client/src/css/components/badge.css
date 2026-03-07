@@ -1,0 +1,106 @@
+/* =======================================
+    src/css/components/badge.css
+    Badge Component
+========================================== */
+
+/* =======================================
+    src/css/components/badge.css
+    Badge Component
+========================================== */
+
+/* =======================================
+   1. KHUNG XƯƠNG (BASE COMPONENT)
+========================================== */
+
+.badge {
+    /* Biến cục bộ */
+    --badge-bg: var(--color-surface-muted);
+    --badge-border: var(--color-border);
+    --badge-text: var(--color-text-secondary);
+
+    /* Render */
+    background: var(--badge-bg);
+    border: 1px solid var(--badge-border);
+    color: var(--badge-text);
+
+    /* Shape */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: var(--pad-y-1) var(--pad-x-3);
+    border-radius: var(--radius-lg);
+
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+
+    white-space: nowrap;
+}
+
+
+/* =======================================
+   2. COLOR MODIFIERS
+========================================== */
+
+.badge-default {
+    --badge-bg: color-mix(in srgb, var(--color-surface) 85%, var(--black) 5%);
+    --badge-border: var(--color-border-subtle);
+    --badge-text: var(--color-text-secondary);
+}
+
+.badge-success {
+    --badge-bg: var(--green-100);
+    --badge-border: var(--green-300);
+    --badge-text: var(--green-700);
+}
+
+.badge-error {
+    --badge-bg: var(--red-100);
+    --badge-border: var(--red-300);
+    --badge-text: var(--red-700);
+}
+
+.badge-warning {
+    --badge-bg: var(--yellow-100);
+    --badge-border: var(--yellow-300);
+    --badge-text: var(--yellow-800);
+}
+
+.badge-info {
+    --badge-bg: var(--blue-100);
+    --badge-border: var(--blue-300);
+    --badge-text: var(--blue-700);
+}
+
+
+/* =======================================
+   3. STYLE VARIANTS
+========================================== */
+
+/* Outline badge */
+
+.badge-outline {
+    --badge-bg: transparent;
+}
+
+/* Subtle badge */
+
+.badge-subtle {
+    --badge-border: transparent;
+}
+
+
+/* =======================================
+   4. SIZE VARIANTS
+========================================== */
+
+.badge-sm {
+    font-size: var(--text-base);
+    padding: var(--pad-y-xxs) var(--pad-x-xs);
+}
+
+.badge-lg {
+    font-size: var(--text-base);
+    padding: var(--pad-y-sm) var(--pad-x-md);
+}

@@ -1,0 +1,8 @@
+/* =======================================
+    src/css/tokens/icon/semantic.css: Icon Semantic Token
+========================================== */
+
+:root {
+  --icon-base: var(--icon-size-100);
+  --icon-hero: var(--icon-size-200);
+}

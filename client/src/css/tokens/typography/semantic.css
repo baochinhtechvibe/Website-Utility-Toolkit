@@ -1,0 +1,17 @@
+/* =======================================
+    src/css/tokens/typography/semantic.css: Typography Semantic Token
+========================================== */
+
+:root {
+    /* Body text */
+    --text-sm: var(--font-size-100);
+    --text-base: var(--font-size-200);
+
+    /* Headings */
+    --text-h6: var(--font-size-200);
+    --text-h5: var(--font-size-300);
+    --text-h4: var(--font-size-400);
+    --text-h3: var(--font-size-500);
+    --text-h2: var(--font-size-600);
+    --text-h1: var(--font-size-700);
+}

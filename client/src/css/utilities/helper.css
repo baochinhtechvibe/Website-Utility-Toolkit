@@ -81,10 +81,10 @@
 .lowercase    { text-transform: lowercase !important; }
 .capitalize   { text-transform: capitalize !important; }
 
-.font-normal   { font-weight: var(--font-normal) !important; }
-.font-medium   { font-weight: var(--font-medium) !important; }
-.font-semibold { font-weight: var(--font-semibold) !important; }
-.font-bold     { font-weight: var(--font-bold) !important; }
+.font-normal   { font-weight: var(--font-weight-normal) !important; }
+.font-medium   { font-weight: var(--font-weight-medium) !important; }
+.font-semibold { font-weight: var(--font-weight-semibold) !important; }
+.font-bold     { font-weight: var(--font-weight-bold) !important; }
 
 .truncate {
   overflow: hidden !important;

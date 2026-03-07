@@ -1,0 +1,86 @@
+/* =======================================
+    src/css/components/tool-card.css
+    Tool Card Component
+========================================== */
+.tool-card {
+    /* accent color */
+    --tool-card-accent: var(--yellow-500);
+    --tool-card-icon: currentColor;
+    --tool-card-icon-bg: none;
+
+    /* Action Footer */
+    --tool-card-action-hover: var(--tool-card-accent);
+
+    /* hover override tokens của card */
+    --card-hover-border-color: var(--tool-card-accent);
+    --card-hover-shadow: var(--shadow-accent-yellow);
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.tool-card__icon {
+    font-size: var(--icon-base);
+    color: var(--tool-card-icon);
+}
+
+.tool-card--gradient-icon .tool-card__icon {
+    background: var(--tool-card-icon-bg);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: var(--line-height-none);
+    padding: var(--space-half);
+    color: transparent;
+}
+
+.tool-card__description {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    min-height: calc(3 * var(--line-height-relaxed) * var(--text-base));
+    /* text-align: justify; */
+}
+
+.tool-card__action {
+    font-weight: var(--font-weight-bold);
+    transition: color var(--transition-base);
+}
+
+.tool-card__icon-arrow {
+    transition: transform var(--transition-base);
+}
+
+.tool-card:hover .tool-card__action {
+    color: var(--tool-card-action-hover);
+}
+
+.tool-card:hover .tool-card__icon-arrow {
+    transform: translateX(6px);
+}
+
+.tool-card--dns {
+    --tool-card-icon: var(--blue-500);
+}
+
+.tool-card--ssl {
+    --tool-card-icon-bg: var(--gradient-gold-metallic);
+}
+
+.tool-card--redirect {
+    --tool-card-icon: var(--blue-500);
+}
+
+.tool-card--ip {
+    --tool-card-icon-bg: var(--gradient-blue);
+}
+
+.tool-card--chmod {
+    --tool-card-icon-bg: var(--slate-800);
+}
+
+.tool-card--mixed {
+    --tool-card-icon: var(--red-500);
+}
