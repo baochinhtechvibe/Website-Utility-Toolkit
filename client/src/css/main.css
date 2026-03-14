@@ -44,6 +44,11 @@
 @import './components/badge.css';
 @import './components/card.css';
 @import './components/tool-card.css';
+@import './components/error-card.css';
+@import './components/share-card.css';
+@import './components/form.css';
+@import './components/result-card.css';
+
 
 /* ===================================
    6. PAGES & TOOLS

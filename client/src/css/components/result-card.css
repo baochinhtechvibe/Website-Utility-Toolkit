@@ -1,0 +1,28 @@
+/* =======================================
+    src/css/components/result-card.css
+    Result Card Component
+========================================== */
+
+.result-card {
+    background-color: var(--color-white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.result-card__header {
+    padding: var(--space-3) 0;
+    border-bottom: var(--border-default);
+}
+
+.result-card__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-success);
+}
+
+.result-card__body {
+    padding: 1rem;
+}

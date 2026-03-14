@@ -10,27 +10,31 @@
     --btn-border: var(--gray-500);
     --btn-text: var(--gray-900);
     --btn-hover-bg: var(--overlay-gray); /* Nếu nút có hover đổi màu thì truyền vào đây */
+    --btn-hover-text: var(--gray-900);
 
     /* Áp dụng 4 biến đó vào thuộc tính thật */
     background: var(--btn-bg);
-    border: 1px solid var(--btn-border);
+    box-shadow: var(--elevation-tooltip);
+    border: none;
     color: var(--btn-text);
 
     /* Cấu hình hình dáng dùng chung (Spacing, Radius, Font-weight...) */
-    padding: var(--pad-y-sm) var(--pad-x-md);
+    padding: var(--pad-y-2) var(--pad-x-3);
     border-radius: var(--radius-md);
-    font-weight: var(--font-medium);
-    transition: all var(--transition-fast) ease;
+    font-weight: var(--font-semibold);
+    transition: all var(--transition-base);
     cursor: pointer;
     display: inline-flex;
     justify-content: center;
     align-items: center;
+    gap: var(--space-2);
 }
 
 /* Hiệu ứng hover cho KHUNG XƯƠNG (Viết đúng 1 lần duy nhất) */
 .btn:hover {
     background: var(--btn-hover-bg);
-    /* Nếu muốn hover tối hơn, tự xử lý ở class modifier */
+    color: var(--btn-hover-text);
+    transform: translateY(-2px);   
 }
 
 
@@ -38,14 +42,20 @@
    2. CÁC BIẾN THỂ MÀU SẮC (MODIFIERS)
 ========================================== */
 
-/* .btn mặc định là màu xám rồi, không cần viết lại .btn-default làm gì cho tốn code */
+.btn-action {
+    --btn-bg: var(--color-brand);
+    --btn-text: var(--white);
+    --btn-hover-bg: var(--gray-700); 
+    --btn-hover-text: var(--white);
+}
 
 /* Nút Success */
 .btn-success {
-    --btn-bg: var(--overlay-green);
-    --btn-border: var(--green-500);
-    --btn-text: var(--green-900);
-    --btn-hover-bg: var(--green-200); 
+    --btn-bg: var(--green-600);
+    --btn-border: var(--green-600);
+    --btn-text: var(--white);
+    --btn-hover-bg: var(--green-700); 
+    --btn-hover-text: var(--white);
 }
 
 /* Nút Share */
@@ -73,4 +83,9 @@
 .btn-outline {
     --btn-bg: transparent; /* Tắt nền */
     --btn-hover-bg: var(--gray-100);
+}
+
+/* Modifiers cho Button Layout */
+.btn-block {
+    width: 100%;
 }

@@ -7,7 +7,6 @@
   --card-bg: var(--color-surface);
   --card-border-color: var(--color-border);
   --card-radius: var(--radius-lg, 0.75rem);
-  --card-padding: clamp(1rem, 0.8469rem + 0.6803vw, 1.5rem);
 
   /* ===== Elevation Tokens ===== */
   --card-shadow: var(--elevation-card);
@@ -21,7 +20,6 @@
   background-color: var(--card-bg);
   border: 1px solid var(--card-border-color);
   border-radius: var(--card-radius);
-  padding: var(--card-padding);
   box-shadow: var(--card-shadow);
 
   /* Neutral container – không ép layout */
@@ -76,11 +74,19 @@
   --card-hover-shadow: var(--shadow-lg);
 }
 
+.card__header {
+  padding: var(--pad-y-3) var(--pad-x-3);
+  border-top-left-radius: var(--card-radius);
+  border-top-right-radius: var(--card-radius);
+  background-color: var(--color-brand);
+}
 
-@media (min-width: 768px) {
-  .card {
-    --card-padding: var(--space-6, 2rem);
-  }
+.card__title {
+  color: var(--white);
+}
+
+.card__body {
+  padding: var(--pad-y-3) var(--pad-x-3);
 }
 
 @media (prefers-reduced-motion: reduce) {

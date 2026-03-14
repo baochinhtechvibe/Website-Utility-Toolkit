@@ -154,7 +154,7 @@
     --overlay-dark: color-mix(in srgb, var(--black) 15%, transparent);
     --overlay-red: color-mix(in srgb, var(--red-500) 20%, transparent);
     --overlay-green: color-mix(in srgb, var(--green-500) 20%, transparent);
-    --overlay-blue: color-mix(in srgb, var(--blue-500) 20%, transparent);
+    --overlay-blue: color-mix(in srgb, var(--blue-400) 20%, transparent);
     --overlay-yellow: color-mix(in srgb, var(--yellow-500) 20%, transparent);
     --overlay-orange: color-mix(in srgb, var(--orange-500) 20%, transparent);
     --overlay-purple: color-mix(in srgb, var(--purple-500) 20%, transparent);

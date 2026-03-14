@@ -1,0 +1,58 @@
+/* =======================================
+    src/css/components/share-card.css
+    Share Card Component
+========================================== */
+.share-card {
+    --color-share-primary: var(--blue-500);
+    --color-share-text:var(--blue-900);
+    --color-share-btn-hover:var(--blue-600);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-info);
+    background-color: var(--overlay-blue);
+    padding: clamp(0.5rem, 0.3469rem + 0.6803vw, 1rem);
+}
+
+.share-card__title {
+    color: var(--color-share-text);
+}
+
+.share-card__input {
+    flex: 1 1 auto;
+    min-width: 150px;
+
+    padding: var(--pad-y-2) var(--pad-x-3);
+    border: var(--border-default);
+    border-right: none;
+    border-color: var(--color-share-primary);
+    border-top-left-radius: var(--radius-md);
+    border-bottom-left-radius: var(--radius-md);
+
+    color: var(--color-share-text);
+}
+
+.share-card__input:focus {
+    outline: none;
+    box-shadow: var(--shadow-blue);
+}
+
+.share-card__button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+
+    padding: var(--pad-y-2) var(--pad-x-3);
+    border: var(--border-default);
+    border-left: none;
+    border-color: var(--color-share-primary);
+    border-top-right-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+
+    background-color: var(--color-share-primary);
+    color: var(--white);
+    transition: all var(--transition-base);
+}
+
+.share-card__button:hover {
+    background-color: var(--color-share-btn-hover);
+}

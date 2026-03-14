@@ -1,0 +1,19 @@
+/* =======================================
+    src/css/components/error-card.css
+    Error Card Component
+========================================== */
+.error-card {
+    --color-text-error: var(--yellow-900);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-warning);
+    background-color: var(--overlay-yellow);
+    padding: clamp(0.5rem, 0.3469rem + 0.6803vw, 1rem);
+}
+
+.error-card__title {
+    color: var(--color-text-error);
+}
+
+.error-card__message {
+    color: var(--color-text-error);
+}

@@ -1,0 +1,163 @@
+/* =======================================
+    src/css/components/form.css
+    Form Primitives & Layout Objects
+========================================== */
+
+/* =======================================
+   1. FORM PRIMITIVES (Thành phần giao diện gốc)
+   - Lưu ý: KHÔNG gán margin-bottom hay margin-top để đẩy khoảng cách.
+   - Trách nhiệm: Chỉ quyết định màu sắc, font chữ, viền, padding bên trong.
+========================================== */
+
+.form-label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+/* Các thẻ Input, Select, Textarea chung 1 class */
+.form-input {
+    width: 100%; /* Default 100% để Layout bóp lại tự nhiên */
+    padding: var(--pad-y-2) var(--pad-x-3);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    
+    /* Shadow variables */
+    --form-shadow: var(--elevation-tooltip);
+
+    /* Focus variables */
+    --form-focus-color: var(--color-brand);
+    --form-focus-outline: 0 4px 10px 3px color-mix(in srgb, var(--form-focus-color) 30%, transparent);
+
+    box-shadow: var(--form-shadow);
+
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.form--dns {
+    --form-focus-color: var(--blue-500);
+    --form-shadow: var(--elevation-tooltip), var(--shadow-accent-blue);
+}
+
+.form--ssl {
+    --form-focus-color: var(--yellow-500); 
+}
+
+/* Trạng thái Focus */
+.form-input:focus {
+    outline: none;
+    border-color: var(--form-focus-color);
+    box-shadow: var(--form-shadow), var(--form-focus-outline);
+}
+
+/* Disabled */
+.form-input:disabled {
+    background-color: var(--color-surface-muted);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Biến thể dành riêng cho thẻ Select */
+.form-select {
+    cursor: pointer;
+    /* Có thể tuỳ chỉnh padding bên phải to hơn để chừa chỗ cho mũi tên dropdown nếu cần */
+    /* padding-right: var(--space-8); */
+}
+
+/* Dòng ghi chú dưới input */
+.form-hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: var(--space-1); /* Spacing nội bộ của hint so với input */
+}
+
+
+/* =======================================
+   2. FORM LAYOUT OBJECTS (Cấu trúc Bố cục Form)
+   - Trách nhiệm: Chỉ quyết định layout (grid/flex), vị trí và khoảng cách các field.
+========================================== */
+
+/* --- 2.1 Basic Form Container --- */
+.form {
+    /* Base wrapper nếu cần định hình gì đó toàn cục */
+    width: 100%;
+}
+
+/* --- 2.2 Field Wrapper (Cột chứa Label + Input) --- */
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+/* --- 2.3 Form Inline (Form 1 hàng, thường có Input + Nút Submit kế bên) --- */
+.form-inline {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end; /* Nếu có label thì input và button cùng căn đáy */
+    gap: var(--space-3);
+    flex-wrap: wrap; /* Cho phép rớt dòng ở mobile */
+}
+
+/* Modifier: Field trong Form Inline linh hoạt giãn */
+.form-inline .form-field {
+    flex: 1 1 200px; /* Tránh bị bóp quá nhỏ trên mobile */
+}
+
+/* Modifier: Các kích thước đặc biệt cho Form Field */
+.form-inline .form-field--wide {
+    flex: 30 1 250px;
+}
+
+.form-inline .form-field--narrow {
+    flex: 10 1 150px;
+}
+
+/* Field chuyên biệt chứa nút bấm, không giãn to bè trên desktop */
+.form-inline .form-field--button {
+    flex: 1 1 auto;
+}
+
+/* --- 2.4 Form Grid (Chia cột chuyên nghiệp) --- */
+.form-grid {
+    display: grid;
+    gap: var(--space-4) var(--space-6); /* Gap dọc 1rem, Ngang 1.5rem */
+}
+
+/* Modifier: 2 Column - 50/50 */
+.form-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Modifier: 3 Column - 33/33/33 */
+.form-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Modifier: Asymmetric Columns (vd: 2 phần, 1 phần) */
+.form-grid-2-wide {
+    grid-template-columns: 2fr 1fr;
+}
+
+/* Respnsive: Trả về 1 cột trên điện thoại nhỏ (< 576px) */
+@media (max-width: 639px) {
+    .form-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .form-inline .form-field,
+    .form-inline .form-field--wide,
+    .form-inline .form-field--narrow {
+        flex-basis: auto;
+        min-width: 0;
+    }
+
+    .form-grid-2,
+    .form-grid-3,
+    .form-grid-2-wide {
+        grid-template-columns: 1fr;
+    }
+}

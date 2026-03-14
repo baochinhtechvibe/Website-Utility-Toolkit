@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../public/site.webmanifest" />
+
+    <title>Website Utility Toolkit | Danh sách công cụ miễn phí cho Website Administrator</title>
+</head>
+
+<body>
+    <div class="wrapper page--dns">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--dns py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/settings.png" alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                DNS LOOKUP
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Comprehensive DNS Lookup
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Tìm kiếm và đối chiếu các bản ghi DNS (A, CNAME, MX, NS) từ nhiều máy chủ trên toàn cầu.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="card">
+                    <!-- Header Card -->
+                    <div class="card__header">
+                        <h2 class="card__title text-xl font-bold text-center">
+                            DNS/IP Lookup
+                        </h2>
+                    </div>
+
+                    <div class="card__body pt-4">
+                        <form action="" method="post" class="form form--dns">
+
+                            <!-- Sử dụng form-inline để nằm cùng hàng trên desktop -->
+                            <div class="form-inline">
+                                <!-- Domain Input -->
+                                <div class="form-field form-field--wide">
+                                    <label class="form-label" for="domain">Domain / IP Address</label>
+                                    <input type="text" id="domain" name="domain" class="form-input"
+                                        placeholder="Ví dụ: google.com">
+                                </div>
+
+                                <!-- Record Type Select -->
+                                <div class="form-field form-field--narrow">
+                                    <label class="form-label" for="record-type">Record Type</label>
+                                    <select id="record-type" name="type" class="form-input form-select">
+                                        <option value="ALL">ALL DNS</option>
+                                        <option value="A">A</option>
+                                        <option value="AAAA">AAAA</option>
+                                        <option value="NS">NS</option>
+                                        <option value="MX">MX</option>
+                                        <option value="CNAME">CNAME</option>
+                                        <option value="TXT">TXT</option>
+                                        <option value="PTR">PTR</option>
+                                        <option value="DNSSEC">DNSSEC</option>
+                                        <option value="BLACKLIST" style="font-weight:bold; color:var(--color-error);">
+                                            BLACKLIST</option>
+                                    </select>
+                                </div>
+
+                                <!-- Button -->
+                                <div class="form-field form-field--button">
+                                    <button type="submit" class="btn btn-action btn-block">
+                                        <i class="fas fa-search" id="dnsLookupIcon"></i>
+                                        Lookup
+                                        <i class="fa-solid fa-spinner fa-spin d-none" id="dnsLookupLoading"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Result Card -->
+                        <div id="resultCard" class="result-card mt-6 d-block">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 class="result-card__title text-xl font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    Kết quả tra cứu DNS:
+                                </h3>
+                                <div class="result-card__actions">
+                                    <button id="whoisBtn" type="button" class="btn btn-success btn-sm">
+                                        <i class="fa-solid fa-address-card"></i>
+                                        Whois
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="resultBody" class="result-card__body">
+                                
+                            </div>
+                        </div>
+
+                        <!-- Error Card -->
+                        <div id="errorCard" class="error-card mt-6 d-none">
+                            <div class="error-card__header">
+                                <h3 class="error-card__title text-xl font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Tra cứu lỗi
+                                </h3>
+                            </div>
+                            <div class="error-card__body">
+                                <p id="errorMessage" class="error-card__message">
+                                    Tra cứu DNS thất bại. Vui lòng thử lại sau!
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Share Card -->
+                        <div id="shareCard" class="share-card mt-6 d-none">
+                            <div class="share-card__header">
+                                <h4 class="share-card__title text-xl font-bold">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                    Chia sẻ kết quả:
+                                </h4>
+                            </div>
+                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                <input type="text" id="shareLink" readonly class="share-card__input" value="https"/>
+                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                    <i class="fas fa-copy"></i>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- End: Main content -->
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+    </div>
+    <script type="module" src="../../src/js/main.js"></script>
+</body>
+
+</html>
