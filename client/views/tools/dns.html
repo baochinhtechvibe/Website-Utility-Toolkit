@@ -82,7 +82,7 @@
                                         <option value="TXT">TXT</option>
                                         <option value="PTR">PTR</option>
                                         <option value="DNSSEC">DNSSEC</option>
-                                        <option value="BLACKLIST" style="font-weight:bold; color:var(--color-error);">
+                                        <option value="BLACKLIST" class="option-blacklist">
                                             BLACKLIST</option>
                                     </select>
                                 </div>
@@ -95,6 +95,14 @@
                                         <i class="fa-solid fa-spinner fa-spin d-none" id="dnsLookupLoading"></i>
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Trace Checkbox -->
+                            <div class="form-field mt-2">
+                                <label class="form-checkbox-label trace-root-label" for="traceRoot">
+                                    <input type="checkbox" id="traceRoot" name="traceRoot" class="form-checkbox trace-root-checkbox">
+                                    <span class="trace-root-text">Bypass Cache (Trace from Root DNS)</span>
+                                </label>
                             </div>
                         </form>
 
@@ -112,10 +120,13 @@
                                     </button>
                                 </div>
                             </div>
+                            <!-- TRACE LOG BOX -->
+                            <div id="traceLogBox" class="result-card__trace-log mt-2 p-3 d-none">
+                            </div>
                             <!-- CACHE BANNER -->
-                            <div id="cacheNotice" class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center" style="display:none; background:var(--color-surface-muted); border: 1px solid var(--color-border-subtle); border-radius:4px; font-size:14px; margin-bottom: 10px;">
+                            <div id="cacheNotice" class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center d-none">
                                 <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
-                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline" style="min-height:unset; padding: 4px 10px;"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-notice__btn-refresh"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
                             </div>
                             <div id="resultBody" class="result-card__body">
                                 <!-- Tables wrapper -->

@@ -31,7 +31,9 @@ var dnsCache = cache.NewMemoryCache(30 * time.Minute)
 func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSLookupResponse) {
 	if res.Success {
 		cacheKey := req.Hostname + ":" + req.Type
-		dnsCache.Set(cacheKey, res.Data)
+		if !req.TraceRoot {
+			dnsCache.Set(cacheKey, res.Data)
+		}
 		responseAPI.Success(c, res.Data, false, time.Now())
 	} else {
 		// return 200 normal JSON for error conditions that shouldn't be 400
@@ -133,7 +135,7 @@ func HandleDNSLookup(c *gin.Context) {
 
 	// ✅ Caching interception
 	cacheKey := req.Hostname + ":" + req.Type
-	if !req.BypassCache {
+	if !req.BypassCache && !req.TraceRoot {
 		if data, fetchedAt, found := dnsCache.Get(cacheKey); found {
 			responseAPI.Success(c, data, true, fetchedAt)
 			return
@@ -154,6 +156,11 @@ func HandleDNSLookup(c *gin.Context) {
 		response.Data.Query.IsSubdomain = isSubdomain(req.Hostname)
 	}
 
+	if req.TraceRoot {
+		handleTraceRootLookup(c, &req, &response)
+		return
+	}
+
 	switch req.Type {
 	case "PTR":
 		handlePTRLookup(c, serverKey, &req, &response)
@@ -169,6 +176,91 @@ func HandleDNSLookup(c *gin.Context) {
 	default:
 		handleSpecificRecord(c, serverKey, &req, &response)
 	}
+}
+
+func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, response *models.DNSLookupResponse) {
+	fqdn := dnslib.Fqdn(req.Hostname)
+	originalDomain := strings.TrimSuffix(fqdn, ".")
+
+	if !validator.IsValidDomain(originalDomain) {
+		response.Success = false
+		response.Message = "Tên miền không hợp lệ!"
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	response.Data.Query.IsSubdomain = isSubdomain(originalDomain)
+
+	// Fetch canonical NS records first for better UX
+	apexDomain := originalDomain
+	if etld, err := publicsuffix.EffectiveTLDPlusOne(originalDomain); err == nil {
+		apexDomain = etld
+	}
+	apexFQDN := dnslib.Fqdn(apexDomain)
+
+	if req.Type != "NS" {
+		nsRecords, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+		for _, record := range nsRecords {
+			if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+					Nameserver: nsRec.Nameserver,
+					TTL:        nsRec.TTL,
+					Domain:     apexDomain,
+				})
+			}
+		}
+	}
+
+	// Determine qtype
+	var qtype uint16
+	switch req.Type {
+	case "A":
+		qtype = dnslib.TypeA
+	case "AAAA":
+		qtype = dnslib.TypeAAAA
+	case "NS":
+		qtype = dnslib.TypeNS
+	case "MX":
+		qtype = dnslib.TypeMX
+	case "CNAME":
+		qtype = dnslib.TypeCNAME
+	case "TXT":
+		qtype = dnslib.TypeTXT
+	case "ALL":
+		qtype = dnslib.TypeA // default to A trace if ALL
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Không thể Root Trace loại bản ghi này",
+		})
+		return
+	}
+
+	tracer := dns.NewTraceResolver(15 * time.Second)
+	records, logs, err := tracer.DoTrace(originalDomain, qtype)
+
+	var apiRecords []interface{}
+	for i := range records {
+		rec := records[i]
+		if rec.Type == "A" || rec.Type == "AAAA" {
+			dns.EnrichIPInfoByString(&rec, rec.Address)
+		}
+		apiRecords = append(apiRecords, rec)
+	}
+
+	response.Success = true
+	response.Data.Records = apiRecords
+	response.Data.TraceLogs = logs
+
+	if len(apiRecords) == 0 && err == nil {
+		response.Message = "Không có bản ghi nào được tìm thấy qua Root Trace"
+	}
+	if err != nil {
+		response.Message = "Lỗi trong quá trình Trace: " + err.Error()
+	}
+
+	// Always send response even if empty
+	sendResponse(c, req, response)
 }
 
 // NEW: Smart ALL handler - detects input type and queries accordingly

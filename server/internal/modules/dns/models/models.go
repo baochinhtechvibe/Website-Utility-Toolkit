@@ -11,6 +11,7 @@ type DNSLookupRequest struct {
 	Type        string `json:"type" binding:"required"`
 	Server      string `json:"server"`
 	BypassCache bool   `json:"bypassCache"`
+	TraceRoot   bool   `json:"traceRoot"`
 }
 
 type DNSRecord struct {
@@ -111,6 +112,17 @@ type BlacklistStreamEvent struct {
 }
 
 // =======================
+// Root Trace
+// =======================
+
+type TraceStep struct {
+	ServerName string `json:"serverName"`
+	ServerIP   string `json:"serverIp"`
+	DurationMs int64  `json:"durationMs"`
+	Message    string `json:"message"`
+}
+
+// =======================
 // API Response
 // =======================
 
@@ -121,6 +133,7 @@ type DNSLookupResponse struct {
 		Records     []interface{}    `json:"records"` // DNSRecord | Blacklist*
 		Nameservers []NameserverInfo `json:"nameservers,omitempty"`
 		DNSSEC      *DNSSECInfo      `json:"dnssec,omitempty"`
+		TraceLogs   []TraceStep      `json:"traceLogs,omitempty"`
 	} `json:"data"`
 	Message string `json:"message,omitempty"`
 }

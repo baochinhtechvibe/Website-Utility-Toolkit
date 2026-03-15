@@ -74,6 +74,8 @@ const shareLinkSection = document.getElementById("shareCard");
 const shareLink = document.getElementById("shareLink");
 const btnCopyLink = document.getElementById("btnCopyLink");
 const btnWhois = document.getElementById("whoisBtn");
+const traceRootCheckbox = document.getElementById("traceRoot");
+const traceLogBox = document.getElementById("traceLogBox");
 
 const BLACKLIST_PROVIDERS = [
     // High Priority RBLs
@@ -279,8 +281,9 @@ function updateURL(host, type) {
 /**
  * Perform DNS lookup
  */
-async function performDNSLookup(hostname, type, bypassCache = false) {
+async function performDNSLookup(hostname, type, bypassCache = false, traceRoot = false) {
     showElements("none", resultsSection, shareLinkSection, errorSection);
+    if(traceLogBox) setDisplay(traceLogBox, "none");
     if(cacheNotice) cacheNotice.classList.add("d-none");
     try {
         const response = await fetch(`${API_BASE_URL}/dns/lookup`, {
@@ -292,6 +295,7 @@ async function performDNSLookup(hostname, type, bypassCache = false) {
                 hostname,
                 type,
                 bypassCache,
+                traceRoot,
             }),
         });
 
@@ -689,7 +693,6 @@ function displayResults(data) {
     const hostname = query.hostname;
     const type = query.type;
     const resultsMessage = data.message;
-    // CACHE LOGIC
     if (cacheNotice && data.meta) {
         setDisplay(cacheNotice, "flex");
         const timeStr = new Date(data.meta.fetched_at).toLocaleString('vi-VN');
@@ -701,6 +704,19 @@ function displayResults(data) {
         }
     } else if (cacheNotice) {
         setDisplay(cacheNotice, "none");
+    }
+
+    // TRACE LOGS
+    if (traceLogBox && data.data && data.data.traceLogs && data.data.traceLogs.length > 0) {
+        let traceHtml = `<div class="trace-log__title">
+            <i class="fa-solid fa-route"></i> DNS Trace từ Root Server:
+        </div>`;
+        data.data.traceLogs.forEach(step => {
+            const boldedMessage = step.message.replace(/(\.\.\.took \d+ ms)/g, '<b>$1</b>');
+            traceHtml += `<div>${boldedMessage}</div>`;
+        });
+        traceLogBox.innerHTML = traceHtml;
+        setDisplay(traceLogBox, "block");
     }
 
     hostnameInput.value = hostname;
@@ -1165,7 +1181,8 @@ form.addEventListener("submit", async (e) => {
             return;
         }
 
-        const result = await performDNSLookup(hostname, type, isBypassCache);
+        const traceRoot = traceRootCheckbox ? traceRootCheckbox.checked : false;
+        const result = await performDNSLookup(hostname, type, isBypassCache, traceRoot);
         isBypassCache = false; // Reset to false after use
         displayResults(result);
     } catch (error) {
