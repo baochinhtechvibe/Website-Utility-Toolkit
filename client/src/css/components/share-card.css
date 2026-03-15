@@ -56,3 +56,13 @@
 .share-card__button:hover {
     background-color: var(--color-share-btn-hover);
 }
+
+[data-theme="dark"] .share-card {
+    --color-share-text: var(--blue-200);
+    background-color: rgba(59, 130, 246, 0.1); 
+}
+
+[data-theme="dark"] .share-card__input {
+    background-color: var(--color-surface-elevated); 
+    color: var(--color-text-primary);
+}

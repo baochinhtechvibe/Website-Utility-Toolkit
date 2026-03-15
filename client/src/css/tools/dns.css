@@ -1,0 +1,540 @@
+/* src/css/tools/dns.css */
+/* Local Variables for DNS Tool */
+.page--dns {
+    --dns-tool-primary: var(--color-brand);
+    --dns-tool-text-primary: var(--color-text-inverse);
+    --dns-tool-text-base: var(--color-text-primary);
+    
+    --bg-btn-whois: var(--color-info);
+    
+    --bg-success-dns: var(--green-100);
+    --isp-link: var(--green-700);
+    
+    --share-link-dns: var(--color-info);
+    --bg-share-link: var(--blue-50);
+    --border-share-link: var(--blue-200);
+    
+    --bg-error-message: var(--red-50);
+    --border-error-message-box: var(--red-200);
+    --text-error-message: var(--red-700);
+
+    --bg-type-dnssec: var(--purple-100);
+    
+    --text-status-dnssec: var(--white);
+    --bg-status-dnssec-secure: var(--green-600);
+    --bg-status-dnssec-insecure: var(--yellow-200);
+    --bg-status-dnssec-bogus: var(--red-600);
+    
+    --header-detail-dnskey: var(--sky-400);
+    --header-detail-ds: var(--green-500);
+    --header-detail-rrsig: var(--orange-400);
+    
+    --bg-key-role-badge: var(--gray-200);
+    --bg-key-role-zsk: var(--sky-100);
+    --text-key-role-zsk: var(--sky-700);
+    --bg-key-role-ksk: var(--purple-100);
+    --text-key-role-ksk: var(--purple-700);
+
+    --text-expiration-ok-detail-rrsig: var(--green-600);
+    --text-expiration-soon-detail-rrsig: var(--yellow-600);
+    --text-expiration-warning-detail-rrsig: var(--orange-600);
+    --text-expiration-expired-detail-rrsig: var(--red-600);
+
+    --bg-badge-blacklist-danger: var(--red-600);
+    --bg-badge-blacklist-success: var(--green-600);
+    --text-badge-blacklist: var(--white);
+
+    --bg-type-blacklist: var(--gray-200);
+    --text-type-blacklist: var(--gray-800);
+    
+    --text-level-blacklist: var(--white);
+    --bg-level-blacklist-high: var(--red-600);
+    --bg-level-blacklist-medium: var(--orange-500);
+    --bg-level-blacklist-low: var(--yellow-500);
+    
+    --bg-status-blacklist-listed: var(--red-600);
+    --bg-status-blacklist-ok: var(--green-600);
+    --bg-status-blacklist-timeout: var(--gray-500);
+    --text-status-blacklist: var(--white);
+}
+
+[data-theme="dark"] .page--dns {
+    --dns-tool-primary: var(--gray-800);
+    --dns-tool-text-primary: var(--gray-50);
+    --dns-tool-text-base: var(--gray-300);
+    
+    --bg-success-dns: var(--green-900);
+    --isp-link: var(--green-300);
+    
+    --bg-share-link: var(--blue-950);
+    --border-share-link: var(--blue-800);
+    
+    --bg-error-message: var(--red-950);
+    --border-error-message-box: var(--red-800);
+    --text-error-message: var(--red-300);
+
+    --bg-type-dnssec: var(--purple-900);
+    
+    --bg-status-dnssec-insecure: var(--yellow-800);
+
+    --header-detail-dnskey: var(--sky-800);
+    --header-detail-ds: var(--green-800);
+    --header-detail-rrsig: var(--orange-800);
+
+    --bg-key-role-badge: var(--gray-800);
+    --bg-key-role-zsk: var(--sky-900);
+    --text-key-role-zsk: var(--sky-300);
+    --bg-key-role-ksk: var(--purple-900);
+    --text-key-role-ksk: var(--purple-300);
+
+    --bg-type-blacklist: var(--gray-800);
+    --text-type-blacklist: var(--gray-300);
+}
+
+/* Base Styles */
+.page--dns .tool-card {
+    flex-direction: column;
+}
+
+.page--dns #header .header__icon {
+    color: var(--dns-tool-primary);
+}
+
+.page--dns .tool-card__header {
+    background-color: var(--dns-tool-primary);
+}
+
+.page--dns .tool-card__header-title {
+    color: var(--dns-tool-text-primary);
+}
+
+.page--dns .dns-lookup__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.page--dns .tool-card__form-control:focus {
+    outline: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.page--dns .dns-lookup__form .btn-resolve {
+    width: 100%;
+    background-color: var(--dns-tool-primary);
+    padding: var(--space-3);
+    color: var(--dns-tool-text-primary);
+    font-weight: 600;
+}
+
+.page--dns .btn-whois:not(:disabled):hover,
+.page--dns .dns-lookup__form .btn-resolve:not(:disabled):hover {
+    color: var(--dns-tool-text-base);
+    transform: translateY(-6px);
+}
+
+
+.page--dns .results__section-header {
+    margin-top: var(--space-4);
+}
+
+.page--dns .result-card__title {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.page--dns .btn-whois {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+
+    padding: var(--space-2);
+    background-color: unset;
+    border-color: var(--bg-btn-whois);
+
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--bg-btn-whois);
+
+    transition: transform 0.2s, color 0s;
+}
+
+.page--dns .btn-whois:hover {
+    background-color: var(--bg-btn-whois);
+    color: var(--dns-tool-text-primary);
+}
+
+
+.page--dns .table-wrapper {
+    position: relative;
+    width: 100%;
+    max-height: 650px;
+    max-width: none;
+    overflow-x: auto;
+    overflow-y: auto;
+
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--dns-tool-primary) #f1f1f1;
+}
+
+.page--dns .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: var(--shadow-sm);
+}
+
+.page--dns .results-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--dns-tool-primary);
+}
+
+.page--dns .results-table.results-table--dns td:nth-child(1) {
+    text-align: left;
+}
+
+.page--dns .results-table.results-table--dns td:nth-child(2),
+.page--dns .results-table.results-table--dns td:nth-child(3) {
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dns td:nth-child(4) {
+    min-width: 200px;
+    text-align: left;
+}
+
+.page--dns .results-table.results-table--dns td:nth-child(5) {
+    text-align: left;
+}
+
+.page--dns .results-table.results-table--dns td:nth-child(4) {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+}
+
+.page--dns .results-table__row--head .results-table__cell,
+.page--dns .results-table th {
+    background-color: var(--dns-tool-primary);
+    padding: var(--space-3);
+    white-space: nowrap;
+    text-align: left;
+
+    color: var(--dns-tool-text-primary);
+}
+
+.page--dns .results-table__body .results-table__cell,
+.page--dns .results-table td {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+
+    color: var(--dns-tool-text-base);
+}
+
+.page--dns .results-table__cell--type .type-badge {
+    padding: var(--space-1);
+    background-color: var(--dns-tool-primary);
+    border-radius: var(--radius-sm);
+    color: var(--dns-tool-text-primary);
+}
+
+.page--dns .results-table__cell--isp .isp-link {
+    white-space: nowrap;
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-success-dns);
+
+    font-weight: 600;
+    color: var(--isp-link);
+
+    transition: all 0.2s;
+}
+
+.page--dns .results-table__cell--isp .isp-link:hover {
+    background-color: var(--isp-link);
+    color: var(--white);
+}
+
+.page--dns .results-table__cell--isp .isp-link__text,
+.page--dns .results-table__cell--isp .isp-link__icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.page--dns .results-table__cell--isp .isp-link__icon {
+    font-size: 0.65rem;
+}
+
+/* DNSSEC CSS */
+.page--dns .results-table__cell .type-dnssec {
+    padding: var(--space-1);
+    background-color: var(--bg-type-dnssec);
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+}
+
+.page--dns .results-table__cell--status-dnssec .status-badge {
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    color: var(--text-status-dnssec);
+}
+
+.page--dns .results-table__cell--status-dnssec .status-secure {
+    background-color: var(--bg-status-dnssec-secure);
+}
+
+.page--dns .results-table__cell--status-dnssec .status-insecure {
+    background-color: var(--bg-status-dnssec-insecure);
+    color: var(--dns-tool-text-base);
+}
+
+.page--dns .results-table__cell--status-dnssec .status-bogus {
+    background-color: var(--bg-status-dnssec-bogus);
+}
+
+/* CSS DNSKEY records */
+
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(1),
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(3),
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(4) {
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(2) {
+    text-align: left;
+}
+
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(5) {
+    white-space: normal;
+    word-break: break-all;
+    min-width: 200px;
+    text-align: left;
+}
+
+.page--dns #dnssecDetailTitleDNSKEY {
+    color: var(--header-detail-dnskey);
+}
+
+.page--dns .results-table.results-table--dnssec-dnskey .results-table__row--head .results-table__cell,
+.page--dns .results-table.results-table--dnssec-dnskey thead th {
+    background-color: var(--header-detail-dnskey);
+}
+
+.page--dns .results-table--dnssec-dnskey .key-role-badge {
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-key-role-badge);
+    font-weight: 700;
+}
+
+.page--dns .results-table--dnssec-dnskey .key-role-zsk {
+    background-color: var(--bg-key-role-zsk);
+    color: var(--text-key-role-zsk);
+}
+
+.page--dns .results-table--dnssec-dnskey .key-role-ksk {
+    background-color: var(--bg-key-role-ksk);
+    color: var(--text-key-role-ksk);
+}
+
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(1),
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(3) {
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(2),
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(4) {
+    text-align: left;
+}
+
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(4) {
+    white-space: normal;
+    word-break: break-all;
+    min-width: 200px;
+}
+
+.page--dns #dnssecDetailTitleDS {
+    color: var(--header-detail-ds);
+}
+
+.page--dns .results-table.results-table--dnssec-ds .results-table__row--head .results-table__cell,
+.page--dns .results-table.results-table--dnssec-ds thead th {
+    background-color: var(--header-detail-ds);
+}
+
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(1),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(2),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(3),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(4) {
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(5) {
+    text-align: left;
+}
+
+.page--dns #dnssecDetailTitleRRSIG {
+    color: var(--header-detail-rrsig);
+}
+
+.page--dns .results-table.results-table--dnssec-rrsig .results-table__row--head .results-table__cell,
+.page--dns .results-table.results-table--dnssec-rrsig thead th {
+    background-color: var(--header-detail-rrsig);
+}
+
+.page--dns .expiration-status {
+    font-weight: 700;
+}
+
+.page--dns .expiration-status.expires-ok {
+    color: var(--text-expiration-ok-detail-rrsig);
+}
+
+.page--dns .expiration-status.expires-soon {
+    color: var(--text-expiration-soon-detail-rrsig);
+}
+
+.page--dns .expiration-status.expires-warning {
+    color: var(--text-expiration-warning-detail-rrsig);
+}
+
+.page--dns .expiration-status.expires-expired {
+    color: var(--text-expiration-expired-detail-rrsig);
+}
+
+/* Blacklist stream CSS */
+.page--dns .results__section-title-rbl-realtime {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.page--dns .results__section-title-rbl-realtime .badge-danger {
+    padding: var(--space-1);
+    background-color: var(--bg-badge-blacklist-danger);
+    border-radius: var(--radius-sm);
+    color: var(--text-badge-blacklist);
+}
+
+.page--dns .results__section-title-rbl-realtime .badge-success {
+    padding: var(--space-1);
+    background-color: var(--bg-badge-blacklist-success);
+    border-radius: var(--radius-sm);
+    color: var(--text-badge-blacklist);
+}
+
+.page--dns .results-table__cell .type-blacklist {
+    padding: var(--space-1);
+    background-color: var(--bg-type-blacklist);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    color: var(--text-type-blacklist);
+}
+
+.page--dns .results-table__cell .level-badge {
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    color: var(--text-level-blacklist);
+}
+
+.page--dns .results-table__cell .level-high {
+    background-color: var(--bg-level-blacklist-high);
+}
+
+.page--dns .results-table__cell .level-medium {
+    background-color: var(--bg-level-blacklist-medium);
+}
+
+.page--dns .results-table__cell .level-low {
+    background-color: var(--bg-level-blacklist-low);
+}
+
+.page--dns .results-table__cell--rbl-status.status-cell {
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.page--dns .results-table__cell--rbl-status .icon-listed {
+    color: var(--bg-status-blacklist-listed);
+}
+
+.page--dns .results-table__cell--rbl-status .icon-ok {
+    color: var(--bg-status-blacklist-ok);
+}
+
+.page--dns .results-table__cell--rbl-status .icon-timeout {
+    color: var(--bg-status-blacklist-timeout);
+}
+
+.page--dns .results-table__cell--rbl-status .status {
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    color: var(--text-status-blacklist);
+}
+
+.page--dns .results-table__cell--rbl-status .status--listed {
+    background-color: var(--bg-status-blacklist-listed);
+}
+
+.page--dns .results-table__cell--rbl-status .status--ok {
+    background-color: var(--bg-status-blacklist-ok);
+}
+
+.page--dns .results-table__cell--rbl-status .status--timeout {
+    background-color: var(--bg-status-blacklist-timeout);
+}
+
+
+@media (min-width:640px) {
+}
+
+@media (min-width:1024px) {
+    .page--dns .dns-lookup__form {
+        flex-wrap: wrap;
+        flex-direction: unset;
+        justify-content: space-between;
+    }
+
+    .page--dns .form__control-hostname {
+        width: 40%;
+    }
+
+    .page--dns .form__control-dns-server {
+        width: 20%;
+    }
+
+    .page--dns .form__control-type-record {
+        width: 15%;
+    }
+
+    .page--dns .form__control-btn-submit {
+        width: 15%;
+    }
+
+    .page--dns .dns-lookup__form .btn-resolve {
+        align-self: flex-end;
+    }
+
+    .page--dns .results__section-header {
+        margin-top: var(--space-6);
+    }
+
+    .page--dns .table-wrapper {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    .page--dns .results-table__row--head .results-table__cell,
+    .page--dns .results-table__body .results-table__cell {
+        padding: var(--space-4);
+    }
+}

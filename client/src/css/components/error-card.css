@@ -17,3 +17,8 @@
 .error-card__message {
     color: var(--color-text-error);
 }
+
+[data-theme="dark"] .error-card {
+    --color-text-error: var(--yellow-200);
+    background-color: rgba(234, 179, 8, 0.1);
+}

@@ -12,7 +12,7 @@
     <link rel="shortcut icon" href="../../public/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Website" />
-    <link rel="manifest" href="../public/site.webmanifest" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
 
     <title>Website Utility Toolkit | Danh sách công cụ miễn phí cho Website Administrator</title>
 </head>
@@ -58,7 +58,7 @@
                     </div>
 
                     <div class="card__body pt-4">
-                        <form action="" method="post" class="form form--dns">
+                        <form id="dnsLookupForm" action="" method="post" class="form form--dns">
 
                             <!-- Sử dụng form-inline để nằm cùng hàng trên desktop -->
                             <div class="form-inline">
@@ -89,7 +89,7 @@
 
                                 <!-- Button -->
                                 <div class="form-field form-field--button">
-                                    <button type="submit" class="btn btn-action btn-block">
+                                    <button id="btnResolve" type="submit" class="btn btn-action btn-block">
                                         <i class="fas fa-search" id="dnsLookupIcon"></i>
                                         Lookup
                                         <i class="fa-solid fa-spinner fa-spin d-none" id="dnsLookupLoading"></i>
@@ -99,21 +99,47 @@
                         </form>
 
                         <!-- Result Card -->
-                        <div id="resultCard" class="result-card mt-6 d-block">
+                        <div id="resultCard" class="result-card mt-6 d-none">
                             <div class="result-card__header d-flex flex-row justify-between items-center">
-                                <h3 class="result-card__title text-xl font-bold">
+                                <h3 id="resultsTitle" class="result-card__title text-xl font-bold">
                                     <i class="fa-solid fa-circle-check"></i>
                                     Kết quả tra cứu DNS:
                                 </h3>
                                 <div class="result-card__actions">
-                                    <button id="whoisBtn" type="button" class="btn btn-success btn-sm">
+                                    <button id="whoisBtn" type="button" class="btn btn-whois d-none">
                                         <i class="fa-solid fa-address-card"></i>
-                                        Whois
+                                        WHOIS
                                     </button>
                                 </div>
                             </div>
+                            <!-- CACHE BANNER -->
+                            <div id="cacheNotice" class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center" style="display:none; background:var(--color-surface-muted); border: 1px solid var(--color-border-subtle); border-radius:4px; font-size:14px; margin-bottom: 10px;">
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
+                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline" style="min-height:unset; padding: 4px 10px;"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                            </div>
                             <div id="resultBody" class="result-card__body">
-                                
+                                <!-- Tables wrapper -->
+                                <div id="tableWrapper" class="table-wrapper w-full overflow-x-auto d-none">
+                                    <table class="results-table w-full">
+                                        <thead id="resultsTableHead"></thead>
+                                        <tbody id="resultsTableBody"></tbody>
+                                    </table>
+                                </div>
+                                <!-- DNSSEC Details -->
+                                <div id="resultDNSSECSection" class="dnssec-section d-none mt-4">
+                                    <h4 id="dnssecDetailTitleDNSKEY" class="mb-2 font-bold"></h4>
+                                    <div id="tableWrapperDNSKEY" class="table-wrapper w-full overflow-x-auto d-none mb-4">
+                                        <table class="results-table results-table--dnssec-dnskey w-full"><thead id="resultsTableHeadDNSKEY"></thead><tbody id="resultsTableBodyDNSKEY"></tbody></table>
+                                    </div>
+                                    <h4 id="dnssecDetailTitleDS" class="mb-2 font-bold"></h4>
+                                    <div id="tableWrapperDS" class="table-wrapper w-full overflow-x-auto d-none mb-4">
+                                        <table class="results-table results-table--dnssec-ds w-full"><thead id="resultsTableHeadDS"></thead><tbody id="resultsTableBodyDS"></tbody></table>
+                                    </div>
+                                    <h4 id="dnssecDetailTitleRRSIG" class="mb-2 font-bold"></h4>
+                                    <div id="tableWrapperRRSIG" class="table-wrapper w-full overflow-x-auto d-none mb-4">
+                                        <table class="results-table results-table--dnssec-rrsig w-full"><thead id="resultsTableHeadRRSIG"></thead><tbody id="resultsTableBodyRRSIG"></tbody></table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -185,6 +211,7 @@
         <!-- End: Footer Content -->
     </div>
     <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/dns/dns.js"></script>
 </body>
 
 </html>

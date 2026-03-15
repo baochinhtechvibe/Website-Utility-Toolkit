@@ -34,7 +34,10 @@
 .btn:hover {
     background: var(--btn-hover-bg);
     color: var(--btn-hover-text);
-    transform: translateY(-2px);   
+}
+
+.btn:disabled {
+    pointer-events: none;
 }
 
 
@@ -47,6 +50,18 @@
     --btn-text: var(--white);
     --btn-hover-bg: var(--gray-700); 
     --btn-hover-text: var(--white);
+}
+
+.btn-action:disabled {
+    --btn-bg: var(--gray-400);
+    --btn-text: var(--gray-100);
+    cursor: not-allowed;
+    transform: none; /* remove hover jump */
+}
+
+[data-theme="dark"] .btn-action:disabled {
+    --btn-bg: var(--gray-700);
+    --btn-text: var(--gray-500);
 }
 
 /* Nút Success */
@@ -88,4 +103,11 @@
 /* Modifiers cho Button Layout */
 .btn-block {
     width: 100%;
+}
+
+[data-theme="dark"] .btn-outline {
+    --btn-text: var(--gray-50);
+    --btn-hover-bg: var(--gray-800);
+    --btn-hover-text: var(--white);
+    --btn-border: var(--gray-600);
 }
