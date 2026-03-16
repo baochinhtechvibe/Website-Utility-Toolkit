@@ -145,6 +145,14 @@
     content: url("../../../public/assets/images/layout/header/dns.png");
 }
 
+.header--my-ip .header__icon img {
+    content: url("../../../public/assets/images/layout/header/ip-address.png");
+}
+
+.header--chmod .header__icon img {
+    content: url("../../../public/assets/images/layout/header/calculator.png");
+}
+
 @container (min-width: 750px) {
     .header__theme-toggle {
         position: absolute;

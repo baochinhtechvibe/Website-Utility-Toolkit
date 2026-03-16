@@ -2,20 +2,20 @@
     src/css/components/error-card.css
     Error Card Component
 ========================================== */
-.error-card {
-    --color-text-error: var(--red-700);
+.warning-card {
+    --color-text-warning: var(--yellow-900);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-error);
-    border-left: 6px solid var(--color-error);
-    background-color: color-mix(in srgb, var(--color-error) 10%, var(--white));
+    border: 1px solid var(--color-warning);
+    border-left: 6px solid var(--color-warning);
+    background-color: var(--overlay-yellow);
     padding: var(--space-4) var(--space-6);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
 }
 
-.error-card__title {
-    color: var(--color-text-error);
+.warning-card__title {
+    color: var(--color-text-warning);
     font-weight: var(--font-weight-bold);
     font-size: var(--text-base);
     display: flex;
@@ -23,13 +23,13 @@
     gap: var(--space-2);
 }
 
-.error-card__message {
-    color: var(--color-text-error);
+.warning-card__message {
+    color: var(--color-text-warning);
     font-size: var(--text-sm);
     line-height: var(--line-height-relaxed);
 }
 
-[data-theme="dark"] .error-card {
-    --color-text-error: var(--red-200);
-    background-color: rgba(239, 68, 68, 0.1);
+[data-theme="dark"] .warning-card {
+    --color-text-warning: var(--yellow-200);
+    background-color: rgba(234, 179, 8, 0.1);
 }

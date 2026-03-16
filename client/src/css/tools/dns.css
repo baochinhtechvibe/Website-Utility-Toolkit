@@ -59,7 +59,7 @@
 }
 
 [data-theme="dark"] .page--dns {
-    --dns-tool-primary: var(--gray-800);
+    --dns-tool-primary: var(--color-brand);
     --dns-tool-text-primary: var(--gray-50);
     --dns-tool-text-base: var(--gray-300);
     
@@ -171,7 +171,7 @@
     font-family: var(--font-family-mono);
     font-size: var(--text-sm);
     line-height: var(--line-height-relaxed);
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-border-subtle);
     margin-bottom: var(--space-3);
     max-height: 250px;
@@ -205,18 +205,7 @@
     font-weight: var(--font-weight-medium);
 }
 
-.page--dns .result-card__cache-notice {
-    background-color: var(--color-surface-muted);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-sm);
-    margin-bottom: var(--space-3);
-}
 
-.page--dns .cache-notice__btn-refresh {
-    min-height: unset;
-    padding: var(--space-1) var(--space-3);
-}
 
 .page--dns .table-wrapper {
     position: relative;

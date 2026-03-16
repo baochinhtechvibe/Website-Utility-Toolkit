@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title>Website Utility Toolkit | Danh sách công cụ miễn phí cho Website Administrator</title>
+</head>
+
+<body>
+    <div class="wrapper page--chmod">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--chmod py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/calculator.png"
+                                alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                CHMOD CALCULATOR
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                FILE PERMISSION CALCULATOR (Linux/Unix)
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Tính toán và chuyển đổi quyền truy cập file và thư mục trên hệ thống Linux/Unix.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="chmod-container">
+                    <!-- MASTER CONVERTER -->
+                    <div class="card chmod-master-card mb-8">
+                        <div class="card__header">
+                            <h3 class="card__title"><i class="fa-solid fa-wand-magic-sparkles"></i> Master Converter</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="master-row">
+                                <label for="masterChmodInput" class="master-label white-nowrap">
+                                    Nhập Octal (755) hoặc Symbolic (-rwxr-xr-x) để chuyển đổi:
+                                </label>
+                                <div class="master-input-container">
+                                    <input type="text" id="masterChmodInput" class="form-control master-input" 
+                                           placeholder="Ví dụ: 755 hoặc -rwxr-xr-x" autocomplete="off">
+                                </div>
+                            </div>
+                            <!-- Validation Error nằm dưới hẳn -->
+                            <div id="masterValidationError" class="error-card mt-4 d-none">
+                                <div class="error-card__title">
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                    <span>Lỗi định dạng</span>
+                                </div>
+                                <div class="error-card__message">
+                                    Định dạng không hợp lệ. Vui lòng nhập 3 chữ số (0-7) hoặc 10 ký tự (-rwxr-xr-x).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 1. PERMISSION PANELS -->
+                    <div class="chmod-grid mb-8">
+                        <!-- Owner Permissions -->
+                        <div class="card chmod-card" data-group="owner">
+                            <div class="card__header">
+                                <h3 class="card__title"><i class="fa-solid fa-user-shield"></i> Owner (User)</h3>
+                            </div>
+                            <div class="card__body">
+                                <div class="form-group-checkbox">
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="4" data-group="owner">
+                                        <span class="checkbox-label">Read (4)</span>
+                                    </label>
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="2" data-group="owner">
+                                        <span class="checkbox-label">Write (2)</span>
+                                    </label>
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="1" data-group="owner">
+                                        <span class="checkbox-label">Execute (1)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group Permissions -->
+                        <div class="card chmod-card" data-group="group">
+                            <div class="card__header">
+                                <h3 class="card__title"><i class="fa-solid fa-users"></i> Group</h3>
+                            </div>
+                            <div class="card__body">
+                                <div class="form-group-checkbox">
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="4" data-group="group">
+                                        <span class="checkbox-label">Read (4)</span>
+                                    </label>
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="2" data-group="group">
+                                        <span class="checkbox-label">Write (2)</span>
+                                    </label>
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="1" data-group="group">
+                                        <span class="checkbox-label">Execute (1)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Others Permissions -->
+                        <div class="card chmod-card" data-group="others">
+                            <div class="card__header">
+                                <h3 class="card__title"><i class="fa-solid fa-earth-americas"></i> Public (Others)</h3>
+                            </div>
+                            <div class="card__body">
+                                <div class="form-group-checkbox">
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="4" data-group="others">
+                                        <span class="checkbox-label">Read (4)</span>
+                                    </label>
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="2" data-group="others">
+                                        <span class="checkbox-label">Write (2)</span>
+                                    </label>
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" class="perm-check" data-bit="1" data-group="others">
+                                        <span class="checkbox-label">Execute (1)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. SPECIAL BITS & TERMINAL PREVIEW -->
+                    <div class="chmod-advanced-grid mb-8">
+                        <!-- Special Bits -->
+                        <div class="card chmod-special-card">
+                            <div class="card__header">
+                                <h3 class="card__title"><i class="fa-solid fa-gears"></i> Special Bits</h3>
+                            </div>
+                            <div class="card__body d-flex flex-row gap-4 flex-wrap">
+                                <label class="checkbox-wrapper checkbox-wrapper--special">
+                                    <input type="checkbox" class="perm-check" data-bit="4" data-group="special">
+                                    <span class="checkbox-label">SUID (4)</span>
+                                </label>
+                                <label class="checkbox-wrapper checkbox-wrapper--special">
+                                    <input type="checkbox" class="perm-check" data-bit="2" data-group="special">
+                                    <span class="checkbox-label">SGID (2)</span>
+                                </label>
+                                <label class="checkbox-wrapper checkbox-wrapper--special">
+                                    <input type="checkbox" class="perm-check" data-bit="1" data-group="special">
+                                    <span class="checkbox-label">Sticky (1)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Terminal Preview -->
+                        <div class="card terminal-card">
+                            <div class="card__header d-flex justify-between items-center">
+                                <h3 class="card__title"><i class="fa-solid fa-terminal"></i> Terminal Preview</h3>
+                                <span class="terminal-badge">ls -l simulation</span>
+                            </div>
+                            <div class="card__body terminal-body">
+                                <pre class="terminal-box" id="terminalPreview">
+<span class="t-perm">-rwxr-xr-x</span> <span class="t-meta">1 user group 4096 Mar 17 01:21</span> <span class="t-file">filename.sh</span></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. RESULTS & INPUTS -->
+                    <div class="card result-card chmod-result-card mb-8">
+                        <div class="card__header">
+                            <h3 class="card__title"><i class="fa-solid fa-square-poll-vertical"></i> Permission Results</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="chmod-inputs-grid">
+                                <div class="chmod-input-group">
+                                    <label class="form-label">Octal Value</label>
+                                    <div class="input-with-copy">
+                                        <input type="text" id="chmodOctal" class="form-control" value="0755" maxlength="4" readonly>
+                                        <button class="btn btn-icon btn-copy-small" data-target="#chmodOctal"><i class="fa-solid fa-copy"></i></button>
+                                    </div>
+                                </div>
+                                <div class="chmod-input-group">
+                                    <label class="form-label">Symbolic Notation</label>
+                                    <div class="input-with-copy">
+                                        <input type="text" id="chmodSymbolic" class="form-control" value="rwxr-xr-x" readonly>
+                                        <button class="btn btn-icon btn-copy-small" data-target="#chmodSymbolic"><i class="fa-solid fa-copy"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. COMMAND GENERATOR -->
+                    <div class="card command-card">
+                        <div class="card__header">
+                            <h3 class="card__title"><i class="fa-solid fa-code"></i> Generated Command</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="command-options mb-6">
+                                <div class="options-row d-flex gap-4 mb-4">
+                                    <select id="commandType" class="form-select flex-1">
+                                        <option value="chmod">Standard Chmod</option>
+                                        <option value="find-f">Find Files only (644 style)</option>
+                                        <option value="find-d">Find Directories only (755 style)</option>
+                                    </select>
+                                    <label class="checkbox-wrapper recursive-wrapper">
+                                        <input type="checkbox" id="recursiveToggle">
+                                        <span class="checkbox-label">Recursive (-R)</span>
+                                    </label>
+                                </div>
+                                <div class="filename-row d-flex items-center gap-4">
+                                    <label for="targetFilename" class="form-label mb-0 white-nowrap">Target File/Directory Name:</label>
+                                    <input type="text" id="targetFilename" class="form-control" placeholder="Ví dụ: filename.sh hoặc /path/to/file" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="command-display-wrapper">
+                                <code class="command-display" id="generatedCommand">chmod 755 filename</code>
+                                <button class="btn btn-action" id="btnCopyCommand"><i class="fa-solid fa-copy"></i> Copy Command</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. SECURITY ADVISOR -->
+                    <div id="securityAdvisor" class="warning-card mt-8 d-none">
+                        <div class="warning-card__title">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span id="securityTitle">Cảnh báo bảo mật</span>
+                        </div>
+                        <div class="warning-card__message" id="securityMessage">
+                            Cấu hình quyền truy cập này có thể không an toàn.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- End: Main content -->
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+    </div>
+    <script type="module" src="../../src/js/main.js"></script>
+    <link rel="stylesheet" href="../../src/css/tools/chmod.css">
+    <script type="module" src="../../src/js/tools/chmod/chmod.js"></script>
+</body>
+
+</html>

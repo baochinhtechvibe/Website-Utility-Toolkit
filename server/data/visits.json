@@ -1,7 +1,7 @@
 {
-  "total_visits": 1,
+  "total_visits": 3,
   "today_visits": 1,
-  "last_reset_date": "2026-03-15",
+  "last_reset_date": "2026-03-17",
   "daily_ips": {
     "::1": {}
   },

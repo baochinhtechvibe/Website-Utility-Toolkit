@@ -133,6 +133,16 @@ func HandleDNSLookup(c *gin.Context) {
 	// ✅ Normalize hostname AFTER bind
 	req.Hostname = normalizeHostname(req.Hostname)
 
+	// ✅ Validate input to prevent SSRF and invalid formats
+	valRes := validator.ValidateAndDetect(req.Hostname)
+	if !valRes.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": valRes.ErrorMsg,
+		})
+		return
+	}
+
 	// ✅ Caching interception
 	cacheKey := req.Hostname + ":" + req.Type
 	if !req.BypassCache && !req.TraceRoot {
@@ -697,6 +707,14 @@ func HandleBlacklistStream(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "Invalid IPv4 address",
+		})
+		return
+	}
+
+	if !validator.IsSafeIP(parsedIP) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Địa chỉ IP không được phép (Private/Loopback/Internal). Vui lòng sử dụng IP Public.",
 		})
 		return
 	}

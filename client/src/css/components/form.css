@@ -10,13 +10,15 @@
 ========================================== */
 
 .form-label {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: var(--font-weight-bold);
     color: var(--color-text-primary);
 }
 
-/* Các thẻ Input, Select, Textarea chung 1 class */
-.form-input {
+/* Các thẻ Input, Select, Textarea chung class */
+.form-input,
+.form-control,
+.form-select {
     width: 100%; /* Default 100% để Layout bóp lại tự nhiên */
     padding: var(--pad-y-2) var(--pad-x-3);
     color: var(--color-text-primary);
@@ -34,6 +36,12 @@
     box-shadow: var(--form-shadow);
 
     transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+/* Fix option contrast in dark mode for native selects */
+.form-select option {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
 }
 
 .form--dns {

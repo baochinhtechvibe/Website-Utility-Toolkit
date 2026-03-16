@@ -47,6 +47,13 @@ func ValidateAndDetect(input string) ValidationResult {
 
 	// Check if it's IPv4
 	if ip != nil && ip.To4() != nil {
+		if !IsSafeIP(ip) {
+			return ValidationResult{
+				Valid:    false,
+				ErrorMsg: "Địa chỉ IP không được phép (Private/Loopback/Internal). Vui lòng sử dụng IP Public.",
+			}
+		}
+
 		return ValidationResult{
 			Valid:      true,
 			Type:       InputTypeIPv4,
@@ -57,6 +64,13 @@ func ValidateAndDetect(input string) ValidationResult {
 
 	// Check if it's IPv6
 	if ip != nil && ip.To4() == nil {
+		if !IsSafeIP(ip) {
+			return ValidationResult{
+				Valid:    false,
+				ErrorMsg: "Địa chỉ IP không được phép (Private/Loopback/Internal). Vui lòng sử dụng IP Public.",
+			}
+		}
+
 		return ValidationResult{
 			Valid:      true,
 			Type:       InputTypeIPv6,
@@ -67,6 +81,13 @@ func ValidateAndDetect(input string) ValidationResult {
 
 	// Check if it's a valid domain
 	if IsValidDomain(input) {
+		if !IsSafeHostname(input) {
+			return ValidationResult{
+				Valid:    false,
+				ErrorMsg: "Tên miền không được phép (Local/Internal). Vui lòng sử dụng tên miền Public.",
+			}
+		}
+
 		return ValidationResult{
 			Valid:      true,
 			Type:       InputTypeDomain,
@@ -122,18 +143,18 @@ func IsValidDomain(domain string) bool {
 	// TLD (phần đuôi cùng) thường không chứa dấu gạch dưới.
 	// Cấu trúc: (Label chứa _ hoặc - + dấu chấm)* + (Label cuối chỉ chứa -)
 
-	// Giải thích regex:
+	// Giải thích regex mới: Bắt buộc tối thiểu 2 nhãn (có ít nhất 1 dấu chấm)
 	// ^ : Bắt đầu chuỗi
 	// (
-	//   [a-zA-Z0-9_] : Bắt đầu label bằng chữ, số hoặc _
-	//   ([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])? : Phần giữa chấp nhận cả - và _
-	//   \. : Dấu chấm
-	// )* : Lặp lại nhóm trên 0 hoặc nhiều lần
-	// [a-zA-Z0-9] : Label cuối bắt đầu bằng chữ/số
-	// ([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])? : Label cuối không chứa _ (thường là TLD như .com, .vn)
+	//   [a-zA-Z0-9_] : Bắt đầu nhãn bằng chữ, số hoặc _
+	//   ([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])? : Phần giữa nhãn
+	//   \. : Dấu chấm (bắt buộc phải có để thành TLD)
+	// )+ : Lặp lại nhóm trên 1 hoặc nhiều lần
+	// [a-zA-Z0-9] : TLD bắt đầu bằng chữ/số
+	// ([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])? : TLD không chứa _
 	// $ : Kết thúc chuỗi
 
-	var dnsRecordRegex = regexp.MustCompile(`^([a-zA-Z0-9_]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])?\.)*[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
+	var dnsRecordRegex = regexp.MustCompile(`^([a-zA-Z0-9_]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
 
 	if !dnsRecordRegex.MatchString(domain) {
 		return false
@@ -185,4 +206,51 @@ func GetSuggestedRecordTypes(inputType InputType) []string {
 	default:
 		return []string{}
 	}
+}
+
+// IsSafeIP checks if an IP is a public, routeable IP address,
+// blocking private, loopback, link-local, multicast, and unspecified IPs.
+func IsSafeIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+		return false
+	}
+
+	// Check for global multicast
+	if ip.IsMulticast() {
+		return false
+	}
+
+	// For IPv4 specifically
+	if ip4 := ip.To4(); ip4 != nil {
+		// Check for broadcast (255.255.255.255)
+		if ip4.Equal(net.IPv4bcast) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// IsSafeHostname checks if a domain appears to be an internal or local hostname.
+func IsSafeHostname(hostname string) bool {
+	hostname = strings.ToLower(strings.TrimSuffix(hostname, "."))
+
+	// Block standard local hostnames
+	if hostname == "localhost" {
+		return false
+	}
+
+	// Block common internal TLDs
+	internalTLDs := []string{".local", ".localhost", ".internal", ".lan", ".home", ".corp"}
+	for _, tld := range internalTLDs {
+		if strings.HasSuffix(hostname, tld) {
+			return false
+		}
+	}
+
+	return true
 }

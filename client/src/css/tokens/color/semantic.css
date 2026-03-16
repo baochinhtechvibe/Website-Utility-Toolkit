@@ -26,51 +26,56 @@
    --color-error: var(--red-600);
    --color-warning: var(--yellow-500);
    --color-info: var(--blue-500);
-   /* 5. CODE SYNTAX HIGHLIGHTING
-      Dùng cho các thẻ <pre> hoặc <code> hiển thị dòng lệnh
-      ------------------------ */
-   --code-program: var(--orange-600);
-   /* Tên chương trình (VD: chmod) */
-   --code-keyword: var(--blue-500);
-   /* Từ khóa (VD: sudo, chown) */
-   --code-value: var(--orange-400);
-   /* Số liệu (VD: 777, 644) */
-   --code-string: var(--green-400);
-   /* Chuỗi văn bản ("TinoGroup") */
-   --code-parameter: var(--yellow-600);
-   /* Tham số truyền vào (VD: -R, -v) */
-   --code-func: var(--purple-500);
-   /* Hàm Javascript/Bash */
-   --code-comment: var(--gray-400);
-   /* Dòng chú thích (# Đây là comment) */
-   --code-text: var(--gray-600);
-   /* Dấu ngoặc, dấu phẩy, chữ thường */
-   --code-bg: var(--gray-100);
-   /* Màu nền của khung thẻ chứa code */
+    /* 5. CODE SYNTAX HIGHLIGHTING (Light Mode - Chuẩn IDE)
+       ------------------------ */
+    --code-program: var(--orange-700);
+    --code-keyword: var(--blue-700);
+    --code-value: var(--orange-600);
+    --code-string: var(--green-600);
+    --code-parameter: var(--yellow-700);
+    --code-func: var(--purple-700);
+    --code-comment: var(--gray-500);
+    --code-text: var(--gray-700);
+    --code-border: var(--gray-300);
+    --code-bg: var(--gray-100);
 
 }
 
 /* Thêm vào cuối file semantic.css */
 [data-theme="dark"] {
-   /* Background hierarchy */
-   --color-background: var(--gray-950);
-   --color-surface: var(--gray-900);
-   --color-surface-elevated: var(--gray-800);
-   --color-surface-muted: var(--gray-900);
+    /* Background hierarchy */
+    --color-background: var(--gray-900);
+    --color-surface: var(--gray-800);
+    --color-surface-elevated: var(--gray-700);
+    --color-surface-muted: var(--gray-800);
 
-   /* Text */
-   --color-text-primary: var(--gray-50);
-   --color-text-secondary: var(--gray-300);
-   --color-text-muted: var(--gray-400);
-   --color-text-inverse: var(--slate-900);
+    /* Text & Brand */
+    --color-brand: var(--slate-950);
+    --color-text-primary: var(--gray-50);
+    --color-text-secondary: var(--gray-300);
+    --color-text-muted: var(--gray-400);
+    --color-text-inverse: var(--slate-900);
 
-   /* Border */
-   --color-border: var(--gray-800);
-   --color-border-subtle: var(--gray-800);
-   --color-border-strong: var(--gray-600);
+    /* Border */
+    --color-border: var(--gray-600);
+    --color-border-subtle: var(--gray-700);
+    --color-border-strong: var(--gray-500);
 
-   /* States - Có thể giữ nguyên hoặc dùng màu tối hơn một chút */
-   --color-success: var(--green-500);
+    /* 5. CODE SYNTAX HIGHLIGHTING (Dark Mode - Vibrant)
+       ------------------------ */
+    --code-program: var(--orange-400);
+    --code-keyword: var(--blue-400);
+    --code-value: var(--orange-300);
+    --code-string: var(--green-400);
+    --code-parameter: var(--yellow-400);
+    --code-func: var(--purple-400);
+    --code-comment: var(--gray-500);
+    --code-text: var(--gray-300);
+    --code-border: var(--gray-700);
+    --code-bg: var(--gray-950);
+
+    /* States */
+    --color-success: var(--green-500);
    --color-error: var(--red-500);
    --color-warning: var(--yellow-400);
    --color-info: var(--blue-400);

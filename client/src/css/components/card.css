@@ -79,6 +79,7 @@
   border-top-left-radius: var(--card-radius);
   border-top-right-radius: var(--card-radius);
   background-color: var(--color-brand);
+  border-bottom: 1px solid color-mix(in srgb, var(--white) 10%, transparent);
 }
 
 .card__title {
@@ -86,7 +87,7 @@
 }
 
 .card__body {
-  padding: var(--pad-y-3) var(--pad-x-3);
+  padding: clamp(1.5rem, 1.3469rem + 0.6803vw, 2rem);
 }
 
 @media (prefers-reduced-motion: reduce) {

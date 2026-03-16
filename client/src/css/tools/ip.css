@@ -1,0 +1,317 @@
+/* src/css/tools/ip.css */
+/* Local Variables for IP Tool */
+
+.page--my-ip {
+    --ip-tool-primary: var(--color-brand);
+    --ip-tool-text-primary: var(--color-text-inverse);
+    
+    /* Summary Card Tokens (Brand Style) */
+    --bg-summary-header: var(--color-brand);
+    --text-summary-header: var(--color-text-inverse);
+    
+    --bg-ip-box: var(--color-surface);
+    --border-ip-box: var(--color-border);
+    --text-ip-label: var(--color-text-primary);
+    --text-ip-value: var(--cyan-500);
+    --text-ip-detail-target: var(--cyan-400);
+    --text-ip-na: var(--color-text-muted);
+
+    /* Details Grid Tokens (Modern Style) */
+    --bg-details-container: var(--color-surface);
+    --text-details-label: var(--color-text-muted);
+    --text-details-value: var(--color-text-primary);
+    --link-details: var(--color-brand);
+    --border-details-title: var(--color-border-subtle);
+    --text-details-icon: var(--color-brand); /* Màu icon mặc định */
+
+    /* Actions */
+    --bg-btn-blacklist: var(--red-600);
+    --text-btn-blacklist: var(--white);
+    --bg-btn-blacklist-hover: var(--red-700);
+}
+
+.ip-flag {
+    border-radius: 2px;
+    box-shadow: 0 0 2px rgba(0,0,0,0.2);
+    vertical-align: middle;
+}
+
+[data-theme="dark"] .page--my-ip {
+    --bg-summary-header: var(--gray-800);
+    --text-summary-header: var(--color-text-inverse);
+    
+    --bg-ip-box: var(--gray-900);
+    --border-ip-box: var(--gray-800);
+    --text-ip-value: var(--green-400);
+    --text-ip-detail-target: var(--green-400);
+
+    --bg-details-container: var(--slate-900);
+    --text-details-label: var(--gray-400);
+    --text-details-value: var(--white);
+    --link-details: var(--green-500);
+    --border-details-title: color-mix(in srgb, var(--white) 15%, transparent);
+    --text-details-icon: var(--green-400); /* Xanh lá rực rỡ cho Dark Mode */
+}
+
+/* Base Styles */
+.page--my-ip .card {
+    overflow: hidden; /* For border radius clip */
+}
+
+/* =======================================
+   1. SUMMARY SECTION (Inspired by myip.info.vn)
+   ========================================= */
+
+.ip-summary-section {
+    width: 100%;
+    margin: 0 auto 2rem auto;
+}
+
+/* .ip-summary-card & .ip-summary-header đã được thay thế bằng .card, .card__header, .card__title từ card.css */
+
+.ip-summary-body {
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.ip-summary-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap; /* Cho phép rớt nút xuống dòng ở mobile bé xíu */
+}
+
+/* Border bottom cho item IP v4 nếu có IPv6 ở dưới */
+.ip-summary-item:not(:last-child) {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.ip-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    flex: 1; /* Chiếm không gian còn lại */
+}
+
+.ip-info__label {
+    color: var(--text-ip-label);
+    font-weight: var(--font-weight-bold);
+}
+
+.ip-info__value {
+    font-size: var(--font-size-400); /* Use typography clamp size */
+    font-weight: var(--font-weight-bold);
+    font-family: var(--font-family-mono);
+    color: var(--text-ip-value);
+    word-break: break-all;
+}
+
+.ip-info__value--na {
+    color: var(--text-ip-na);
+}
+
+
+/* =======================================
+   2. DETAILS SECTION (Inspired by whatismyipaddress.com)
+   ========================================= */
+
+.ip-details-section {
+    background-color: var(--bg-details-container);
+    color: var(--text-details-value);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-md);
+}
+
+.ip-details-title {
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--border-details-title);
+    color: var(--text-details-value);
+}
+
+.ip-detail-target {
+    color: var(--text-ip-detail-target);
+}
+
+.ip-details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+/* 2.1 Info List (Cột Trái) */
+.ip-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    flex: 1; /* Cho phép nở rộng */
+}
+
+.ip-detail-row {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-start;
+}
+
+.ip-detail-label {
+    width: 140px; /* Tăng nhẹ để chứa icon */
+    flex-shrink: 0;
+    padding-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--font-weight-semibold);
+}
+
+.ip-detail-label i {
+    width: 20px;
+    text-align: center;
+    color: var(--text-details-icon);
+    opacity: 1; /* Tăng đậm lên cho rõ */
+}
+
+.ip-detail-data {
+    flex: 1;
+    font-weight: 500;
+    word-break: break-word;
+    min-width: 0; /* Quan trọng để flex child có thể co lại */
+    font-style: italic;
+}
+
+/* Row đặc biệt cho quốc gia để giữ cờ và chữ cùng dòng */
+#ip-detail-country {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.ip-detail-data--ua {
+    word-break: break-all;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-snug);
+    opacity: 0.85;
+    white-space: normal; /* Đảm bảo User Agent luôn xuống dòng */
+}
+
+.ip-detail-data a {
+    color: var(--link-details);
+    text-decoration: underline;
+}
+
+.ip-detail-data a:hover {
+    color: var(--white);
+}
+
+.text-na {
+    color: var(--text-details-label);
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* Loading State Style */
+.loading-text {
+    opacity: 0.6;
+    font-style: italic;
+    color: var(--color-text-muted);
+}
+
+/* 2.2 Map Container (Cột Phải) */
+.ip-details-map-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: center;
+}
+
+.ip-map {
+    width: 100%;
+    height: 300px; /* Chiều cao cố định default */
+    background-color: var(--gray-200); /* Placeholder color lúc chưa load Leaflet */
+    border-radius: var(--radius-sm);
+    overflow: hidden; /* Cắt góc bản đồ */
+    border: 2px solid color-mix(in srgb, var(--white) 15%, transparent);
+    z-index: 1; /* Ensure leaflet map controls render correctly without overflowing details layer */
+}
+
+.btn-blacklist {
+    background-color: var(--bg-btn-blacklist);
+    color: var(--text-btn-blacklist);
+    border: none;
+    width: 100%; /* Full độ rộng của container chứa nó */
+    max-width: 350px;
+    padding: var(--space-3);
+}
+
+.btn-blacklist:hover {
+    background-color: var(--bg-btn-blacklist-hover);
+    color: var(--white);
+}
+
+
+/* =======================================
+   RESPONSIVE LAYOUT 
+   ========================================= */
+
+/* Desktop layout cho file Details */
+@media (min-width: 768px) {
+    .ip-summary-body {
+        flex-direction: row;
+        padding: var(--space-5);
+    }
+
+    .ip-summary-item {
+        flex: 1 1 50%;
+    }
+
+    /* Desktop: bỏ border-bottom, thêm border-right cho item đầu */
+    .ip-summary-item:not(:last-child) {
+        padding-bottom: 0;
+        border-bottom: none;
+        padding-right: var(--space-4);
+        border-right: 1px solid var(--color-border-subtle);
+    }
+
+    .ip-summary-item:last-child {
+        padding-left: var(--space-4);
+    }
+    
+    .ip-details-grid {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .ip-details-list {
+        flex: 1 1 50%;
+        padding-right: var(--space-4);
+        border-right: 1px solid color-mix(in srgb, var(--white) 15%, transparent);
+    }
+    
+    .ip-details-map-container {
+        flex: 1 1 50%;
+        padding-left: var(--space-2);
+    }
+    
+    .ip-map {
+        height: 100%;
+        min-height: 250px;
+    }
+
+    .ip-detail-label {
+        width: 165px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .ip-details-section {
+        padding: var(--space-6);
+    }
+}
