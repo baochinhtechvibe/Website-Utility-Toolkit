@@ -241,25 +241,6 @@
     }
 }
 
-.form-control,
-.form-select {
-    padding: var(--pad-y-1) var(--pad-x-2);
-    border-radius: var(--radius-sm);
-}
-
-.form-control[readonly] {
-    caret-color: transparent;
-    cursor: default;
-    background-color: var(--color-surface); /* Giữ màu nền cũ, không để xám xịt như disabled */
-}
-
-.form-control:focus,
-.form-select:focus {
-    outline: none;
-    border-color: var(--color-brand);
-    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
-}
-
 .input-with-copy {
     display: flex;
     gap: var(--space-2);

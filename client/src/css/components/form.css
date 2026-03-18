@@ -25,7 +25,8 @@
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    
+    line-height: 1.5; /* ← fix: bắt cả input lẫn select dùng chung line-height */
+
     /* Shadow variables */
     --form-shadow: var(--elevation-tooltip);
 
@@ -34,6 +35,7 @@
     --form-focus-outline: 0 4px 10px 3px color-mix(in srgb, var(--form-focus-color) 30%, transparent);
 
     box-shadow: var(--form-shadow);
+    font-size: var(--text-base);
 
     transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
@@ -42,6 +44,19 @@
 .form-select option {
     background-color: var(--color-surface);
     color: var(--color-text-primary);
+}
+
+.form-control[readonly] {
+    caret-color: transparent;
+    cursor: default;
+    background-color: var(--color-surface); /* Giữ màu nền cũ, không để xám xịt như disabled */
+}
+
+.form-control:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
 }
 
 .form--dns {
@@ -60,6 +75,20 @@
     box-shadow: var(--form-shadow), var(--form-focus-outline);
 }
 
+/* Trạng thái Lỗi (Validation Error) */
+.form-input.is-invalid,
+.form-select.is-invalid,
+.form-control.is-invalid {
+    border-color: var(--red-500, #ef4444);
+    box-shadow: 0 4px 10px 3px color-mix(in srgb, var(--red-500, #ef4444) 30%, transparent);
+}
+.form-input.is-invalid:focus,
+.form-select.is-invalid:focus,
+.form-control.is-invalid:focus {
+    border-color: var(--red-600, #dc2626);
+    box-shadow: var(--form-shadow), 0 4px 10px 3px color-mix(in srgb, var(--red-500, #ef4444) 40%, transparent);
+}
+
 /* Disabled */
 .form-input:disabled {
     background-color: var(--color-surface-muted);
@@ -70,8 +99,14 @@
 /* Biến thể dành riêng cho thẻ Select */
 .form-select {
     cursor: pointer;
-    /* Có thể tuỳ chỉnh padding bên phải to hơn để chừa chỗ cho mũi tên dropdown nếu cần */
-    /* padding-right: var(--space-8); */
+    /* Loại bỏ native widget của browser (nguyên nhân gây lệch chiều cao với input) */
+    appearance: none;
+    -webkit-appearance: none;
+    /* Mũi tên dropdown tùy chỉnh bằng SVG inline */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--pad-x-3) center;
+    padding-right: calc(var(--pad-x-3) * 2 + 12px); /* Chừa chỗ cho icon mũi tên */
 }
 
 /* Dòng ghi chú dưới input */

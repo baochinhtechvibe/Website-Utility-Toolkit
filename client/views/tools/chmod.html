@@ -54,7 +54,8 @@
                     <!-- MASTER CONVERTER -->
                     <div class="card chmod-master-card mb-8">
                         <div class="card__header">
-                            <h3 class="card__title"><i class="fa-solid fa-wand-magic-sparkles"></i> Master Converter</h3>
+                            <h3 class="card__title"><i class="fa-solid fa-wand-magic-sparkles"></i> Master Converter
+                            </h3>
                         </div>
                         <div class="card__body">
                             <div class="master-row">
@@ -62,18 +63,19 @@
                                     Nhập Octal (755) hoặc Symbolic (-rwxr-xr-x) để chuyển đổi:
                                 </label>
                                 <div class="master-input-container">
-                                    <input type="text" id="masterChmodInput" class="form-control master-input" 
-                                           placeholder="Ví dụ: 755 hoặc -rwxr-xr-x" autocomplete="off">
+                                    <input type="text" id="masterChmodInput" class="form-control master-input"
+                                        placeholder="Ví dụ: 755 hoặc -rwxr-xr-x" autocomplete="off">
                                 </div>
                             </div>
                             <!-- Validation Error nằm dưới hẳn -->
                             <div id="masterValidationError" class="error-card mt-4 d-none">
-                                <div class="error-card__title">
-                                    <i class="fa-solid fa-circle-exclamation"></i>
-                                    <span>Lỗi định dạng</span>
+                                <div class="error-card__header">
+                                    <h3 class="error-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định
+                                        dạng không hợp lệ</h3>
                                 </div>
-                                <div class="error-card__message">
-                                    Định dạng không hợp lệ. Vui lòng nhập 3 chữ số (0-7) hoặc 10 ký tự (-rwxr-xr-x).
+                                <div class="error-card__body">
+                                    <p class="error-card__message">Định dạng không hợp lệ. Vui lòng nhập 3 chữ số (0-7)
+                                        hoặc 10 ký tự (-rwxr-xr-x).</p>
                                 </div>
                             </div>
                         </div>
@@ -190,22 +192,27 @@
                     <!-- 3. RESULTS & INPUTS -->
                     <div class="card result-card chmod-result-card mb-8">
                         <div class="card__header">
-                            <h3 class="card__title"><i class="fa-solid fa-square-poll-vertical"></i> Permission Results</h3>
+                            <h3 class="card__title"><i class="fa-solid fa-square-poll-vertical"></i> Permission Results
+                            </h3>
                         </div>
                         <div class="card__body">
                             <div class="chmod-inputs-grid">
                                 <div class="chmod-input-group">
                                     <label class="form-label">Octal Value</label>
                                     <div class="input-with-copy">
-                                        <input type="text" id="chmodOctal" class="form-control" value="0755" maxlength="4" readonly>
-                                        <button class="btn btn-icon btn-copy-small" data-target="#chmodOctal"><i class="fa-solid fa-copy"></i></button>
+                                        <input type="text" id="chmodOctal" class="form-control" value="0755"
+                                            maxlength="4" readonly>
+                                        <button class="btn btn-icon btn-copy-small" data-target="#chmodOctal"><i
+                                                class="fa-solid fa-copy"></i></button>
                                     </div>
                                 </div>
                                 <div class="chmod-input-group">
                                     <label class="form-label">Symbolic Notation</label>
                                     <div class="input-with-copy">
-                                        <input type="text" id="chmodSymbolic" class="form-control" value="rwxr-xr-x" readonly>
-                                        <button class="btn btn-icon btn-copy-small" data-target="#chmodSymbolic"><i class="fa-solid fa-copy"></i></button>
+                                        <input type="text" id="chmodSymbolic" class="form-control" value="rwxr-xr-x"
+                                            readonly>
+                                        <button class="btn btn-icon btn-copy-small" data-target="#chmodSymbolic"><i
+                                                class="fa-solid fa-copy"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -231,25 +238,29 @@
                                     </label>
                                 </div>
                                 <div class="filename-row d-flex items-center gap-4">
-                                    <label for="targetFilename" class="form-label mb-0 white-nowrap">Target File/Directory Name:</label>
-                                    <input type="text" id="targetFilename" class="form-control" placeholder="Ví dụ: filename.sh hoặc /path/to/file" autocomplete="off">
+                                    <label for="targetFilename" class="form-label mb-0 white-nowrap">Target
+                                        File/Directory Name:</label>
+                                    <input type="text" id="targetFilename" class="form-control"
+                                        placeholder="Ví dụ: filename.sh hoặc /path/to/file" autocomplete="off">
                                 </div>
                             </div>
                             <div class="command-display-wrapper">
                                 <code class="command-display" id="generatedCommand">chmod 755 filename</code>
-                                <button class="btn btn-action" id="btnCopyCommand"><i class="fa-solid fa-copy"></i> Copy Command</button>
+                                <button class="btn btn-action" id="btnCopyCommand"><i class="fa-solid fa-copy"></i> Copy
+                                    Command</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- 5. SECURITY ADVISOR -->
-                    <div id="securityAdvisor" class="warning-card mt-8 d-none">
-                        <div class="warning-card__title">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            <span id="securityTitle">Cảnh báo bảo mật</span>
+                    
+                    <div id="securityAdvisor" class="warning-card mt-4 d-none">
+                        <div class="warning-card__header">
+                            <h3 class="warning-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
+                                mật</h3>
                         </div>
-                        <div class="warning-card__message" id="securityMessage">
-                            Cấu hình quyền truy cập này có thể không an toàn.
+                        <div class="warning-card__body">
+                            <p class="warning-card__message" id="securityMessage">Cấu hình quyền truy cập này có thể không an toàn.</p>
                         </div>
                     </div>
                 </div>

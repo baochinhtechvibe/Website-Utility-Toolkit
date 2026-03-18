@@ -30,7 +30,10 @@ import {
     shouldKeepFullName,
 
     /* url.js */
-    getIPInfoLink
+    getIPInfoLink,
+
+    /* validation.js */
+    createRealtimeDomainValidator
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
@@ -1137,15 +1140,18 @@ function handleURLParams() {
 //  APP LIFECYCLE
 //==================================//
 function initApp() {
+    // Hook realtime domain validator (dùng chung từ utils/validation.js)
+    createRealtimeDomainValidator(
+        hostnameInput,
+        document.getElementById('domainValidationError'),
+        btnResolve
+    );
     handleURLParams();
     hostnameInput.focus();
-    btnResolve.disabled = hostnameInput.value.trim() === "";
     console.log("🚀 DNS Lookup Tool Initialized");
 }
 
-hostnameInput.addEventListener("input", () => {
-    btnResolve.disabled = hostnameInput.value.trim() === "";
-});
+
 
 // =================================//
 //  EVENT BINDINGS

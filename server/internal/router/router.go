@@ -5,6 +5,7 @@ import (
 	"tools.bctechvibe.com/server/internal/middleware"
 	"tools.bctechvibe.com/server/internal/modules/dns"
 	"tools.bctechvibe.com/server/internal/modules/ip"
+	"tools.bctechvibe.com/server/internal/modules/redirect"
 	"tools.bctechvibe.com/server/internal/modules/visits"
 )
 
@@ -23,6 +24,7 @@ func SetupRouter() *gin.Engine {
 	{
 		dns.RegisterRoutes(api)
 		ip.RegisterRoutes(api)
+		redirect.RegisterRoutes(api)
 		visits.RegisterRoutes(api)
 	}
 

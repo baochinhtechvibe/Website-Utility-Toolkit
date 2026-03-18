@@ -97,8 +97,17 @@
                                 </div>
                             </div>
 
+                            <div id="domainValidationError" class="error-card mt-4 d-none">
+                                <div class="error-card__header">
+                                    <h3 class="error-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
+                                </div>
+                                <div class="error-card__body">
+                                    <p class="error-card__message">Vui lòng nhập đúng định dạng domain (ví dụ: <code>google.com</code>) hoặc địa chỉ IP.</p>
+                                </div>
+                            </div>
+
                             <!-- Trace Checkbox -->
-                            <div class="form-field mt-2">
+                            <div class="form-field mt-4">
                                 <label class="form-checkbox-label trace-root-label" for="traceRoot">
                                     <input type="checkbox" id="traceRoot" name="traceRoot" class="form-checkbox trace-root-checkbox">
                                     <span class="trace-root-text">Bypass Cache (Trace from Root DNS)</span>

@@ -125,8 +125,8 @@ function syncFromMaster(val) {
     val = val.trim();
     if (!val) {
         setInvalid(false);
-        // Reset to default (644) when empty
-        syncFromOctal("644", "master");
+        // Reset to 000 when empty
+        syncFromOctal("000", "master");
         return;
     }
 

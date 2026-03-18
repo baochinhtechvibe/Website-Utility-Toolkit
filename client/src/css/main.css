@@ -54,9 +54,10 @@
 /* ===================================
    6. PAGES & TOOLS
    ================================= */
-@import './pages/home.css';
 @import './tools/dns.css';
 @import './tools/ip.css';
+@import './tools/redirect.css';
+@import './tools/chmod.css';
 
 
 /* ===================================
