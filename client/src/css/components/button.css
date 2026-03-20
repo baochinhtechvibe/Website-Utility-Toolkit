@@ -111,3 +111,24 @@
     --btn-hover-text: var(--white);
     --btn-border: var(--gray-600);
 }
+
+/* Nút WHOIS (Dùng chung) */
+.btn-whois {
+    --btn-bg: transparent;
+    --btn-border: var(--color-info);
+    --btn-text: var(--color-info);
+    --btn-hover-bg: var(--color-info);
+    --btn-hover-text: var(--white);
+    
+    border: 1px solid var(--btn-border);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+}
+
+[data-theme="dark"] .btn-whois {
+    --btn-text: var(--sky-400);
+    --btn-border: var(--sky-400);
+    --btn-hover-bg: var(--sky-600);
+    --btn-hover-text: var(--white);
+}

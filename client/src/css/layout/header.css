@@ -157,6 +157,10 @@
     content: url("../../../public/assets/images/layout/header/redirect.png");
 }
 
+.header--ssl .header__icon img {
+    content: url("../../../public/assets/images/layout/header/ssl.png");
+}
+
 @container (min-width: 750px) {
     .header__theme-toggle {
         position: absolute;

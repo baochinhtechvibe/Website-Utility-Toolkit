@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../../src/css/main.css" />
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css" />
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+    <meta name="description"
+        content="Bộ công cụ SSL miễn phí: Kiểm tra SSL (SSL Checker), Giải mã CSR, Giải mã Certificate, và kiểm tra khớp khóa (Key Matcher)." />
+    <title>SSL Certificate Tools | Sản phẩm của BCTECHVIBE</title>
+</head>
+
+<body>
+    <div class="wrapper page-ssl">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--ssl py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/ssl.png" alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                SSL Certificate Tools
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Comprehensive SSL Certificate Tools
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Kiểm tra trạng thái, thông tin và thời hạn hiệu lực của chứng chỉ SSL/TLS trên website.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+
+        <!-- Begin: Main Content -->
+        <main id="main" class="main pb-6 mb-4">
+            <div class="container">
+                <div class="ssl-tools">
+                    <!-- ================= TOOL LIST ================= -->
+                    <div class="ssl-tools__list d-flex flex-wrap gap-6 justify-center items-center">
+                        <button id="btnToolChecker" class="ssl-tools__item js-tool-btn active" data-slug="ssl-checker">
+                            <i class="fa-solid fa-lock"></i>
+                            SSL Checker
+                        </button>
+                        <button id="btnToolCsr" class="ssl-tools__item js-tool-btn" data-slug="csr-decoder">
+                            <i class="fa-solid fa-qrcode"></i>
+                            CSR Decoder
+                        </button>
+                        <button id="btnToolCert" class="ssl-tools__item js-tool-btn" data-slug="cert-decoder">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            Certificate Decoder
+                        </button>
+                        <button id="btnToolMatcher" class="ssl-tools__item js-tool-btn" data-slug="key-matcher">
+                            <i class="fa-solid fa-circle-check"></i>
+                            Certificate Key Matcher
+                        </button>
+                        <button id="btnToolConverter" class="ssl-tools__item js-tool-btn" data-slug="ssl-converter">
+                            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                            SSL Converter
+                        </button>
+                    </div>
+
+                    <!-- ================= SSL CHECKER ================= -->
+                    <section id="toolChecker" data-slug="ssl-checker"
+                        class="ssl-tools__section ssl-tools__section--active ssl-tools__section--checker mt-10 d-block">
+                        <p class="ssl-tools__description">
+                            Sử dụng Trình kiểm tra SSL nhanh của chúng tôi để giúp bạn dễ dàng phát hiện các sự cố trong
+                            quá trình cài đặt chứng chỉ SSL. Bạn có thể kiểm tra chứng chỉ SSL trên máy chủ web để đảm
+                            bảo chứng chỉ được cài đặt đúng cách, còn hiệu lực, đáng tin cậy và không gây lỗi cho người
+                            dùng. Để sử dụng Trình kiểm tra SSL, bạn chỉ cần nhập tên máy chủ công khai của website
+                            (không hỗ trợ tên máy chủ nội bộ) vào ô bên dưới và nhấn nút <strong>Kiểm tra SSL</strong>.
+                        </p><br>
+                        <div class="card">
+                            <!-- Header Card -->
+                            <div class="card__header">
+                                <h2 class="card__title text-xl font-bold text-center">
+                                    SSL Checker
+                                </h2>
+                            </div>
+
+                            <div class="card__body pt-4">
+                                <form id="formChecker" action="" method="post" class="form form--ssl">
+
+                                    <!-- Sử dụng form-inline để nằm cùng hàng trên desktop -->
+                                    <div class="form-inline">
+                                        <!-- Domain Input -->
+                                        <div class="form-field form-field--wide">
+                                            <label class="form-label" for="inputChecker">Domain cần kiểm tra SSL</label>
+                                            <input type="text" id="inputChecker" name="domain" class="form-input"
+                                                placeholder="Ví dụ: google.com">
+                                        </div>
+                                        <!-- Button -->
+                                        <div class="form-field form-field--button">
+                                            <button id="btnSubmitChecker" type="submit"
+                                                class="btn btn-action btn-block">
+                                                <i class="fas fa-search" id="iconCheckerArrow"></i>
+                                                Kiểm tra SSL
+                                                <i class="fa-solid fa-spinner fa-spin d-none"
+                                                    id="iconCheckerLoading"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="domainValidationError" class="error-card mt-4 d-none">
+                                        <div class="error-card__header">
+                                            <h3 class="error-card__title"><i
+                                                    class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
+                                            </h3>
+                                        </div>
+                                        <div class="error-card__body">
+                                            <p class="error-card__message">Vui lòng nhập đúng định dạng domain (ví dụ:
+                                                <code>google.com</code>).
+                                            </p>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <!-- Result Card -->
+                                <div id="toolResultChecker" class="result-card result-checker mt-6 d-none">
+                                    <div id="resultCheckerHeader"
+                                        class="result-card__header d-flex flex-row justify-between items-center">
+                                        <h3 class="result-card__title text-h3 font-bold">
+                                            <i class="fas fa-check-circle text-success mr-2"></i>
+                                            Kết quả cho domain <span id="resultDomainName" class="text-success"></span>:
+                                        </h3>
+                                        <div class="result-card__actions">
+                                            <button id="btnWhoisChecker" class="btn btn-whois d-flex items-center">
+                                                <i class="fa-solid fa-address-card"></i> WHOIS
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="resultCheckerContent" class="result-card__body">
+                                    </div>
+                                </div>
+
+                                <!-- Error Card -->
+                                <div id="toolErrorChecker" class="error-card mt-6 d-none">
+                                    <div class="error-card__header">
+                                        <h3 class="error-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Kiểm tra SSL lỗi
+                                        </h3>
+                                    </div>
+                                    <div class="error-card__body">
+                                        <p id="toolErrorMessage" class="error-card__message">
+                                            Kiểm tra SSL thất bại. Vui lòng thử lại sau!
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Share Card -->
+                                <div id="toolShareLink" class="share-card mt-6 d-none">
+                                    <div class="share-card__header">
+                                        <h4 class="share-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                            Chia sẻ kết quả:
+                                        </h4>
+                                    </div>
+                                    <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                        <input type="text" id="shareLinkChecker" readonly class="share-card__input" />
+                                        <button class="share-card__button share-card__button--copy gap-1"
+                                            id="btnCopyLinkChecker">
+                                            <i class="fas fa-copy"></i>
+                                            <span>Copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= SSL CSR DECODER ================= -->
+                    <section id="toolCsr" class="ssl-tools__section ssl-tools__section--csr mt-10 d-none"
+                        data-slug="csr-decoder">
+                        <p class="ssl-tools__description">
+                            Sử dụng công cụ <strong>CSR Decoder</strong> để giải mã <strong>Certificate Signing
+                                Request (CSR)</strong> và kiểm tra xem
+                            yêu
+                            cầu chứng chỉ có chứa đúng thông tin hay không. CSR là một khối văn bản được mã hóa, bao
+                            gồm thông tin về tổ chức đăng ký chứng chỉ SSL và
+                            khóa công khai của SSL. Vì các tổ chức cấp chứng chỉ (CA) sử dụng thông tin trong CSR để
+                            phát hành chứng chỉ
+                            SSL, nên việc giải mã CSR là cần thiết để đảm bảo mọi thông tin đều chính xác. Để kiểm tra
+                            CSR, bạn chỉ cần dán chuỗi nén vào ô bên dưới, công cụ CSR Decoder sẽ tự động hiển thị
+                            nội dung giải mã. CSR hợp lệ phải bắt đầu bằng
+                            <em>“-----BEGIN CERTIFICATE REQUEST-----”</em>.
+                        </p><br>
+                        <p class="text-sm font-medium text-gray-700 mb-2">
+                            Kiểm tra CSR trực tiếp trên máy tính bằng OpenSSL:
+                        </p>
+                        <div class="code-block mb-6">
+                            <div class="code-block__header">
+                                <span class="code-block__lang">
+                                    <i class="fa-solid fa-code"></i> Bash
+                                </span>
+                                <button class="code-block__btn-copy js-copy-code" data-clipboard-target="#codeCsr">
+                                    <i class="fa-regular fa-clone"></i>
+                                </button>
+                            </div>
+                            <div class="code-block__body">
+                                <code id="codeCsr"
+                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">req</span> <span class="code-parameter">-in</span> <span class="code-value">your_domain.csr</span> <span class="code-parameter">-noout</span> <span class="code-parameter">-text</span></code>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card__header">
+                                <h2 class="card__title text-xl font-bold text-center">
+                                    CSR Decoder
+                                </h2>
+                            </div>
+                            <div class="card__body pt-4">
+                                <form id="formCsrDecoder" method="POST" class="form form--ssl">
+                                    <div class="form-field">
+                                        <label class="form-label" for="inputCsr">Dán Certificate Signing Request
+                                            (CSR):</label>
+                                        <textarea id="inputCsr" class="form-input" rows="8"
+                                            placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;MII..."></textarea>
+                                    </div>
+                                    <div class="form-field form-field--button mt-4">
+                                        <button type="submit" id="btnCsrDecoder" class="btn btn-action btn-block">
+                                            <i class="fa-solid fa-table-cells-row-unlock" id="iconCsrDecoder"></i>
+                                            Giải mã CSR
+                                            <i class="fa-solid fa-spinner fa-spin d-none" id="iconCsrLoading"></i>
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Error Card cho CSR -->
+                                <div id="errorCardCsr" class="error-card mt-6 d-none">
+                                    <div class="error-card__header">
+                                        <h3 class="error-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Lỗi giải mã CSR
+                                        </h3>
+                                    </div>
+                                    <div class="error-card__body">
+                                        <p id="errorMsgCsr" class="error-card__message">
+                                            Nội dung CSR không hợp lệ. Vui lòng kiểm tra lại!
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Result Card cho CSR -->
+                                <div id="resultCardCsr" class="result-card mt-6 d-none">
+                                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                                        <h3 class="result-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-qrcode"></i>
+                                            Kết quả giải mã CSR:
+                                        </h3>
+                                    </div>
+                                    <div id="resultBodyCsr" class="result-card__body mt-4">
+                                        <!-- Nội dung JS nhồi vào -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= SSL CERTIFICATE DECODER ================= -->
+                    <section id="toolCert" class="ssl-tools__section ssl-tools__section--cert mt-10 d-none"
+                        data-slug="cert-decoder">
+                        <p class="ssl-tools__description text-justify">
+                            Sử dụng công cụ Certificate Decoder để giải mã chứng chỉ SSL được mã hóa theo định dạng
+                            PEM và kiểm tra xem chứng chỉ có chứa đúng thông tin hay không. Khối văn bản Certificate hợp
+                            lệ phải bắt đầu bằng
+                            <em>“-----BEGIN CERTIFICATE-----”</em> và kết thúc bằng <em>“-----END
+                                CERTIFICATE-----”</em>.
+                        </p><br>
+                        <p class="text-sm font-medium text-gray-700 mb-2">
+                            Giải mã chứng chỉ trực tiếp bằng OpenSSL:
+                        </p>
+                        <div class="code-block mb-6">
+                            <div class="code-block__header">
+                                <span class="code-block__lang">
+                                    <i class="fa-solid fa-code"></i> Bash
+                                </span>
+                                <button class="code-block__btn-copy js-copy-code" data-clipboard-target="#codeCert">
+                                    <i class="fa-regular fa-clone"></i>
+                                </button>
+                            </div>
+                            <div class="code-block__body">
+                                <code id="codeCert"
+                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.crt</span> <span class="code-parameter">-text</span> <span class="code-parameter">-noout</span></code>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card__header">
+                                <h2 class="card__title text-xl font-bold text-center">
+                                    Certificate Decoder
+                                </h2>
+                            </div>
+                            <div class="card__body pt-4">
+                                <form id="formCertDecoder" method="POST" class="form form--ssl">
+                                    <div class="form-field">
+                                        <label class="form-label" for="inputCert">Dán Block Chứng Chỉ SSL:</label>
+                                        <textarea id="inputCert" class="form-input" rows="8"
+                                            placeholder="-----BEGIN CERTIFICATE-----&#10;MII..."></textarea>
+                                    </div>
+                                    <div class="form-field form-field--button mt-4">
+                                        <button type="button" id="btnCertDecoder" class="btn btn-action btn-block">
+                                            <i class="fa-solid fa-certificate"></i>
+                                            Giải mã chứng chỉ
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Error Card cho Certificate -->
+                                <div id="errorCardCert" class="error-card mt-6 d-none">
+                                    <div class="error-card__header">
+                                        <h3 class="error-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Lỗi giải mã Certificate
+                                        </h3>
+                                    </div>
+                                    <div class="error-card__body">
+                                        <p id="errorMsgCert" class="error-card__message">
+                                            Nội dung Certificate không hợp lệ. Vui lòng kiểm tra lại!
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Result Card cho Certificate -->
+                                <div id="resultCardCert" class="result-card mt-6 d-none">
+                                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                                        <h3 class="result-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-qrcode"></i>
+                                            Kết quả giải mã Certificate:
+                                        </h3>
+                                    </div>
+                                    <div id="resultBodyCert" class="result-card__body mt-4">
+                                        <!-- Nội dung JS nhồi vào -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= SSL CERTIFICATE KEY MATCHER ================= -->
+                    <section id="toolMatcher" class="ssl-tools__section ssl-tools__section--matcher mt-10 d-none"
+                        data-slug="key-matcher">
+                        <p class="ssl-tools__description">
+                            Bạn có thể sử dụng Certificate Key Matcher (Công cụ đối chiếu khóa chứng chỉ) để kiểm
+                            tra xem private key có khớp với chứng chỉ SSL hay không, hoặc chứng chỉ có khớp với
+                            Certificate Signing Request (CSR) hay không. Công cụ hoạt động bằng cách so sánh hash.
+                        </p><br>
+                        <p class="text-sm font-medium text-gray-700 mb-2">
+                            Kiểm tra băm trực tiếp bằng OpenSSL:
+                        </p>
+                        <div class="code-block mb-6">
+                            <div class="code-block__header">
+                                <span class="code-block__lang">
+                                    <i class="fa-solid fa-code"></i> Bash
+                                </span>
+                                <button class="code-block__btn-copy js-copy-code" data-clipboard-target="#codeMatcher">
+                                    <i class="fa-regular fa-clone"></i>
+                                </button>
+                            </div>
+                            <div class="code-block__body">
+                                <code id="codeMatcher"
+                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkey</span> <span class="code-parameter">-in</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-pubout</span> <span class="code-parameter">-outform</span> <span class="code-text">pem | sha256sum</span></code>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card__header">
+                                <h2 class="card__title text-xl font-bold text-center">
+                                    Key Matcher
+                                </h2>
+                            </div>
+                            <div class="card__body pt-4 text-center">
+                                <p class="text-gray-500 italic py-8">Tính năng đang trong quá trình phát triển.</p>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- ====================== SSL CONVERTER ====================== -->
+                    <section id="toolConverter"
+                        class="ssl-tools__section ssl-tools__section--converter ssl-tools__detail mt-10 d-none"
+                        data-slug="ssl-converter">
+                    </section>
+                </div>
+            </div>
+        </main>
+        <!-- End: Main Content -->
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+    </div>
+    <script type="module" src="../../src/js/main.js"></script>
+    <script src="../../src/js/tools/ssl/ssl-tools.js" type="module"></script>
+</body>
+
+</html>

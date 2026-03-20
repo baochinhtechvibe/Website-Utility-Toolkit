@@ -145,27 +145,6 @@
     gap: var(--space-2);
 }
 
-.page--dns .btn-whois {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-
-    padding: var(--space-2);
-    background-color: unset;
-    border-color: var(--bg-btn-whois);
-
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--bg-btn-whois);
-
-    transition: transform 0.2s, color 0s;
-}
-
-.page--dns .btn-whois:hover {
-    background-color: var(--bg-btn-whois);
-    color: var(--dns-tool-text-primary);
-}
-
 .page--dns .result-card__trace-log {
     background-color: var(--color-surface-muted);
     font-family: var(--font-family-mono);

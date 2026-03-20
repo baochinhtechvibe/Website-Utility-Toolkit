@@ -41,6 +41,7 @@
    4. COMPONENTS
    ================================= */
 @import './components/button.css';
+@import './components/code-block.css';
 @import './components/badge.css';
 @import './components/card.css';
 @import './components/tool-card.css';
@@ -55,6 +56,7 @@
    6. PAGES & TOOLS
    ================================= */
 @import './tools/dns.css';
+@import './tools/ssl-tools.css';
 @import './tools/ip.css';
 @import './tools/redirect.css';
 @import './tools/chmod.css';

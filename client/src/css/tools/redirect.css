@@ -39,7 +39,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: var(--font-bold);
+    font-weight: var(--font-weight-bold);
     font-size: var(--text-sm);
     color: var(--white);
     z-index: 1;
@@ -153,7 +153,7 @@
     align-items: center;
     justify-content: center;
     font-size: var(--text-2xl);
-    font-weight: var(--font-bold);
+    font-weight: var(--font-weight-bold);
     flex-shrink: 0;
     border: 4px solid;
     color: var(--white);
@@ -363,7 +363,7 @@
 
 .perf-cell--slow {
     color: var(--color-error);
-    font-weight: var(--font-bold);
+    font-weight: var(--font-weight-bold);
 }
 
 /* =========================================

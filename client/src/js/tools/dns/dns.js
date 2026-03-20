@@ -7,6 +7,7 @@ import {
     showElements,
     toggleLoading,
     showError,
+    hide,
     setElementsEnabled,
 
     /* network.js */
@@ -31,6 +32,7 @@ import {
 
     /* url.js */
     getIPInfoLink,
+    getWhoisDomain,
 
     /* validation.js */
     createRealtimeDomainValidator
@@ -753,18 +755,9 @@ function displayResults(data) {
         type !== "PTR" &&
         type !== "BLACKLIST"
     ) {
-        if (btnWhois) {
-            setDisplay(btnWhois, "flex");
-            btnWhois.onclick = () => {
-                if (hostname.endsWith(".vn")) {
-                    window.open(`https://tino.vn/whois?domain=${hostname}`, "_blank");
-                } else {
-                    window.open(`https://www.whois.com/whois/${hostname}`, "_blank");
-                }
-            };
-        }
+        getWhoisDomain(btnWhois, hostname);
     } else {
-        if (btnWhois) setDisplay(btnWhois, "none");
+        if (btnWhois) hide(btnWhois);
     }
 
     // Generate share link

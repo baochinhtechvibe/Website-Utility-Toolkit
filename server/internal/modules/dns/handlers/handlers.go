@@ -408,6 +408,8 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				if !seenRecords[key] {
 					// Thêm domain vào record để frontend biết hiển thị tên nào
 					aRec.Domain = strings.TrimSuffix(canonicalName, ".")
+					// ✅ Bổ sung Metadata (Flag, ISP)
+					dns.EnrichIPInfoByString(&aRec, aRec.Address)
 					allRecords = append(allRecords, aRec)
 					seenRecords[key] = true
 				}
@@ -428,6 +430,8 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				if !seenRecords[key] {
 					// Thêm domain vào record
 					aaaaRec.Domain = strings.TrimSuffix(canonicalName, ".")
+					// ✅ Bổ sung Metadata (Flag, ISP)
+					dns.EnrichIPInfoByString(&aaaaRec, aaaaRec.Address)
 					allRecords = append(allRecords, aaaaRec)
 					seenRecords[key] = true
 				}
@@ -664,6 +668,10 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 			case "A", "AAAA", "TXT":
 				// A/AAAA/TXT records hiển thị canonical name
 				rec.Domain = strings.TrimSuffix(canonicalName, ".")
+				// ✅ Bổ sung Metadata (Flag, ISP) cho A và AAAA
+				if rec.Type == "A" || rec.Type == "AAAA" {
+					dns.EnrichIPInfoByString(&rec, rec.Address)
+				}
 			case "MX", "NS":
 				// MX records query trên original domain
 				// NS records query trên apex domain

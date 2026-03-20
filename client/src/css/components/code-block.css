@@ -1,0 +1,97 @@
+/* src/css/components/code-block.css */
+
+.code-block {
+    background-color: var(--code-bg, var(--bg-surface));
+    border-radius: var(--radius-lg);
+    padding: var(--space-5) var(--space-6);
+    overflow: hidden;
+}
+
+/* Dark mode behavior */
+.dark .code-block {
+    background-color: var(--bg-tertiary);
+}
+
+.code-block__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--space-2);
+}
+
+.code-block__lang {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.code-block__lang i {
+    font-size: var(--text-base);
+    font-weight: bold;
+}
+
+.code-block__btn-copy {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: var(--text-h6); 
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+.code-block__btn-copy:hover {
+    background-color: var(--code-bg-hover, var(--bg-hover));
+    color: var(--text-primary);
+}
+
+.code-block__body {
+    overflow-x: auto;
+    -ms-overflow-style: none;  /* IE/Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Ẩn thanh cuộn trên desktop */
+.code-block__body::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hiện thanh cuộn ngang trên mobile */
+@media (max-width: 768px) {
+    .code-block__body {
+        scrollbar-width: auto;  /* Firefox - kích thước mặc định */
+        scrollbar-color: var(--border-secondary, #ccc) transparent;
+        padding-bottom: var(--space-1);
+    }
+
+    .code-block__body::-webkit-scrollbar {
+        display: block;
+        height: auto;
+    }
+
+    .code-block__body::-webkit-scrollbar-track {
+        background: transparent;
+        margin-top: var(--space-1);
+    }
+
+    .code-block__body::-webkit-scrollbar-thumb {
+        background-color: var(--border-secondary, #ccc);
+        border-radius: 4px;
+    }
+}
+
+.code-block__text {
+    font-family: var(--font-family-mono);
+    font-size: var(--text-base);
+    line-height: var(--line-height-relaxed);
+    white-space: pre;
+    display: block;
+}
+

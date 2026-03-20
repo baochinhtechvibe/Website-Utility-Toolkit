@@ -4,6 +4,8 @@
     Các hàm xử lý URL, link, API
 =================================================
 */
+import { setDisplay } from "./dom.js";
+
 /**
  * Get IP info link
  */
@@ -29,7 +31,7 @@ export function getWhoisDomain(btnWhois, domain) {
         return;
     }
 
-    btnWhois.style.display = "flex";
+    setDisplay(btnWhois, "flex");
 
     btnWhois.onclick = null;
 
