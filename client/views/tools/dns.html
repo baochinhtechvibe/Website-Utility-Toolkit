@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="vi" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -97,6 +97,14 @@
                                 </div>
                             </div>
 
+                            <!-- Trace Checkbox -->
+                            <div class="form-field mt-4">
+                                <label class="form-checkbox-label trace-root-label" for="traceRoot">
+                                    <input type="checkbox" id="traceRoot" name="traceRoot" class="form-checkbox trace-root-checkbox">
+                                    <span class="trace-root-text">Bypass Cache (Trace from Root DNS)</span>
+                                </label>
+                            </div>
+
                             <div id="domainValidationError" class="error-card mt-4 d-none">
                                 <div class="error-card__header">
                                     <h3 class="error-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
@@ -106,13 +114,7 @@
                                 </div>
                             </div>
 
-                            <!-- Trace Checkbox -->
-                            <div class="form-field mt-4">
-                                <label class="form-checkbox-label trace-root-label" for="traceRoot">
-                                    <input type="checkbox" id="traceRoot" name="traceRoot" class="form-checkbox trace-root-checkbox">
-                                    <span class="trace-root-text">Bypass Cache (Trace from Root DNS)</span>
-                                </label>
-                            </div>
+                            
                         </form>
 
                         <!-- Result Card -->

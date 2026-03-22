@@ -243,7 +243,8 @@ export function showError(
 
     if (!section || !messageEl) return;
 
-    // Set nội dung lỗi (cho phép HTML để hiển thị link nếu có)
+    // SECURITY: message có thể chứa HTML (link, bold...).
+    // Caller có trách nhiệm đảm bảo message không chứa user input chưa escape.
     messageEl.innerHTML = message;
 
     // Hiện section lỗi
@@ -302,6 +303,7 @@ export const $$ = (s, scope = document) =>
 export function renderSuccessHeader(el, msg) {
     if (!el) return;
 
+    // SECURITY: msg có thể chứa HTML. Đảm bảo input đã được escape nếu lấy từ user.
     el.innerHTML = `
         <i class="fa-solid fa-circle-check result__icon--checked"></i>
         ${msg}

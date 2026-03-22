@@ -11,7 +11,7 @@ import (
 )
 
 var domainRegex = regexp.MustCompile(
-	`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`,
+	`^([a-zA-Z0-9_]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,}$|^localhost$`,
 )
 
 type InputType int
@@ -139,24 +139,7 @@ func IsValidDomain(domain string) bool {
 		return false
 	}
 
-	// 1. Regex cho phép dấu gạch dưới (_) ở các sub-labels (phần đầu)
-	// TLD (phần đuôi cùng) thường không chứa dấu gạch dưới.
-	// Cấu trúc: (Label chứa _ hoặc - + dấu chấm)* + (Label cuối chỉ chứa -)
-
-	// Giải thích regex mới: Bắt buộc tối thiểu 2 nhãn (có ít nhất 1 dấu chấm)
-	// ^ : Bắt đầu chuỗi
-	// (
-	//   [a-zA-Z0-9_] : Bắt đầu nhãn bằng chữ, số hoặc _
-	//   ([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])? : Phần giữa nhãn
-	//   \. : Dấu chấm (bắt buộc phải có để thành TLD)
-	// )+ : Lặp lại nhóm trên 1 hoặc nhiều lần
-	// [a-zA-Z0-9] : TLD bắt đầu bằng chữ/số
-	// ([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])? : TLD không chứa _
-	// $ : Kết thúc chuỗi
-
-	var dnsRecordRegex = regexp.MustCompile(`^([a-zA-Z0-9_]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
-
-	if !dnsRecordRegex.MatchString(domain) {
+	if !domainRegex.MatchString(domain) {
 		return false
 	}
 

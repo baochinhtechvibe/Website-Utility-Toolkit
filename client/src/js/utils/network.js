@@ -29,6 +29,8 @@ export function isIP(value) {
  * @param {string} value
  * @returns {boolean}
  */
+// Heuristic check: chuỗi chứa ':' được coi là IPv6
+// Không phải strict RFC 4291 validation
 export function isIPv6(value) {
     return value.includes(":");
 }

@@ -4,7 +4,7 @@
     Chuẩn hóa tên nhà mạng / tổ chức để hiển thị UI
 =================================================
 */
-import {stripLegalSuffix} from "./format.js";
+import {stripLegalSuffix, truncateByWords} from "./format.js";
 
 /**
  * Danh sách hậu tố pháp lý của công ty
@@ -32,6 +32,7 @@ export const LEGAL_SUFFIXES = [
     "llc",        // Limited liability company
     "llp",        // Limited liability partnership
     "gmbh",       // Germany
+    // Lưu ý: "sa" và "as" có thể gây false positive (bắt nhầm) với tên chứa các chữ cái này.
     "sa",         // Société Anonyme (EU)
     "ag",         // Germany / Switzerland
     "pte",        // Singapore

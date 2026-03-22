@@ -10,7 +10,7 @@ import { setDisplay } from "./dom.js";
  * Get IP info link
  */
 export function getIPInfoLink(ip) {
-    return `https://check-host.net/ip-info?host=${ip}`;
+    return `https://check-host.net/ip-info?host=${encodeURIComponent(ip)}`;
 }
 
 /**
@@ -89,7 +89,9 @@ export function setupCopyButton(inputEl, buttonEl, options = {}) {
 
     buttonEl.addEventListener("click", async () => {
         try {
-            // Chọn toàn bộ text (tốt cho mobile)
+            // Chọn toàn bộ text
+            // Ghi chú: select() dùng cho visual feedback (highlight text) trên desktop
+            // Không ảnh hưởng đến navigator.clipboard.writeText() trên mobile
             inputEl.select();
             inputEl.setSelectionRange(0, 99999);
 

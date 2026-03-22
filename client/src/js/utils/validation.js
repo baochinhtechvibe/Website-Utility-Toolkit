@@ -92,6 +92,29 @@ export function createRealtimeURLValidator(inputEl, errorEl, submitBtn) {
 }
 
 
+// Regex domain đơn giản nhưng đủ dùng cho realtime UX check
+// Chấp nhận: google.com, sub.example.org, my-site.co.uk, localhost
+export const DOMAIN_RE = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$/;
+
+// IPv4
+export const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
+
+// IPv6 — heuristic UX check: có ít nhất 2 dấu ':' và chỉ gồm hex + ':'
+// Không phải strict RFC 4291 validation — server-side là source of truth
+export const IPV6_RE = /^[0-9a-fA-F:]{2,39}$/;
+
+/**
+ * Hàm kiểm tra chuỗi xem có phải là 1 IP hay dạng cấu trúc Tên Miền hợp lệ.
+ * Lưu ý: hàm này KHÔNG HỖ TRỢ trực tiếp định dạng Wildcard (*.example.com).
+ * Việc bóc tách Wildcard thuộc trách nhiệm của Service Validator tùy biến trước khi đưa chuỗi vào đây.
+ */
+export function isValidHostname(val) {
+    if (!val) return false;
+    const stripped = val.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+    if (!stripped) return false;
+    return DOMAIN_RE.test(stripped) || IPV4_RE.test(stripped) || IPV6_RE.test(stripped);
+}
+
 /**
  * Tạo validator realtime cho ô nhập domain / IP address.
  *
@@ -115,27 +138,6 @@ export function createRealtimeURLValidator(inputEl, errorEl, submitBtn) {
  */
 export function createRealtimeDomainValidator(inputEl, errorEl, submitBtn) {
 
-    // Regex domain đơn giản nhưng đủ dùng cho realtime UX check
-    // Chấp nhận: google.com, sub.example.org, my-site.co.uk, localhost
-    const DOMAIN_RE = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$/;
-
-    // IPv4
-    const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
-
-    // IPv6 (có dấu ":" là đủ; validation sâu hơn có thể bổ sung sau)
-    const IPV6_RE = /:/;
-
-    function stripProtocol(val) {
-        return val.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
-    }
-
-    function isValid(raw) {
-        if (!raw) return false;
-        const val = stripProtocol(raw);
-        if (!val) return false;
-        return DOMAIN_RE.test(val) || IPV4_RE.test(val) || IPV6_RE.test(val);
-    }
-
     function setBtn(enabled) {
         if (submitBtn) submitBtn.disabled = !enabled;
     }
@@ -150,7 +152,7 @@ export function createRealtimeDomainValidator(inputEl, errorEl, submitBtn) {
             return;
         }
 
-        if (isValid(raw)) {
+        if (isValidHostname(raw)) {
             inputEl.classList.remove('is-invalid');
             errorEl?.classList.add('d-none');
             setBtn(true);

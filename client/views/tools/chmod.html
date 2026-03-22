@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="vi" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -13,6 +13,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
+    <link rel="stylesheet" href="../../src/css/tools/chmod.css">
 
     <title>Website Utility Toolkit | Danh sách công cụ miễn phí cho Website Administrator</title>
 </head>
@@ -90,16 +91,16 @@
                             </div>
                             <div class="card__body">
                                 <div class="form-group-checkbox">
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="4" data-group="owner">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="owner">
                                         <span class="checkbox-label">Read (4)</span>
                                     </label>
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="2" data-group="owner">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="owner">
                                         <span class="checkbox-label">Write (2)</span>
                                     </label>
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="1" data-group="owner">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="owner">
                                         <span class="checkbox-label">Execute (1)</span>
                                     </label>
                                 </div>
@@ -113,16 +114,16 @@
                             </div>
                             <div class="card__body">
                                 <div class="form-group-checkbox">
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="4" data-group="group">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="group">
                                         <span class="checkbox-label">Read (4)</span>
                                     </label>
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="2" data-group="group">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="group">
                                         <span class="checkbox-label">Write (2)</span>
                                     </label>
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="1" data-group="group">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="group">
                                         <span class="checkbox-label">Execute (1)</span>
                                     </label>
                                 </div>
@@ -136,16 +137,16 @@
                             </div>
                             <div class="card__body">
                                 <div class="form-group-checkbox">
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="4" data-group="others">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="others">
                                         <span class="checkbox-label">Read (4)</span>
                                     </label>
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="2" data-group="others">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="others">
                                         <span class="checkbox-label">Write (2)</span>
                                     </label>
-                                    <label class="checkbox-wrapper">
-                                        <input type="checkbox" class="perm-check" data-bit="1" data-group="others">
+                                    <label class="checkbox-wrapper form-checkbox-label">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="others">
                                         <span class="checkbox-label">Execute (1)</span>
                                     </label>
                                 </div>
@@ -161,16 +162,16 @@
                                 <h3 class="card__title"><i class="fa-solid fa-gears"></i> Special Bits</h3>
                             </div>
                             <div class="card__body d-flex flex-row gap-4 flex-wrap">
-                                <label class="checkbox-wrapper checkbox-wrapper--special">
-                                    <input type="checkbox" class="perm-check" data-bit="4" data-group="special">
+                                <label class="checkbox-wrapper checkbox-wrapper--special form-checkbox-label">
+                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="special">
                                     <span class="checkbox-label">SUID (4)</span>
                                 </label>
-                                <label class="checkbox-wrapper checkbox-wrapper--special">
-                                    <input type="checkbox" class="perm-check" data-bit="2" data-group="special">
+                                <label class="checkbox-wrapper checkbox-wrapper--special form-checkbox-label">
+                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="special">
                                     <span class="checkbox-label">SGID (2)</span>
                                 </label>
-                                <label class="checkbox-wrapper checkbox-wrapper--special">
-                                    <input type="checkbox" class="perm-check" data-bit="1" data-group="special">
+                                <label class="checkbox-wrapper checkbox-wrapper--special form-checkbox-label">
+                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="special">
                                     <span class="checkbox-label">Sticky (1)</span>
                                 </label>
                             </div>
@@ -200,7 +201,7 @@
                                 <div class="chmod-input-group">
                                     <label class="form-label">Octal Value</label>
                                     <div class="input-with-copy">
-                                        <input type="text" id="chmodOctal" class="form-control" value="0755"
+                                        <input type="text" id="chmodOctal" class="form-control" value="0644"
                                             maxlength="4" readonly>
                                         <button class="btn btn-icon btn-copy-small" data-target="#chmodOctal"><i
                                                 class="fa-solid fa-copy"></i></button>
@@ -209,7 +210,7 @@
                                 <div class="chmod-input-group">
                                     <label class="form-label">Symbolic Notation</label>
                                     <div class="input-with-copy">
-                                        <input type="text" id="chmodSymbolic" class="form-control" value="rwxr-xr-x"
+                                        <input type="text" id="chmodSymbolic" class="form-control" value="rw-r--r--"
                                             readonly>
                                         <button class="btn btn-icon btn-copy-small" data-target="#chmodSymbolic"><i
                                                 class="fa-solid fa-copy"></i></button>
@@ -232,8 +233,8 @@
                                         <option value="find-f">Find Files only (644 style)</option>
                                         <option value="find-d">Find Directories only (755 style)</option>
                                     </select>
-                                    <label class="checkbox-wrapper recursive-wrapper">
-                                        <input type="checkbox" id="recursiveToggle">
+                                    <label class="checkbox-wrapper recursive-wrapper form-checkbox-label">
+                                        <input type="checkbox" id="recursiveToggle" class="form-checkbox">
                                         <span class="checkbox-label">Recursive (-R)</span>
                                     </label>
                                 </div>
@@ -299,7 +300,6 @@
         <!-- End: Footer Content -->
     </div>
     <script type="module" src="../../src/js/main.js"></script>
-    <link rel="stylesheet" href="../../src/css/tools/chmod.css">
     <script type="module" src="../../src/js/tools/chmod/chmod.js"></script>
 </body>
 

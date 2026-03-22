@@ -10,6 +10,7 @@ import { API_BASE_URL } from '../../config.js';
 // Khởi tạo
 // ==============================
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("🚀 Redirect Analyzer Tool Initialized");
     initRedirectAnalyzer();
 });
 
@@ -39,6 +40,12 @@ function setupEventListeners() {
             $('#urlValidationError'),
             $('#btnAnalyze')
         );
+
+        // Ẩn bảng lỗi và bảng kết quả cũ khi bắt đầu gõ URL mới
+        urlInput.addEventListener('input', () => {
+            hideError();
+            hideResults();
+        });
     }
 
     // Hiện/ẩn Custom UA input
@@ -59,6 +66,11 @@ function setupEventListeners() {
         } else {
             compareCard?.classList.add('d-none');
         }
+    });
+
+    // Làm mới (Refresh)
+    $('#btnBypassCacheRedirect')?.addEventListener('click', () => {
+        handleAnalyze();
     });
 
     // Copy chain
@@ -112,13 +124,19 @@ async function handleAnalyze() {
 
     const ua = getEffectiveUA();
     const deepScan = $('#deepScan')?.checked ?? false;
+    const ignoreTlsErrors = $('#ignoreTLSErrors')?.checked ?? false;
     const compareMode = $('#compareUAs')?.checked ?? false;
 
     setLoading(true);
     hideResults();
+    const cacheNoticeAtStart = $('#cacheNoticeRedirect');
+    if (cacheNoticeAtStart) {
+        cacheNoticeAtStart.classList.add('d-none');
+        cacheNoticeAtStart.classList.remove('d-flex');
+    }
 
     try {
-        const data = await fetchAnalysis(url, ua, deepScan);
+        const data = await fetchAnalysis(url, ua, deepScan, ignoreTlsErrors);
         renderResults(data.data, url);
 
         if (compareMode) {
@@ -127,6 +145,7 @@ async function handleAnalyze() {
         }
 
         updateShareLink(url);
+        updateURL(url);
     } catch (err) {
         showError(err.message || 'Không thể kết nối tới URL. Vui lòng thử lại!');
     } finally {
@@ -149,11 +168,11 @@ function getEffectiveUA() {
 // ==============================
 // Gọi API phân tích redirect
 // ==============================
-async function fetchAnalysis(url, ua, deepScan) {
+async function fetchAnalysis(url, ua, deepScan, ignoreTlsErrors = false) {
     const res = await fetch(`${API_BASE_URL}/redirect/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, userAgent: ua, deepScan })
+        body: JSON.stringify({ url, userAgent: ua, deepScan, ignoreTlsErrors })
     });
 
     const jsonData = await res.json().catch(() => ({}));
@@ -261,6 +280,17 @@ function renderResults(res, url) {
     // Mock save
     _lastData = res;
     showResults();
+
+    // Show cache notice with timestamp
+    const cacheNotice = $('#cacheNoticeRedirect');
+    const cacheTime = $('#cacheTimeRedirect');
+    if (cacheNotice && cacheTime) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + now.toLocaleDateString('vi-VN');
+        cacheTime.textContent = timeStr;
+        cacheNotice.classList.remove('d-none');
+        cacheNotice.classList.add('d-flex');
+    }
 
     renderScore(res);
     renderChain(chain);
@@ -579,6 +609,13 @@ function updateShareLink(url) {
     if (!input) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}?url=${encodeURIComponent(url)}`;
     input.value = shareUrl;
+}
+
+function updateURL(url) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('url', url);
+    const newURL = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({ url }, '', newURL);
 }
 
 // ==============================
