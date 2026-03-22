@@ -1,5 +1,9 @@
 import "./ssl-tools/checker.js";
 import "./ssl-tools/csr-decoder.js";
+import "./ssl-tools/csr-generator.js";
+import "./ssl-tools/cert-decoder.js";
+import "./ssl-tools/key-matcher.js";
+import "./ssl-tools/converter.js";
 import "./ssl-tools/router.js";
 
 document.addEventListener("click", async (e) => {
@@ -9,28 +13,33 @@ document.addEventListener("click", async (e) => {
     if (btn.disabled) return;
 
     try {
-        btn.disabled = true;
+        const selector = btn.getAttribute("data-clipboard-target");
+        if (!selector) return;
 
-        const selector = btn.dataset.clipboardTarget;
-        const container = btn.closest(".code-block__body");
-        const codeEl = container?.querySelector(selector);
+        const codeEl = document.querySelector(selector);
         if (!codeEl) return;
 
-        const raw = codeEl.textContent;
-        const cleaned = raw.replace(/\s+/g, " ").trim();
+        btn.disabled = true;
 
-        await navigator.clipboard.writeText(cleaned);
+        // Lấy text thô (tránh lấy cả markup span nếu có)
+        const textToCopy = codeEl.innerText || codeEl.textContent;
 
+        await navigator.clipboard.writeText(textToCopy.trim());
+
+        // Lưu HTML ban đầu
+        const originalHTML = btn.innerHTML;
+
+        // Hiện feedback thành công
         btn.innerHTML = `<i class="fa-solid fa-check"></i>`;
 
         setTimeout(() => {
-            btn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
+            btn.innerHTML = originalHTML;
             btn.disabled = false;
-        }, 3000);
+        }, 2000);
 
-    } catch (e) {
+    } catch (err) {
         btn.disabled = false;
-        console.error("COPY FAIL:", e);
+        console.error("COPY FAIL:", err);
     }
 });
 

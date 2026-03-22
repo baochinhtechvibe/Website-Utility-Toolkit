@@ -14,6 +14,7 @@ const toolMenuButtons = document.querySelectorAll(".js-tool-btn");
 //  TOOL CONTAINERS (Tool Panels / Sections)
 // ===================================================
 const toolChecker = document.getElementById("toolChecker");
+const toolCsrGenerator = document.getElementById("toolCsrGenerator");
 const toolCsr = document.getElementById("toolCsr");
 const toolCert = document.getElementById("toolCert");
 const toolMatcher = document.getElementById("toolMatcher");
@@ -43,6 +44,7 @@ const RESET_SECTIONS = [
 
 const TOOL_MAP = {
     "ssl-checker":   { panel: toolChecker },
+    "csr-generator": { panel: toolCsrGenerator },
     "csr-decoder":   { panel: toolCsr },
     "cert-decoder":  { panel: toolCert },
     "key-matcher":   { panel: toolMatcher },

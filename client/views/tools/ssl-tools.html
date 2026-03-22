@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 
 <head>
     <meta charset="UTF-8" />
@@ -58,16 +58,20 @@
                             <i class="fa-solid fa-lock"></i>
                             SSL Checker
                         </button>
+                        <button id="btnToolCsrGenerator" class="ssl-tools__item js-tool-btn" data-slug="csr-generator">
+                            <i class="fa-solid fa-file-code"></i>
+                            CSR Generator
+                        </button>
                         <button id="btnToolCsr" class="ssl-tools__item js-tool-btn" data-slug="csr-decoder">
                             <i class="fa-solid fa-qrcode"></i>
                             CSR Decoder
                         </button>
                         <button id="btnToolCert" class="ssl-tools__item js-tool-btn" data-slug="cert-decoder">
-                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <i class="fa-solid fa-qrcode"></i>
                             Certificate Decoder
                         </button>
                         <button id="btnToolMatcher" class="ssl-tools__item js-tool-btn" data-slug="key-matcher">
-                            <i class="fa-solid fa-circle-check"></i>
+                            <i class="fa-solid fa-puzzle-piece"></i>
                             Certificate Key Matcher
                         </button>
                         <button id="btnToolConverter" class="ssl-tools__item js-tool-btn" data-slug="ssl-converter">
@@ -78,8 +82,8 @@
 
                     <!-- ================= SSL CHECKER ================= -->
                     <section id="toolChecker" data-slug="ssl-checker"
-                        class="ssl-tools__section ssl-tools__section--active ssl-tools__section--checker mt-10 d-block">
-                        <p class="ssl-tools__description">
+                        class="ssl-tools__section ssl-tools__section--active ssl-checker mt-10 d-block">
+                        <p class="ssl-checker__desc">
                             Sử dụng Trình kiểm tra SSL nhanh của chúng tôi để giúp bạn dễ dàng phát hiện các sự cố trong
                             quá trình cài đặt chứng chỉ SSL. Bạn có thể kiểm tra chứng chỉ SSL trên máy chủ web để đảm
                             bảo chứng chỉ được cài đặt đúng cách, còn hiệu lực, đáng tin cậy và không gây lỗi cho người
@@ -90,12 +94,13 @@
                             <!-- Header Card -->
                             <div class="card__header">
                                 <h2 class="card__title text-xl font-bold text-center">
+                                    <i class="fa-solid fa-shield mr-2"></i>
                                     SSL Checker
                                 </h2>
                             </div>
 
                             <div class="card__body pt-4">
-                                <form id="formChecker" action="" method="post" class="form form--ssl">
+                                <form id="formChecker" action="" method="post" class="ssl-checker__form form">
 
                                     <!-- Sử dụng form-inline để nằm cùng hàng trên desktop -->
                                     <div class="form-inline">
@@ -119,8 +124,8 @@
 
                                     <div id="domainValidationError" class="error-card mt-4 d-none">
                                         <div class="error-card__header">
-                                            <h3 class="error-card__title"><i
-                                                    class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
+                                            <h3 class="error-card__title">
+                                                <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
                                             </h3>
                                         </div>
                                         <div class="error-card__body">
@@ -132,19 +137,31 @@
                                 </form>
 
                                 <!-- Result Card -->
-                                <div id="toolResultChecker" class="result-card result-checker mt-6 d-none">
+                                <div id="toolResultChecker" class="result-card ssl-checker__result mt-6 d-none">
                                     <div id="resultCheckerHeader"
                                         class="result-card__header d-flex flex-row justify-between items-center">
                                         <h3 class="result-card__title text-h3 font-bold">
                                             <i class="fas fa-check-circle text-success mr-2"></i>
                                             Kết quả cho domain <span id="resultDomainName" class="text-success"></span>:
                                         </h3>
-                                        <div class="result-card__actions">
-                                            <button id="btnWhoisChecker" class="btn btn-whois d-flex items-center">
+                                        <div class="ssl-checker__actions" id="sslActions">
+                                            <button id="btnWhoisChecker" class="btn btn-sm btn-whois d-none">
                                                 <i class="fa-solid fa-address-card"></i> WHOIS
                                             </button>
                                         </div>
                                     </div>
+
+                                    <!-- CACHE BANNER (Premium Refresh) -->
+                                    <div id="cacheNotice"
+                                        class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center d-none">
+                                        <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b
+                                                id="cacheTime"></b>.</span>
+                                        <button type="button" id="btnBypassCache"
+                                            class="btn btn-sm btn-outline cache-notice__btn-refresh">
+                                            <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                                        </button>
+                                    </div>
+
                                     <div id="resultCheckerContent" class="result-card__body">
                                     </div>
                                 </div>
@@ -185,6 +202,204 @@
                         </div>
                     </section>
 
+                    <!-- ================= SSL CSR GENERATOR ================= -->
+                    <section id="toolCsrGenerator" class="ssl-tools__section ssl-tools__section--csr mt-10 d-none"
+                        data-slug="csr-generator">
+                        <p class="ssl-tools__description text-center">
+                            Hoàn thành form này để tạo CSR (Certificate Signing Request) và khóa riêng (Private Key)
+                            mới.
+                        </p>
+                        <br>
+                        <div class="card csr-generator__card">
+                            <div class="card__header">
+                                <h2 class="card__title text-xl font-bold text-center">
+                                    <i class="fa-solid fa-file-lines mr-2"></i>
+                                    Generate a Certificate Signing Request
+                                </h2>
+                            </div>
+                            <div class="card__body pt-4">
+                                <form action="" id="formCsrGenerator">
+                                    <div class="form-grid pt-2">
+
+                                        <!-- Common Name — BẮT BUỘC, đặt lên đầu vì quan trọng nhất -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrDomain">
+                                                Tên miền (Common Name) <span class="text-error">*</span>
+                                            </label>
+                                            <input type="text" id="inputCsrDomain" name="domainName" class="form-input"
+                                                placeholder="VD: example.com" required>
+                                            
+                                            <div id="csrDomainValidationError" class="error-card mt-2 d-none">
+                                                <div class="error-card__header">
+                                                    <h3 class="error-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
+                                                </div>
+                                                <div class="error-card__body py-2">
+                                                    <p class="error-card__message text-sm">Vui lòng nhập đúng định dạng domain (ví dụ: <code>example.com</code>).</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- SANs -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrSans">
+                                                Tên miền phụ (Subject Alternative Names)
+                                            </label>
+                                            <input type="text" id="inputCsrSans" name="sans" class="form-input"
+                                                placeholder="VD: www.example.com, api.example.com">
+                                            <p class="text-sm text-muted mt-1">
+                                                Phân cách bằng dấu phẩy. Common Name sẽ tự động được thêm vào.
+                                            </p>
+                                            
+                                            <div id="sansValidationError" class="error-card mt-2 d-none">
+                                                <div class="error-card__header">
+                                                    <h3 class="error-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> SANs không hợp lệ</h3>
+                                                </div>
+                                                <div class="error-card__body py-2">
+                                                    <p id="sansValidationMessage" class="error-card__message text-sm"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Country -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrCountry">
+                                                Quốc gia (Country)
+                                                <span class="text-muted text-sm">(2 ký tự ISO, VD: VN)</span>
+                                            </label>
+                                            <input type="text" id="inputCsrCountry" name="country" class="form-input"
+                                                placeholder="VN" maxlength="2">
+                                            
+                                            <div id="countryValidationError" class="error-card mt-2 d-none">
+                                                <div class="error-card__header">
+                                                    <h3 class="error-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
+                                                </div>
+                                                <div class="error-card__body py-2">
+                                                    <p class="error-card__message text-sm">Vui lòng nhập đúng 2 ký tự chữ cái mã quốc gia (ví dụ: VN, US).</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- State -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrState">Tỉnh/Bang (State)</label>
+                                            <input type="text" id="inputCsrState" name="state" class="form-input"
+                                                placeholder="VD: Ho Chi Minh City">
+                                        </div>
+
+                                        <!-- Locality -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrLocality">Khu vực (Locality)</label>
+                                            <input type="text" id="inputCsrLocality" name="locality" class="form-input"
+                                                placeholder="VD: District 1">
+                                        </div>
+
+                                        <!-- Organization -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrOrg">Tổ chức (Organization)</label>
+                                            <input type="text" id="inputCsrOrg" name="organization" class="form-input"
+                                                placeholder="VD: Your Company Co., Ltd.">
+                                        </div>
+
+                                        <!-- Organizational Unit -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="inputCsrOrgUnit">Đơn vị (Organizational
+                                                Unit)</label>
+                                            <input type="text" id="inputCsrOrgUnit" name="organizationUnit"
+                                                class="form-input" placeholder="VD: IT Department">
+                                        </div>
+
+                                        <!-- Key Type -->
+                                        <div class="form-field w-full mt-2">
+                                            <label class="form-label">Loại khóa (Key Type)</label>
+                                            <div class="form-radio-group mt-2">
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keyType" value="rsa" class="form-radio"
+                                                        checked>
+                                                    RSA
+                                                </label>
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keyType" value="ecdsa" class="form-radio">
+                                                    ECDSA
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Key Size -->
+                                        <div class="form-field w-full mt-2">
+                                            <label class="form-label">Kích thước khóa (Key Size)</label>
+                                            <div class="form-radio-group mt-2" id="keySizeRsa">
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keySizeRsa" value="2048" class="form-radio"
+                                                        checked>
+                                                    2048-bit
+                                                </label>
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keySizeRsa" value="4096" class="form-radio">
+                                                    4096-bit
+                                                </label>
+                                            </div>
+                                            <div class="form-radio-group mt-2 d-none" id="keySizeEcdsa">
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keySizeEcdsa" value="256" class="form-radio" checked>
+                                                    P-256
+                                                </label>
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keySizeEcdsa" value="384" class="form-radio">
+                                                    P-384
+                                                </label>
+                                                <label class="form-radio-label">
+                                                    <input type="radio" name="keySizeEcdsa" value="521" class="form-radio">
+                                                    P-521
+                                                </label>
+                                            </div>
+                                            <p class="text-sm text-muted mt-1" id="keySizeHint">
+                                                RSA 2048-bit: phổ biến nhất, tương thích cao. 4096-bit: bảo mật hơn
+                                                nhưng chậm hơn.
+                                            </p>
+                                        </div>
+
+                                        <!-- Generate Button -->
+                                        <div class="form-field w-full mt-6">
+                                            <button type="submit" id="btnGenerateCsr"
+                                                class="btn btn-action w-full justify-center" disabled>
+                                                <i class="fa-solid fa-magic mr-2" id="iconGenerateCsr"></i>
+                                                Tạo CSR (Generate CSR)
+                                                <i class="fa-solid fa-spinner fa-spin ml-2 d-none"
+                                                    id="iconGenerateCsrLoading"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <div id="toolResultCsrGenerator" class="result-card ssl-checker__result mt-6 d-none">
+                                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                                        <h3 class="result-card__title text-h3 font-bold">
+                                            <i class="fas fa-check-circle text-success mr-2"></i>
+                                            Thông tin CSR và Private Key
+                                        </h3>
+                                    </div>
+
+                                    <div id="resultCsrGeneratorContent" class="result-card__body">
+                                    </div>
+                                </div>
+
+                                <!-- Error Card -->
+                                <div id="toolErrorCsrGenerator" class="error-card mt-6 d-none">
+                                    <div class="error-card__header">
+                                        <h3 class="error-card__title text-xl font-bold">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Lỗi tạo CSR Generator
+                                        </h3>
+                                    </div>
+                                    <div class="error-card__body">
+                                        <p id="toolErrorCsrGeneratorMessage" class="error-card__message">
+                                            Tạo CSR thất bại, vui lòng thử lại sau!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                     <!-- ================= SSL CSR DECODER ================= -->
                     <section id="toolCsr" class="ssl-tools__section ssl-tools__section--csr mt-10 d-none"
                         data-slug="csr-decoder">
@@ -219,31 +434,44 @@
                             </div>
                         </div>
 
-                        <div class="card">
+                        <div class="card ssl-checker__card">
                             <div class="card__header">
                                 <h2 class="card__title text-xl font-bold text-center">
+                                    <i class="fa-solid fa-file-lines mr-2"></i>
                                     CSR Decoder
                                 </h2>
                             </div>
                             <div class="card__body pt-4">
-                                <form id="formCsrDecoder" method="POST" class="form form--ssl">
+                                <form id="formCsrDecoder">
                                     <div class="form-field">
                                         <label class="form-label" for="inputCsr">Dán Certificate Signing Request
                                             (CSR):</label>
-                                        <textarea id="inputCsr" class="form-input" rows="8"
+                                        <textarea id="inputCsr" name="csr" class="form-text-area" required
                                             placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;MII..."></textarea>
                                     </div>
                                     <div class="form-field form-field--button mt-4">
-                                        <button type="submit" id="btnCsrDecoder" class="btn btn-action btn-block">
-                                            <i class="fa-solid fa-table-cells-row-unlock" id="iconCsrDecoder"></i>
+                                        <button type="submit" id="btnCsrDecoder"
+                                            class="btn btn-action w-full p-3 font-semibold text-lg" disabled>
+                                            <i class="fa-solid fa-qrcode mr-2" id="iconCsrDecoder"></i>
                                             Giải mã CSR
-                                            <i class="fa-solid fa-spinner fa-spin d-none" id="iconCsrLoading"></i>
+                                            <i class="fa-solid fa-spinner fa-spin ml-2 d-none" id="iconCsrLoading"></i>
                                         </button>
+                                    </div>
+
+                                    <div id="csrValidationError" class="error-card mt-4 d-none">
+                                        <div class="error-card__header">
+                                            <h3 class="error-card__title">
+                                                <i class="fa-solid fa-triangle-exclamation"></i> Lỗi định dạng CSR
+                                            </h3>
+                                        </div>
+                                        <div class="error-card__body">
+                                            <p class="error-card__message">Nội dung CSR không hợp lệ.</p>
+                                        </div>
                                     </div>
                                 </form>
 
                                 <!-- Error Card cho CSR -->
-                                <div id="errorCardCsr" class="error-card mt-6 d-none">
+                                <div id="errorCardCsr" class="error-card ssl-checker__error-card mt-6 d-none">
                                     <div class="error-card__header">
                                         <h3 class="error-card__title text-xl font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
@@ -258,14 +486,14 @@
                                 </div>
 
                                 <!-- Result Card cho CSR -->
-                                <div id="resultCardCsr" class="result-card mt-6 d-none">
+                                <div id="resultCardCsr" class="result-card ssl-checker__result-card mt-6 d-none">
                                     <div class="result-card__header d-flex flex-row justify-between items-center">
                                         <h3 class="result-card__title text-xl font-bold">
                                             <i class="fa-solid fa-qrcode"></i>
-                                            Kết quả giải mã CSR:
+                                            Kết quả giải mã CSR
                                         </h3>
                                     </div>
-                                    <div id="resultBodyCsr" class="result-card__body mt-4">
+                                    <div id="resultBodyCsr" class="result-card__body ssl-checker__result-content mt-4">
                                         <!-- Nội dung JS nhồi vào -->
                                     </div>
                                 </div>
@@ -304,21 +532,36 @@
                         <div class="card">
                             <div class="card__header">
                                 <h2 class="card__title text-xl font-bold text-center">
+                                    <i class="fa-solid fa-file-lines mr-2"></i>
                                     Certificate Decoder
                                 </h2>
                             </div>
                             <div class="card__body pt-4">
-                                <form id="formCertDecoder" method="POST" class="form form--ssl">
+                                <form id="formCertDecoder">
                                     <div class="form-field">
-                                        <label class="form-label" for="inputCert">Dán Block Chứng Chỉ SSL:</label>
-                                        <textarea id="inputCert" class="form-input" rows="8"
+                                        <label class="form-label" for="inputCert">Dán Certificate (CRT/PEM):</label>
+                                        <textarea id="inputCert" name="cert" class="form-text-area" required
                                             placeholder="-----BEGIN CERTIFICATE-----&#10;MII..."></textarea>
                                     </div>
                                     <div class="form-field form-field--button mt-4">
-                                        <button type="button" id="btnCertDecoder" class="btn btn-action btn-block">
-                                            <i class="fa-solid fa-certificate"></i>
+                                        <button type="button" id="btnCertDecoder"
+                                            class="btn btn-action w-full p-3 font-semibold text-lg" disabled>
+                                            <i class="fa-solid fa-certificate mr-2" id="iconCertDecoder"></i>
                                             Giải mã chứng chỉ
+                                            <i class="fa-solid fa-spinner fa-spin ml-2 d-none" id="iconCertLoading"></i>
                                         </button>
+                                    </div>
+                                    <!-- Inline Validation Error Card cho CERT Decoder -->
+                                    <div id="certValidationError" class="error-card mt-4 d-none">
+                                        <div class="error-card__header">
+                                            <h3 class="error-card__title"><i
+                                                    class="fa-solid fa-triangle-exclamation"></i> Lỗi định dạng
+                                                Certificate</h3>
+                                        </div>
+                                        <div class="error-card__body">
+                                            <p class="error-card__message">Vui lòng kiểm tra lại nội dung Certificate.
+                                            </p>
+                                        </div>
                                     </div>
                                 </form>
 
@@ -375,25 +618,551 @@
                             </div>
                             <div class="code-block__body">
                                 <code id="codeMatcher"
-                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkey</span> <span class="code-parameter">-in</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-pubout</span> <span class="code-parameter">-outform</span> <span class="code-text">pem | sha256sum</span></code>
+                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkey</span> <span class="code-parameter">-in</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-pubout</span> <span class="code-parameter">-outform</span> <span class="code-text">pem | sha256sum</span>
+<span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.crt</span> <span class="code-parameter">-pubkey</span> <span class="code-parameter">-noout</span> <span class="code-parameter">-outform</span> <span class="code-text">pem | sha256sum</span>
+<span class="code-program">openssl</span> <span class="code-text">req</span> <span class="code-parameter">-in</span> <span class="code-value">CSR.csr</span> <span class="code-parameter">-pubkey</span> <span class="code-parameter">-noout</span> <span class="code-parameter">-outform</span> <span class="code-text">pem | sha256sum</span></code>
                             </div>
                         </div>
+
 
                         <div class="card">
                             <div class="card__header">
                                 <h2 class="card__title text-xl font-bold text-center">
+                                    <i class="fa-solid fa-puzzle-piece mr-2"></i>
                                     Key Matcher
                                 </h2>
                             </div>
-                            <div class="card__body pt-4 text-center">
-                                <p class="text-gray-500 italic py-8">Tính năng đang trong quá trình phát triển.</p>
+                            <div class="card__body pt-6">
+                                <!-- Mode Selector -->
+                                <div class="form-radio-group justify-center mb-8 mt-2">
+                                    <label class="form-radio-label">
+                                        <input type="radio" name="matcherMode" value="cert_key" class="form-radio"
+                                            checked>
+                                        <span>Certificate & Private Key</span>
+                                    </label>
+                                    <label class="form-radio-label">
+                                        <input type="radio" name="matcherMode" value="csr_cert" class="form-radio">
+                                        <span>CSR & Certificate</span>
+                                    </label>
+                                </div>
+
+                                <form id="formKeyMatcher">
+                                    <div class="form-grid form-grid-2">
+                                        <!-- Box 1 -->
+                                        <div class="form-field">
+                                            <label id="lblMatcherBox1" for="matcherBox1"
+                                                class="form-label font-bold text-gray-700">
+                                                Private Key (KEY)
+                                            </label>
+                                            <textarea id="matcherBox1" name="matcherBox1" class="form-text-area"
+                                                required></textarea>
+                                            <div id="matcher1ValidationError"
+                                                class="error-card error-card--inline mt-2 d-none">
+                                                <div class="error-card__header">
+                                                    <h3 class="error-card__title"><i
+                                                            class="fa-solid fa-triangle-exclamation"></i> Định
+                                                        dạng không hợp lệ</h3>
+                                                </div>
+                                                <div class="error-card__body">
+                                                    <p class="error-card__message"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Box 2 -->
+                                        <div class="form-field">
+                                            <label id="lblMatcherBox2" for="matcherBox2"
+                                                class="form-label font-bold text-gray-700">
+                                                Certificate (CRT)
+                                            </label>
+                                            <textarea id="matcherBox2" name="matcherBox2" class="form-text-area"
+                                                required></textarea>
+                                            <div id="matcher2ValidationError"
+                                                class="error-card error-card--inline mt-2 d-none">
+                                                <div class="error-card__header">
+                                                    <h3 class="error-card__title"><i
+                                                            class="fa-solid fa-triangle-exclamation"></i> Định
+                                                        dạng không hợp lệ</h3>
+                                                </div>
+                                                <div class="error-card__body">
+                                                    <p class="error-card__message"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field form-field--button mt-6 mb-4">
+                                        <button type="submit" id="btnKeyMatcher"
+                                            class="btn btn-action w-full p-3 font-semibold text-lg" disabled>
+                                            <i class="fa-solid fa-magnifying-glass mr-2" id="iconMatcher"></i>
+                                            Kiểm tra Khớp Khóa
+                                            <i class="fa-solid fa-spinner fa-spin ml-2 d-none"
+                                                id="iconMatcherLoading"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Main Error Card (Moved below button) -->
+                                    <div id="errorCardMatcher" class="error-card mt-4 d-none">
+                                        <div class="error-card__header">
+                                            <h3 class="error-card__title"><i
+                                                    class="fa-solid fa-triangle-exclamation"></i> Lỗi đối soát</h3>
+                                        </div>
+                                        <div class="error-card__body">
+                                            <p class="error-card__message" id="errorMsgMatcher"></p>
+                                        </div>
+                                    </div>
+
+                                </form>
+
+                                <div id="resultCardMatcher" class="result-card mt-6 d-none">
+                                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                                        <h3 class="result-card__title text-xl font-bold">
+                                            <!-- Icon & Title JS -->
+                                        </h3>
+                                    </div>
+                                    <div id="resultBodyMatcher" class="result-card__body mt-4">
+                                        <!-- Nội dung kết quả -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </section>
+
                     <!-- ====================== SSL CONVERTER ====================== -->
-                    <section id="toolConverter"
-                        class="ssl-tools__section ssl-tools__section--converter ssl-tools__detail mt-10 d-none"
+                    <section id="toolConverter" class="ssl-tools__section ssl-tools__section--converter mt-10 d-none"
                         data-slug="ssl-converter">
+                        <p class="ssl-tools__description text-justify">
+                            Sử dụng công cụ này để chuyển đổi chứng chỉ SSL giữa các định dạng như PEM, DER, P7B, PFX.
+                            Mỗi nền tảng yêu cầu định dạng khác nhau. Ví dụ: <strong>Windows Server</strong> dùng file
+                            <strong>.pfx</strong>, còn <strong>Apache</strong> dùng file <strong>PEM</strong> riêng lẻ
+                            <strong>(.crt, .cer)</strong>.
+                        </p>
+                        <br>
+                        <div class="card">
+                            <!-- Header Card -->
+                            <div class="card__header">
+                                <h2 class="card__title text-xl font-bold text-center">
+                                    <i class="fa-solid fa-exchange mr-2"></i>
+                                    SSL Converter
+                                </h2>
+                            </div>
+
+                            <div class="card__body pt-4">
+                                <form id="formConverter" action="" method="post" class="ssl-converter__form form">
+
+                                    <!-- Dùng form dọc (stacked) cho các trường -->
+                                    <div class="form-grid pt-2">
+                                        <!-- Certificate File (Always visible) -->
+                                        <div class="form-field w-full" id="groupCertFile">
+                                            <label class="form-label" for="inputFileCertificate">Tệp chứng chỉ để chuyển
+                                                đổi (Certificate File)</label>
+                                            <input type="file" id="inputFileCertificate" name="certificate"
+                                                class="form-input" required>
+                                        </div>
+
+                                        <!-- Private Key File (Hidden by default) -->
+                                        <div class="form-field w-full d-none" id="groupPrivateKey">
+                                            <label class="form-label" for="inputFilePrivateKey">Tệp Private Key (Private
+                                                Key File)</label>
+                                            <input type="file" id="inputFilePrivateKey" name="privateKey"
+                                                class="form-input">
+                                        </div>
+
+                                        <!-- Chain Certificate File 1 (Hidden by default) -->
+                                        <div class="form-field w-full d-none" id="groupChain1">
+                                            <label class="form-label" for="inputFileChain1">Tệp chứng chỉ trung gian 1
+                                                (Chain Certificate File - Optional)</label>
+                                            <input type="file" id="inputFileChain1" name="chain1" class="form-input">
+                                        </div>
+
+                                        <!-- Chain Certificate File 2 (Hidden by default) -->
+                                        <div class="form-field w-full d-none" id="groupChain2">
+                                            <label class="form-label" for="inputFileChain2">Tệp chứng chỉ trung gian 2
+                                                (Chain Certificate File 2 - Optional)</label>
+                                            <input type="file" id="inputFileChain2" name="chain2" class="form-input">
+                                        </div>
+
+                                        <!-- Current Certificate Format Select -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="currentCertFormat">Định dạng chứng chỉ hiện
+                                                tại (Type of Current Certificate)</label>
+                                            <select id="currentCertFormat" name="currentCertFormat"
+                                                class="form-input form-select">
+                                                <option value="pem" selected="selected">Standard PEM</option>
+                                                <option value="der">DER / Binary</option>
+                                                <option value="p7b">PKCS#7 / P7B</option>
+                                                <option value="pfx">PKCS#12 / PFX</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Target Certificate Format Select -->
+                                        <div class="form-field w-full">
+                                            <label class="form-label" for="targetCertFormat">Định dạng muốn chuyển sang
+                                                (Type To Convert To)</label>
+                                            <select id="targetCertFormat" name="targetCertFormat"
+                                                class="form-input form-select">
+                                                <option value="der">DER / Binary</option>
+                                                <option value="p7b">PKCS#7 / P7B</option>
+                                                <option value="pfx">PKCS#12 / PFX</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- PFX Password (Hidden by default) -->
+                                        <div class="form-field w-full d-none" id="groupPfxPassword">
+                                            <label class="form-label" for="inputPfxPassword">Mật khẩu PFX (PFX
+                                                Password)</label>
+                                            <input type="password" id="inputPfxPassword" name="pfxPassword"
+                                                class="form-input" placeholder="Nhập mật khẩu PFX">
+                                        </div>
+
+                                        <!-- Cảnh báo bảo mật PFX (Giống mockup) -->
+                                        <div id="groupPfxWarning" class="warning-card mt-4 d-none">
+                                            <div class="warning-card__header">
+                                                <h3 class="warning-card__title"><i
+                                                        class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
+                                                    mật</h3>
+                                            </div>
+                                            <div class="warning-card__body">
+                                                <p class="warning-card__message">Tệp Private Key và Mật khẩu của bạn nên
+                                                    được
+                                                    giữ an toàn. Website Utility Toolkit sử dụng kết nối SSL mã hóa để
+                                                    tải lên
+                                                    và chuyển đổi, máy chủ sẽ tự động xóa dữ liệu ngay sau khi xử lý
+                                                    thành công.
+                                                    Nếu bạn thao tác với chứng chỉ quan trọng, chúng tôi luôn khuyến
+                                                    nghị bạn
+                                                    thực hiện chuyển đổi Offline bằng dòng lệnh OpenSSL.</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Button -->
+                                        <div class="form-field w-full mt-4">
+                                            <button id="btnConvertCertificate" type="submit"
+                                                class="btn btn-action btn-block w-full"
+                                                style="justify-content: center;">
+                                                <i class="fas fa-exchange mr-2" id="btnConvertCertificateIcon"></i>
+                                                Convert Certificate
+                                                <i class="fa-solid fa-spinner fa-spin d-none"
+                                                    id="btnConvertCertificateLoading"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="toolErrorConverter" class="error-card mt-4 d-none">
+                                        <div class="error-card__header">
+                                            <h3 class="error-card__title">
+                                                <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
+                                            </h3>
+                                        </div>
+                                        <div class="error-card__body">
+                                            <p class="error-card__message">Định dạng tệp chứng chỉ không hợp lệ.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="ssl-converter__info">
+                            <h3 class="ssl-converter__title font-bold">Các định dạng chứng chỉ</h3>
+
+                            <div class="ssl-converter__block mt-4">
+                                <h4 class="ssl-converter__subtitle font-bold">Định dạng PEM</h4>
+                                <div class="ssl-converter__message mt-2">
+                                    <p>
+                                        PEM là định dạng phổ biến nhất được các tổ chức cấp chứng chỉ (CA) sử dụng để
+                                        phát
+                                        hành chứng chỉ. Các file PEM thường có phần mở rộng như <code
+                                            class="font-semibold">.pem</code>, <code class="font-semibold">.crt</code>,
+                                        <code class="font-semibold">.cer</code>, <code
+                                            class="font-semibold">.key</code>.
+                                        Đây
+                                        là dạng văn bản ASCII được mã hóa Base64, chứa các dòng
+                                        "-----BEGIN CERTIFICATE-----" và "-----END CERTIFICATE-----".
+                                        Định dạng PEM có thể chứa chứng chỉ máy chủ, chứng chỉ trung gian và cả private
+                                        key.
+                                    </p>
+                                    <p class="mt-2">
+                                        <strong>Apache và các máy chủ tương tự </strong> sử dụng chứng chỉ định dạng
+                                        PEM. Nhiều
+                                        certificate,
+                                        thậm chí cả private key, có thể được đặt chung trong một file (xếp nối tiếp
+                                        nhau),
+                                        tuy nhiên đa số nền tảng như Apache thường yêu cầu certificate và private key
+                                        được
+                                        tách thành các file riêng biệt.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="ssl-converter__block mt-4">
+                                <h4 class="ssl-converter__subtitle font-bold">Định dạng DER</h4>
+                                <div class="ssl-converter__message mt-2">
+                                    <p>
+                                        DER là dạng nhị phân của chứng chỉ, khác với định dạng PEM dạng văn bản ASCII.
+                                        File DER có thể có đuôi <code class="font-semibold">.der</code>, nhưng cũng
+                                        thường
+                                        dùng <code class="font-semibold">.cer</code>, nên cách phân biệt
+                                        với <code class="font-semibold">.cer</code> dạng PEM là mở bằng trình soạn thảo:
+                                        nếu
+                                        không có dòng BEGIN/END thì đó
+                                        là DER. Mọi loại certificate và private key đều có thể mã hóa ở định dạng DER.
+                                        Định dạng
+                                        này thường được sử dụng trong <strong>các nền tảng Java</strong>. Công cụ SSL
+                                        Converter chỉ hỗ trợ chuyển đổi certificate sang DER. Nếu cần chuyển
+                                        private key sang DER, bạn nên sử dụng <a href="https://docs.openssl.org/master/"
+                                            class="text-info">các lệnh OpenSSL</a>.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="ssl-converter__block mt-4">
+                                <h4 class="ssl-converter__subtitle font-bold">Định dạng PKCS#7 / P7B</h4>
+                                <div class="ssl-converter__message mt-2">
+                                    <p>
+                                        PKCS#7 (P7B) là định dạng thường được lưu dưới dạng Base64 ASCII, với phần mở
+                                        rộng <code class="font-semibold">.p7b</code> hoặc <code
+                                            class="font-semibold">.p7c</code>.
+                                    </p>
+                                    <p class="mt-2">
+                                        File P7B chứa các dòng
+                                        "-----BEGIN PKCS7-----" và "-----END PKCS7-----". Định dạng này chỉ bao gồm
+                                        certificate và chuỗi chứng chỉ (chain), không chứa
+                                        private key. P7B được hỗ trợ bởi nhiều nền tảng như <strong>Microsoft Windows và
+                                            Java
+                                            Tomcat</strong>.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="ssl-converter__block mt-4">
+                                <h4 class="ssl-converter__subtitle font-bold">Định dạng PKCS#12 / PFX</h4>
+                                <div class="ssl-converter__message mt-2">
+                                    <p>
+                                        PKCS#12 (PFX) là định dạng nhị phân dùng để lưu trữ server certificate, các
+                                        intermediate certificates và private key trong cùng một file có thể mã hóa. File
+                                        PFX thường có đuôi <code class="font-semibold">.pfx</code> hoặc <code
+                                            class="font-semibold">.p12</code> và được sử dụng phổ biến trên
+                                        <strong>Windows</strong> để
+                                        import/export chứng chỉ và private key.
+                                    </p>
+                                    <p class="mt-2">
+                                        Khi chuyển từ PFX sang PEM bằng OpenSSL, toàn bộ certificate và private key sẽ
+                                        được gộp vào một file. Bạn cần mở file đó bằng trình soạn thảo, sau đó tách
+                                        riêng từng certificate và private key (bao gồm cả dòng BEGIN/END) thành các file
+                                        riêng như <code class="font-semibold">certificate.cer</code>, <code
+                                            class="font-semibold">CACert.cer</code> và <code
+                                            class="font-semibold">privateKey.key</code>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="ssl-converter__commands">
+                            <h3 class="ssl-converter__title font-bold">Lệnh OpenSSL để chuyển đổi SSL trên máy của bạn
+                            </h3>
+                            <p>
+                                Khuyến nghị bạn thực hiện chuyển đổi (đặc biệt với file <code
+                                    class="font-semibold">.pfx</code>) trực tiếp trên máy cá nhân
+                                bằng OpenSSL để đảm bảo private key luôn được giữ an toàn. Dưới đây là các lệnh OpenSSL
+                                giúp bạn chuyển đổi chứng chỉ SSL sang các định dạng khác nhau.
+                            </p>
+
+                            <div class="command-group mt-6">
+                                <div class="command-group__header">
+                                    <h4 class="font-bold mb-2">
+                                        Chuyển đổi PEM bằng OpenSSL:
+                                    </h4>
+                                </div>
+                                <div class="command-group__body">
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi PEM sang DER:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codePemToDer">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codePemToDer"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-outform</span> <span class="code-value">der</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.pem</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.der</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi PEM sang P7B:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codePemToP7b">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codePemToP7b"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">crl2pkcs7</span> <span class="code-parameter">-nocrl</span> <span class="code-parameter">-certfile</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.cer</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi PEM sang PFX:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codePemToPfx">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codePemToPfx"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-export</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-inkey</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.crt</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.crt</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="command-group mt-6">
+                                <div class="command-group__header">
+                                    <h4 class="font-bold mb-2">
+                                        Chuyển đổi DER bằng OpenSSL:
+                                    </h4>
+                                </div>
+                                <div class="command-group__body">
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi DER sang PEM:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codeDerToPem">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codeDerToPem"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-inform</span> <span class="code-value">der</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pem</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="command-group mt-6">
+                                <div class="command-group__header">
+                                    <h4 class="font-bold mb-2">
+                                        Chuyển đổi P7B bằng OpenSSL:
+                                    </h4>
+                                </div>
+                                <div class="command-group__body">
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi P7B sang PEM:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codeP7bToPem">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codeP7bToPem"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs7</span> <span class="code-parameter">-print_certs</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi P7B sang PFX:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codeP7bToPfx1">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codeP7bToPfx1"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs7</span> <span class="code-parameter">-print_certs</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span></code>
+                                            </div>
+                                        </div>
+                                        <div class="code-block mt-2">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codeP7bToPfx2">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codeP7bToPfx2"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-export</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-inkey</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.cer</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="command-group mt-6">
+                                <div class="command-group__header">
+                                    <h4 class="font-bold mb-2">
+                                        Chuyển đổi PFX bằng OpenSSL:
+                                    </h4>
+                                </div>
+                                <div class="command-group__body">
+                                    <div class="command-group__item mb-4">
+                                        <strong class="font-bold mb-2">
+                                            Chuyển đổi PFX sang PEM:
+                                        </strong>
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">
+                                                    <i class="fa-solid fa-code"></i> Bash
+                                                </span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#codePfxToPem">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="codePfxToPem"
+                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-nodes</span></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
                 </div>
             </div>
@@ -430,8 +1199,9 @@
         </footer>
         <!-- End: Footer Content -->
     </div>
-    <script type="module" src="../../src/js/main.js"></script>
-    <script src="../../src/js/tools/ssl/ssl-tools.js" type="module"></script>
+    <!-- SSL Tools Scripts -->
+    <script type="module" src="/client/src/js/main.js"></script>
+    <script type="module" src="/client/src/js/tools/ssl/ssl-tools.js"></script>
 </body>
 
 </html>
