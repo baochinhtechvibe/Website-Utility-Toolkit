@@ -17,13 +17,17 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/models"
 )
 
-var ErrNoIP = errors.New("no valid ip")
+var (
+	ErrDNSFailed      = errors.New("dns resolve failed")
+	ErrTLSFailed      = errors.New("tls dial failed")
+	ErrNoCertificates = errors.New("no certificates found")
+	ErrNoIP           = errors.New("no valid ip")
+)
 
 // ===========================
 // DNS RESOLUTION
@@ -36,22 +40,33 @@ func resolveIP(ctx context.Context, domain string) (string, error) {
 		err error
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, DNSResolveTimeout)
-	defer cancel()
+	// Tạo context con với timeout
+	dnsCtx, dnsCancel := context.WithTimeout(ctx, DNSResolveTimeout)
+	defer dnsCancel()
+
+	// Pattern cancel context để tránh leak goroutine khi hàm return sớm
+	gCtx, gCancel := context.WithCancel(dnsCtx)
+	defer gCancel()
 
 	ch := make(chan result, 2)
 
 	// Google DNS
 	go func() {
-		ips, err := lookupWithDNS(ctx, domain, "8.8.8.8:53")
-		ch <- result{ips, err}
+		ips, err := lookupWithDNS(gCtx, domain, "8.8.8.8:53")
+		select {
+		case ch <- result{ips, err}:
+		case <-gCtx.Done():
+		}
 	}()
 
 	// System resolver
 	go func() {
 		r := &net.Resolver{}
-		ips, err := r.LookupIP(ctx, "ip", domain)
-		ch <- result{ips, err}
+		ips, err := r.LookupIP(gCtx, "ip", domain)
+		select {
+		case ch <- result{ips, err}:
+		case <-gCtx.Done():
+		}
 	}()
 
 	var lastErr error
@@ -66,12 +81,12 @@ func resolveIP(ctx context.Context, domain string) (string, error) {
 				lastErr = res.err
 			}
 		case <-ctx.Done():
-			return "", ErrNoIP
+			return "", ErrDNSFailed
 		}
 	}
 
 	if lastErr != nil {
-		return "", lastErr
+		return "", fmt.Errorf("%w: %v", ErrDNSFailed, lastErr)
 	}
 
 	return "", ErrNoIP
@@ -157,10 +172,12 @@ func detectChainLevel(index int, total int) models.CertLevel {
 }
 
 func isSelfSigned(cert *x509.Certificate) bool {
+	// Let's Encrypt / IdenTrust cross-sign bypass: Subject == Issuer is not enough
 	if cert.Subject.String() != cert.Issuer.String() {
 		return false
 	}
-	return cert.CheckSignatureFrom(cert) == nil
+	// Check signature and basic constraints
+	return cert.CheckSignatureFrom(cert) == nil && cert.IsCA && cert.BasicConstraintsValid
 }
 
 func isOpenSSLSelfSignedLeaf(leaf *x509.Certificate, certs []*x509.Certificate) bool {
@@ -199,7 +216,7 @@ func buildFullCertChain(certs []*x509.Certificate, trusted bool) []models.CertDe
 	if len(chainCerts) > 1 {
 		lastIdx := len(chainCerts) - 1
 		lastCert := chainCerts[lastIdx]
-		if lastCert.Subject.String() == lastCert.Issuer.String() {
+		if isSelfSigned(lastCert) {
 			chainCerts = chainCerts[:lastIdx]
 		}
 	}
@@ -296,12 +313,7 @@ func analyzeTrust(certs []*x509.Certificate, domain string) TrustResult {
 	}
 
 	// 3. Chain verify
-	if _, err := buildVerifiedChain(certs); err != nil {
-		if hasFatalCause(issues) {
-			goto HOSTNAME_CHECK
-		}
-
-		leaf := certs[0]
+	if _, err := buildVerifiedChain(certs); err != nil && !hasFatalCause(issues) {
 		if isOpenSSLSelfSignedLeaf(leaf, certs) {
 			issues = append(issues, models.TrustIssue{
 				Code:    models.TrustSelfSignedLeaf,
@@ -312,26 +324,31 @@ func analyzeTrust(certs []*x509.Certificate, domain string) TrustResult {
 				Code:    models.TrustSelfSignedChain,
 				Message: "Chuỗi chứng chỉ có chứa chứng chỉ tự ký, làm mất độ tin cậy của website: 19 (self-signed certificate in certificate chain)",
 			})
-		} else if strings.Contains(err.Error(), "unable to get issuer") {
-			issues = append(issues, models.TrustIssue{
-				Code:    models.TrustMissingIssuer,
-				Message: "Chuỗi chứng chỉ bị thiếu chứng chỉ trung gian (intermediate), khiến trình duyệt không thể xác thực.",
-			})
-		} else if strings.Contains(err.Error(), "unknown authority") {
-			issues = append(issues, models.TrustIssue{
-				Code:    models.TrustUntrustedRoot,
-				Message: "Chứng chỉ được ký bởi tổ chức chứng thực không nằm trong danh sách tin cậy của hệ thống.",
-			})
 		} else {
-			issues = append(issues, models.TrustIssue{
-				Code:    models.TrustBadChain,
-				Message: "Chuỗi chứng chỉ không hợp lệ hoặc bị hỏng, không thể xác minh.",
-			})
+			var unknownAuth x509.UnknownAuthorityError
+			var certInvalid x509.CertificateInvalidError
+
+			if errors.As(err, &unknownAuth) {
+				issues = append(issues, models.TrustIssue{
+					Code:    models.TrustUntrustedRoot,
+					Message: "Chứng chỉ được ký bởi tổ chức chứng thực không nằm trong danh sách tin cậy của hệ thống.",
+				})
+			} else if errors.As(err, &certInvalid) {
+				// Cụ thể hóa lỗi nếu cần, ở đây dùng chung MissingIssuer cho case không lấy được issuer
+				issues = append(issues, models.TrustIssue{
+					Code:    models.TrustMissingIssuer,
+					Message: "Chuỗi chứng chỉ bị thiếu chứng chỉ trung gian (intermediate) hoặc không thể xác thực issuer.",
+				})
+			} else {
+				issues = append(issues, models.TrustIssue{
+					Code:    models.TrustBadChain,
+					Message: "Chuỗi chứng chỉ không hợp lệ hoặc bị hỏng, không thể xác minh.",
+				})
+			}
 		}
 	}
 
-HOSTNAME_CHECK:
-	// 4. Hostname mismatch
+	// 4. Hostname mismatch (Luôn chạy)
 	if err := certs[0].VerifyHostname(domain); err != nil {
 		issues = append(issues, models.TrustIssue{
 			Code: models.TrustNameMismatch,
@@ -403,7 +420,7 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 	// 1. DNS resolve
 	ip, err := resolveIP(ctx, domain)
 	if err != nil {
-		return nil, fmt.Errorf("dns resolve failed: %w", err)
+		return nil, err // Đã có ErrDNSFailed bên trong resolveIP
 	}
 
 	// 2. TLS handshake
@@ -419,6 +436,7 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		conn, err = dialTLS(ctx, dialer, addrDomain, baseConf)
 	}
 
+	var insecureConn bool
 	if err != nil {
 		insecure := baseConf.Clone()
 		insecure.InsecureSkipVerify = true
@@ -429,8 +447,9 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("tls dial failed: %w", err)
+			return nil, fmt.Errorf("%w: %v", ErrTLSFailed, err)
 		}
+		insecureConn = true
 	}
 
 	defer conn.Close()
@@ -439,11 +458,11 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 	certs := state.PeerCertificates
 
 	if len(certs) == 0 {
-		return nil, errors.New("no certificates found")
+		return nil, ErrNoCertificates
 	}
 
 	// 3. Detect server type
-	srvCtx, srvCancel := context.WithTimeout(context.Background(), 6*time.Second)
+	srvCtx, srvCancel := context.WithTimeout(ctx, 6*time.Second) // Dùng ctx truyền vào thay vì Background
 	defer srvCancel()
 	serverType := DetectServerType(srvCtx, domain, ip)
 
@@ -463,20 +482,22 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 	mainCert := certs[0]
 	now := time.Now()
 	daysLeft := int64(time.Until(mainCert.NotAfter).Hours() / 24)
-	valid := now.After(mainCert.NotBefore) && now.Before(mainCert.NotAfter)
+	isExpired := now.After(mainCert.NotAfter)
+	valid := !isExpired && now.After(mainCert.NotBefore)
 
 	return &models.SSLCheckResponse{
-		Hostname:    domain,
-		IP:          ip,
-		ServerType:  serverType,
-		Valid:       valid,
-		DaysLeft:    daysLeft,
-		TLSVersion:  tlsVersion,
-		HostnameOK:  hostnameOK,
-		Trusted:     trust.Trusted,
-		TrustIssues: trust.Issues,
-		CertChain:   chain,
-		CheckTime:   time.Now(),
-		Success:     true,
+		Hostname:           domain,
+		IP:                 ip,
+		ServerType:         serverType,
+		Valid:              valid,
+		IsExpired:          isExpired,
+		DaysLeft:           daysLeft,
+		TLSVersion:         tlsVersion,
+		InsecureConnection: insecureConn,
+		HostnameOK:         hostnameOK,
+		Trusted:            trust.Trusted,
+		TrustIssues:        trust.Issues,
+		CertChain:          chain,
+		CheckTime:          now,
 	}, nil
 }

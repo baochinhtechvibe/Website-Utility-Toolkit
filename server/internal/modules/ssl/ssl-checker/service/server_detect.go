@@ -25,94 +25,90 @@ func isGenericServer(v string) bool {
 	return false
 }
 
-// normalizeServer chuẩn hoá tên server về dạng gọn, dễ đọc.
-func normalizeServer(v string) string {
+// normalizeServer chuẩn hoá tên server về dạng gọn, dễ đọc và gán độ ưu tiên.
+// Độ ưu tiên: CDN (100) > BigTech (90) > PaaS (80) > Proxy (60) > Web Server (40)
+func normalizeServer(v string) (string, int) {
 	s := strings.ToLower(v)
 
 	switch {
-
-	// ===== CDN / Edge =====
+	// ===== CDN / Edge (100) =====
 	case strings.Contains(s, "cloudflare"):
-		return "cloudflare"
+		return "Cloudflare", 100
 	case strings.Contains(s, "cloudfront"):
-		return "CloudFront"
-	case strings.Contains(s, "fastly"),
-		strings.Contains(s, "github"):
-		return "Fastly"
+		return "CloudFront", 100
+	case strings.Contains(s, "fastly"), strings.Contains(s, "github"):
+		return "Fastly", 100
 	case strings.Contains(s, "akamaighost"):
-		return "AkamaiGHost"
+		return "AkamaiGHost", 100
 	case strings.Contains(s, "akamai"):
-		return "Akamai"
-	case strings.Contains(s, "sucuri"),
-		strings.Contains(s, "cloudproxy"):
-		return "Sucuri WAF"
-	case strings.Contains(s, "imperva"),
-		strings.Contains(s, "incapsula"):
-		return "Imperva"
+		return "Akamai", 100
+	case strings.Contains(s, "sucuri"), strings.Contains(s, "cloudproxy"):
+		return "Sucuri WAF", 100
+	case strings.Contains(s, "imperva"), strings.Contains(s, "incapsula"):
+		return "Imperva", 100
 
-	// ===== Big Tech =====
-	case strings.Contains(s, "gws"),
-		strings.Contains(s, "esf"):
-		return "Google Web Server"
+	// ===== Big Tech (90) =====
+	case strings.Contains(s, "gws"), strings.Contains(s, "esf"):
+		return "Google Web Server", 90
 	case strings.Contains(s, "google frontend"):
-		return "Google Frontend"
+		return "Google Frontend", 90
 	case strings.Contains(s, "proxygen"):
-		return "proxygen-bolt"
+		return "proxygen-bolt", 90
 	case strings.Contains(s, "awselb"):
-		return "AWS ELB"
+		return "AWS ELB", 90
+	case strings.Contains(s, "azure front door"):
+		return "Azure Front Door", 90
 
-	// ===== PaaS =====
+	// ===== PaaS (80) =====
 	case strings.Contains(s, "vercel"):
-		return "Vercel"
+		return "Vercel", 80
 	case strings.Contains(s, "netlify"):
-		return "Netlify"
+		return "Netlify", 80
 	case strings.Contains(s, "heroku"):
-		return "Heroku"
+		return "Heroku", 80
 	case strings.Contains(s, "render"):
-		return "Render"
+		return "Render", 80
 	case strings.Contains(s, "railway"):
-		return "Railway"
-	case strings.Contains(s, "fly.io"),
-		strings.HasPrefix(s, "fly/"):
-		return "Fly.io"
+		return "Railway", 80
+	case strings.Contains(s, "fly.io"), strings.HasPrefix(s, "fly/"):
+		return "Fly.io", 80
 
-	// ===== Reverse Proxy / LB =====
+	// ===== Reverse Proxy / LB (60) =====
 	case strings.Contains(s, "envoy"):
-		return "Envoy"
+		return "Envoy", 60
 	case strings.Contains(s, "traefik"):
-		return "Traefik"
+		return "Traefik", 60
 	case strings.Contains(s, "haproxy"):
-		return "HAProxy"
+		return "HAProxy", 60
 	case strings.Contains(s, "varnish"):
-		return "Varnish"
+		return "Varnish", 60
 	case strings.Contains(s, "caddy"):
-		return "Caddy"
+		return "Caddy", 60
 
-	// ===== Web Servers =====
+	// ===== Web Servers (40) =====
 	case strings.Contains(s, "openresty"):
-		return "OpenResty"
+		return "OpenResty", 40
 	case strings.Contains(s, "tengine"):
-		return "Tengine"
+		return "Tengine", 40
 	case strings.Contains(s, "litespeed"):
-		return "LiteSpeed"
+		return "LiteSpeed", 40
 	case strings.Contains(s, "kestrel"):
-		return "Kestrel"
+		return "Kestrel", 40
 	case strings.Contains(s, "cowboy"):
-		return "Cowboy"
+		return "Cowboy", 40
 	case strings.Contains(s, "gunicorn"):
-		return "gunicorn"
+		return "gunicorn", 40
 	case strings.Contains(s, "uvicorn"):
-		return "uvicorn"
+		return "uvicorn", 40
 	case strings.Contains(s, "jetty"):
-		return "Jetty"
+		return "Jetty", 40
 	case strings.Contains(s, "apache-coyote"):
-		return "Apache Tomcat"
-	case strings.Contains(s, "wildfly"),
-		strings.Contains(s, "undertow"):
-		return "WildFly"
+		return "Apache Tomcat", 40
+	case strings.Contains(s, "wildfly"), strings.Contains(s, "undertow"):
+		return "WildFly", 40
 	}
 
-	return v
+	return v, 20 // Unknown / Generic
 }
 
 // ===========================
@@ -124,15 +120,23 @@ func normalizeServer(v string) string {
 func DetectServerType(ctx context.Context, domain string, ip string) string {
 	probes := collectProbes(ctx, domain, ip)
 
-	scores := map[string]int{}
+	type scoreInfo struct {
+		count    int
+		priority int
+	}
+	scores := map[string]*scoreInfo{}
 	var fallback string
 
 	add := func(v string) {
-		v = strings.TrimSpace(v)
-		if v == "" || isGenericServer(v) {
+		name, priority := normalizeServer(v)
+		name = strings.TrimSpace(name)
+		if name == "" || isGenericServer(name) {
 			return
 		}
-		scores[v]++
+		if _, ok := scores[name]; !ok {
+			scores[name] = &scoreInfo{priority: priority}
+		}
+		scores[name].count++
 	}
 
 	for _, p := range probes {
@@ -142,152 +146,54 @@ func DetectServerType(ctx context.Context, domain string, ip string) string {
 
 		h := p.Response.Header
 		server := h.Get("Server")
-		serverLower := strings.ToLower(server)
 		viaLower := strings.ToLower(h.Get("Via"))
 
-		// =====================
-		// Strong: Server header
-		// =====================
+		// 1. Dùng header Server gốc
 		add(server)
 
-		// =====================
-		// Big Tech fingerprints
-		// =====================
-
-		// Facebook
-		if h.Get("X-Fb-Debug") != "" ||
-			h.Get("X-Fb-Connection-Quality") != "" {
-			add("proxygen-bolt")
-		}
-
-		// Google
-		if strings.Contains(strings.ToLower(h.Get("Report-To")), "gws") {
-			add("gws")
-		}
-
-		// =====================
-		// CDN / Edge
-		// =====================
-
+		// 2. Dùng fingerprints (nhận diện thêm từ các header khác)
 		// Cloudflare
-		if h.Get("CF-Ray") != "" ||
-			strings.Contains(serverLower, "cloudflare") {
-			add("cloudflare")
+		if h.Get("CF-Ray") != "" {
+			add("Cloudflare")
 		}
-
 		// CloudFront
-		if h.Get("X-Amz-Cf-Id") != "" ||
-			h.Get("X-Amz-Cf-Pop") != "" ||
-			strings.Contains(viaLower, "cloudfront") {
-			add("cloudfront")
+		if h.Get("X-Amz-Cf-Id") != "" || h.Get("X-Amz-Cf-Pop") != "" || strings.Contains(viaLower, "cloudfront") {
+			add("CloudFront")
 		}
-
 		// Fastly
-		if strings.Contains(strings.ToLower(h.Get("X-Served-By")), "fastly") ||
-			strings.Contains(viaLower, "fastly") {
-			add("fastly")
+		if strings.Contains(strings.ToLower(h.Get("X-Served-By")), "fastly") || strings.Contains(viaLower, "fastly") {
+			add("Fastly")
 		}
-
 		// Akamai
-		if strings.Contains(serverLower, "akamaighost") {
-			add("AkamaiGHost")
-		} else if strings.Contains(serverLower, "akamai") ||
-			strings.Contains(viaLower, "akamai") ||
-			h.Get("X-Akamai-Transformed") != "" ||
-			h.Get("X-Akamai-Staging") != "" ||
-			h.Get("X-Akamai-Request-ID") != "" ||
-			h.Get("Akamai-Origin-Hop") != "" {
-			add("akamai")
+		if h.Get("X-Akamai-Transformed") != "" || h.Get("X-Akamai-Request-ID") != "" {
+			add("Akamai")
 		}
-
-		// =====================
-		// PaaS
-		// =====================
-
 		// Vercel
-		if h.Get("X-Vercel-Id") != "" ||
-			strings.Contains(serverLower, "vercel") {
+		if h.Get("X-Vercel-Id") != "" {
 			add("Vercel")
 		}
-
 		// Netlify
-		if h.Get("X-NF-Request-ID") != "" ||
-			strings.Contains(serverLower, "netlify") {
+		if h.Get("X-NF-Request-ID") != "" {
 			add("Netlify")
 		}
-
-		// Heroku
-		if strings.Contains(viaLower, "heroku") {
-			add("Heroku")
-		}
-
 		// Fly.io
 		if h.Get("Fly-Request-Id") != "" {
 			add("Fly.io")
 		}
-
-		// Render
-		if h.Get("Rndr-Id") != "" ||
-			strings.Contains(serverLower, "render") {
-			add("Render")
-		}
-
-		// =====================
-		// Cloud LB
-		// =====================
-
 		// Azure Front Door
-		if h.Get("X-Azure-Ref") != "" ||
-			h.Get("X-FD-HealthProbe") != "" {
+		if h.Get("X-Azure-Ref") != "" {
 			add("Azure Front Door")
 		}
-
-		// AWS ALB/ELB
-		if strings.Contains(serverLower, "awselb") {
-			add("AWS ELB")
+		// Facebook/Proxygen
+		if h.Get("X-Fb-Debug") != "" {
+			add("proxygen-bolt")
 		}
-
-		// Google Cloud LB
-		if strings.Contains(viaLower, "google") &&
-			!strings.Contains(serverLower, "gws") {
-			add("Google Frontend")
-		}
-
-		// =====================
-		// Reverse Proxy
-		// =====================
-
 		// Envoy
-		if strings.Contains(serverLower, "envoy") ||
-			h.Get("X-Envoy-Upstream-Service-Time") != "" {
-			add("envoy")
+		if h.Get("X-Envoy-Upstream-Service-Time") != "" {
+			add("Envoy")
 		}
 
-		// Varnish
-		if h.Get("X-Varnish") != "" ||
-			strings.Contains(viaLower, "varnish") {
-			add("varnish")
-		}
-
-		// =====================
-		// WAF / Security
-		// =====================
-
-		// Sucuri
-		if h.Get("X-Sucuri-ID") != "" ||
-			strings.Contains(serverLower, "sucuri") {
-			add("Sucuri")
-		}
-
-		// Imperva / Incapsula
-		if h.Get("X-CDN") == "Imperva" ||
-			h.Get("X-Iinfo") != "" {
-			add("Imperva")
-		}
-
-		// =====================
 		// Weak fallback
-		// =====================
 		if fallback == "" {
 			fallback = h.Get("X-Powered-By")
 			if fallback == "" {
@@ -296,25 +202,43 @@ func DetectServerType(ctx context.Context, domain string, ip string) string {
 		}
 	}
 
-	// Pick winner by highest score
+	// Pick winner: 
+	// 1. Cao nhất về count (số lần xuất hiện qua các probe)
+	// 2. Tie-break theo priority (CDN > PaaS > Proxy...)
+	// 3. Tie-break cuối cùng theo Alphabet để đảm bảo tính deterministic
 	best := ""
-	bestScore := 0
+	bestCount := 0
+	bestPriority := 0
 
-	for k, s := range scores {
-		if s > bestScore {
-			best = k
-			bestScore = s
+	for name, info := range scores {
+		isBetter := false
+		if info.count > bestCount {
+			isBetter = true
+		} else if info.count == bestCount {
+			if info.priority > bestPriority {
+				isBetter = true
+			} else if info.priority == bestPriority {
+				if name < best || best == "" {
+					isBetter = true
+				}
+			}
+		}
+
+		if isBetter {
+			best = name
+			bestCount = info.count
+			bestPriority = info.priority
 		}
 	}
 
 	if best != "" {
-		return normalizeServer(best)
+		return best
 	}
 
 	if fallback != "" {
-		return normalizeServer(fallback)
+		name, _ := normalizeServer(fallback)
+		return name
 	}
 
-	// Không detect được → frontend hiển thị "Không công khai"
 	return ""
 }

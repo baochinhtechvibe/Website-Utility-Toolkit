@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	response "tools.bctechvibe.com/server/internal/response"
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/models"
@@ -76,18 +77,13 @@ func HandleSSLCheck(c *gin.Context) {
 		return
 	}
 
-	// 3. Validate domain format
+	// 3. Validate domain format (IsValidDomain thường sẽ chặn IP và local hostname)
 	if !validator.IsValidDomain(domain) {
 		response.Error(c, http.StatusBadRequest, "Định dạng tên miền không hợp lệ")
 		return
 	}
 
-	// 3.1 Chặn IP address — SSL Checker chỉ hỗ trợ domain
-	if net.ParseIP(domain) != nil {
-		response.Error(c, http.StatusBadRequest, "SSL Checker chỉ hỗ trợ tên miền, không hỗ trợ địa chỉ IP. Vui lòng nhập tên miền (ví dụ: google.com).")
-		return
-	}
-
+	// 3.1 Check Safe Hostname (Chặn private IP / Internal domain)
 	if !validator.IsSafeHostname(domain) {
 		response.Error(c, http.StatusBadRequest, "Tên miền không được phép (Local/Internal). Vui lòng sử dụng tên miền Public.")
 		return
@@ -98,13 +94,19 @@ func HandleSSLCheck(c *gin.Context) {
 	defer cancel()
 
 	// 5. Scan
+	start := time.Now()
 	result, err := service.Scan(ctx, domain)
+	duration := time.Since(start)
+
 	if err != nil {
 		handleScanError(c, err, domain)
 		return
 	}
 
-	// 6. Response thành công
+	// 6. Log success (Monitor)
+	log.Info().Str("domain", domain).Dur("duration", duration).Msg("SSL check success")
+
+	// 7. Response thành công
 	response.SuccessNoMeta(c, result)
 }
 
@@ -121,36 +123,26 @@ func handleScanError(c *gin.Context, err error, domain string) {
 		return
 	}
 
-	errStr := err.Error()
 
 	// DNS resolution failed
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) || strings.Contains(errStr, "dns resolve failed") {
+	if errors.Is(err, service.ErrDNSFailed) || errors.Is(err, service.ErrNoIP) {
 		response.Error(c, http.StatusUnprocessableEntity,
 			fmt.Sprintf("Tên miền %s chưa phân giải được IP. Kiểm tra bản ghi DNS (A/AAAA).", domain))
 		return
 	}
 
 	// TLS handshake failed
-	if strings.Contains(errStr, "tls dial failed") ||
-		strings.Contains(errStr, "connection refused") ||
-		strings.Contains(errStr, "tls: ") {
+	if errors.Is(err, service.ErrTLSFailed) {
+		log.Error().Err(err).Str("domain", domain).Msg("TLS handshake failed")
 		response.Error(c, http.StatusBadGateway,
-			fmt.Sprintf("Không thể kết nối SSL tới %s. Server có thể chưa cài SSL hoặc port 443 bị chặn.", domain))
+			fmt.Sprintf("Không thể thiết lập kết nối SSL bảo mật tới %s. Có thể server chưa cấu hình đúng TLS hoặc chứng chỉ không hợp lệ.", domain))
 		return
 	}
 
 	// No certificates found
-	if strings.Contains(errStr, "no certificates found") {
+	if errors.Is(err, service.ErrNoCertificates) {
 		response.Error(c, http.StatusUnprocessableEntity,
 			fmt.Sprintf("Không tìm thấy chứng chỉ SSL trên %s.", domain))
-		return
-	}
-
-	// No valid IP
-	if strings.Contains(errStr, "no valid ip") {
-		response.Error(c, http.StatusUnprocessableEntity,
-			fmt.Sprintf("Tên miền %s chưa phân giải được IP. Kiểm tra bản ghi DNS (A/AAAA).", domain))
 		return
 	}
 

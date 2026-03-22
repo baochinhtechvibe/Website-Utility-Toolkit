@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"crypto/tls"
+	"io"
 	"net"
 	"net/http"
 )
@@ -50,10 +51,13 @@ func collectProbes(ctx context.Context, domain string, ip string) []*Probe {
 		return dialer.DialContext(ctx, network, addr)
 	}
 
-	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
-	baseTransport.DialContext = dialContext
-	baseTransport.ForceAttemptHTTP2 = false
-	baseTransport.DisableKeepAlives = true
+	baseTransport := &http.Transport{
+		DialContext:           dialContext,
+		ForceAttemptHTTP2:     false,
+		DisableKeepAlives:     true,
+		TLSHandshakeTimeout:   HTTPProbeTimeout,
+		ResponseHeaderTimeout: HTTPProbeTimeout,
+	}
 
 	strictTransport := baseTransport.Clone()
 
@@ -77,7 +81,7 @@ func collectProbes(ctx context.Context, domain string, ip string) []*Probe {
 		{plainClient, "http://" + domain, http.MethodGet},
 	}
 
-	var validProbes []*Probe
+	var probes []*Probe
 
 	for _, d := range defs {
 		resp, err := doRequest(ctx, d.client, d.url, d.method)
@@ -88,14 +92,14 @@ func collectProbes(ctx context.Context, domain string, ip string) []*Probe {
 			Response: resp,
 			Error:    err,
 		}
-		validProbes = append(validProbes, p)
+		probes = append(probes, p)
 
 		if err == nil && resp != nil {
 			break
 		}
 	}
 
-	return validProbes
+	return probes
 }
 
 // ===========================
@@ -125,7 +129,9 @@ func doRequest(
 		return nil, err
 	}
 
-	// Chỉ cần headers → close body ngay
+	// Drain body trước khi close để allow connection reuse (quan trọng cho HTTP/1.1 và HTTP/2)
+	// Đọc tối đa 1KB rác rồi bỏ qua
+	io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<10))
 	resp.Body.Close()
 
 	return resp, nil

@@ -76,7 +76,7 @@ type CertDetail struct {
 	Locality     []string `json:"locality,omitempty"`
 	Province     []string `json:"province,omitempty"`
 
-	SANs []string `json:"sans"`
+	SANs []string `json:"sans,omitempty"`
 
 	NotBefore time.Time `json:"not_before"`
 	NotAfter  time.Time `json:"not_after"`
@@ -97,16 +97,17 @@ type SSLCheckResponse struct {
 	ServerType string `json:"server_type"`
 
 	Valid    bool  `json:"valid"`
-	DaysLeft int64 `json:"days_left"`
+	IsExpired bool `json:"is_expired"` // Rõ ràng hơn cho frontend
+	DaysLeft int64 `json:"days_left"` // Có thể âm nếu đã hết hạn
 
 	HostnameOK  bool         `json:"hostname_ok"`
 	Trusted     bool         `json:"trusted"`
 	TrustIssues []TrustIssue `json:"trust_issues,omitempty"`
 
-	TLSVersion string `json:"tls_version"`
+	TLSVersion         string `json:"tls_version"`
+	InsecureConnection bool   `json:"insecure_connection,omitempty"` // Track fallback TLS
 
 	CertChain []CertDetail `json:"cert_chain"`
 
 	CheckTime time.Time `json:"check_time"`
-	Success   bool      `json:"success"`
 }
