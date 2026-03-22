@@ -18,6 +18,8 @@ type RedirectHop struct {
 	Protocol   string              `json:"protocol"`
 	Method     string              `json:"method"`
 	Timings    RedirectTimings     `json:"timings"`
+	// Headers contains the response headers for this hop. 
+	// Sensitive headers like 'Server' or 'X-Powered-By' are filtered in the service layer for security.
 	Headers    map[string][]string `json:"headers"`
 	Error      string              `json:"error,omitempty"`
 }

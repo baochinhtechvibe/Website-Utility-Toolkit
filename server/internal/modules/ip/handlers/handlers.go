@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +35,7 @@ func HandleMyIP(c *gin.Context) {
 
 	userAgent := c.GetHeader("User-Agent")
 	refresh := c.Query("refresh") == "true"
-	cacheKey := clientIP
+	cacheKey := "myip:" + clientIP
 
 	if refresh {
 		ipCache.Delete(cacheKey)
@@ -43,9 +46,10 @@ func HandleMyIP(c *gin.Context) {
 		}
 	}
 
-	info := getIPDetails(clientIP, userAgent)
+	now := time.Now()
+	info := getIPDetails(c.Request.Context(), clientIP, userAgent)
 	ipCache.Set(cacheKey, info)
-	response.Success(c, info, false, time.Now())
+	response.Success(c, info, false, now)
 }
 
 func isLocalIP(ipStr string) bool {
@@ -53,60 +57,47 @@ func isLocalIP(ipStr string) bool {
 	if ip == nil {
 		return true
 	}
-	if ip.IsLoopback() || ip.IsUnspecified() {
-		return true
-	}
-	// Check private ranges (10.x, 172.16.x, 192.168.x)
-	if ip4 := ip.To4(); ip4 != nil {
-		return ip4[0] == 10 ||
-			(ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31) ||
-			(ip4[0] == 192 && ip4[1] == 168)
-	}
-	return false
+	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsPrivate()
+}
+
+var (
+	cachedPublicIP string
+	publicIPOnce   sync.Once
+)
+
+var fallbackProviders = []string{
+	"https://api.ipify.org",
+	"https://api4.my-ip.io/ip",
+	"https://checkip.amazonaws.com",
 }
 
 func fetchPublicIPFallback() string {
-	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get("https://api.ipify.org")
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
+	publicIPOnce.Do(func() {
+		client := &http.Client{Timeout: 2 * time.Second}
+		for _, urlStr := range fallbackProviders {
+			resp, err := client.Get(urlStr)
+			if err != nil {
+				continue
+			}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(body))
-}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				continue
+			}
 
-// HandleIPLookup trả về thông tin chi tiết cho một IP cụ thể
-func HandleIPLookup(c *gin.Context) {
-	targetIP := c.Param("ip")
-	if targetIP == "" {
-		response.Error(c, http.StatusBadRequest, "IP address is required")
-		return
-	}
-
-	userAgent := c.GetHeader("User-Agent")
-	refresh := c.Query("refresh") == "true"
-	cacheKey := targetIP
-
-	if refresh {
-		ipCache.Delete(cacheKey)
-	} else {
-		if data, fetchedAt, found := ipCache.Get(cacheKey); found {
-			response.Success(c, data, true, fetchedAt)
-			return
+			ip := strings.TrimSpace(string(body))
+			if net.ParseIP(ip) != nil {
+				cachedPublicIP = ip
+				return
+			}
 		}
-	}
-
-	info := getIPDetails(targetIP, userAgent)
-	ipCache.Set(cacheKey, info)
-	response.Success(c, info, false, time.Now())
+	})
+	return cachedPublicIP
 }
 
-func getIPDetails(ipStr string, ua string) *models.IPInfo {
+
+func getIPDetails(ctx context.Context, ipStr string, ua string) *models.IPInfo {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return &models.IPInfo{IP: ipStr}
@@ -122,7 +113,6 @@ func getIPDetails(ipStr string, ua string) *models.IPInfo {
 		Version:   version,
 		Decimal:   ipToDecimal(ip),
 		UserAgent: ua,
-		FetchedAt: time.Now(),
 	}
 
 	// Hostname lookup
@@ -136,11 +126,8 @@ func getIPDetails(ipStr string, ua string) *models.IPInfo {
 	// Browser & OS detection (Simple parsing)
 	info.Browser, info.OS = parseUserAgent(ua)
 
-	// GeoIP & ISP Lookup (Reuse from DNS module for now)
-	// Note: dnsService.EnrichIPInfoByString expects a *models.DNSRecord,
-	// we might need a more generic helper or manually fill it.
-	// For now, let's use the same logic as in dnsService.getGeoIPInfo
-	fillGeoInfo(info, ipStr)
+	// GeoIP & ISP Lookup
+	fillGeoInfo(ctx, info, ipStr)
 
 	return info
 }
@@ -191,19 +178,20 @@ func parseUserAgent(ua string) (browser, os string) {
 	return
 }
 
-func fillGeoInfo(info *models.IPInfo, ipStr string) {
-	// Call the same logic as DNS module
-	// Since we don't want to duplicate logic, but can't easily refactor dns module now
-	// We'll just call the public/internal methods if available.
-	// Actually, I'll implement a local version of getGeoIPInfo here
-	// or move getGeoIPInfo to a common package.
-
-	// For now, let's call the ip-api as a fallback like DNS module does.
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(fmt.Sprintf(
+func fillGeoInfo(ctx context.Context, info *models.IPInfo, ipStr string) {
+	// ip-api.com free plan chỉ hỗ trợ HTTP. Upgrade lên pro để dùng HTTPS.
+	reqURL := fmt.Sprintf(
 		"http://ip-api.com/json/%s?fields=status,country,countryCode,regionName,city,lat,lon,timezone,isp,as,org,proxy,hosting,mobile",
-		ipStr,
-	))
+		url.PathEscape(ipStr),
+	)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}

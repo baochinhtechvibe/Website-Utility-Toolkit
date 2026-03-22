@@ -125,7 +125,7 @@ func HandleDNSLookup(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Invalid request: " + err.Error(),
+			"message": "Dữ liệu yêu cầu không hợp lệ",
 		})
 		return
 	}
@@ -208,36 +208,38 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	}
 	apexFQDN := dnslib.Fqdn(apexDomain)
 
+	// Always seed Nameservers for better UX (NS always at top)
+	// EXCEPT if the user specifically asked for NS only (in which case it goes to Records)
 	if req.Type != "NS" {
 		nsRecords, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
 		for _, record := range nsRecords {
 			if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
 				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
-					Nameserver: nsRec.Nameserver,
+					Nameserver: strings.TrimSuffix(nsRec.Nameserver, "."),
 					TTL:        nsRec.TTL,
-					Domain:     apexDomain,
+					Domain:     strings.TrimSuffix(apexDomain, "."),
 				})
 			}
 		}
 	}
 
-	// Determine qtype
-	var qtype uint16
+	// Determine types to trace
+	var types []uint16
 	switch req.Type {
 	case "A":
-		qtype = dnslib.TypeA
+		types = []uint16{dnslib.TypeA}
 	case "AAAA":
-		qtype = dnslib.TypeAAAA
+		types = []uint16{dnslib.TypeAAAA}
 	case "NS":
-		qtype = dnslib.TypeNS
+		types = []uint16{dnslib.TypeNS}
 	case "MX":
-		qtype = dnslib.TypeMX
+		types = []uint16{dnslib.TypeMX}
 	case "CNAME":
-		qtype = dnslib.TypeCNAME
+		types = []uint16{dnslib.TypeCNAME}
 	case "TXT":
-		qtype = dnslib.TypeTXT
+		types = []uint16{dnslib.TypeTXT}
 	case "ALL":
-		qtype = dnslib.TypeA // default to A trace if ALL
+		types = []uint16{dnslib.TypeA, dnslib.TypeAAAA, dnslib.TypeMX, dnslib.TypeTXT, dnslib.TypeNS, dnslib.TypeCNAME}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -247,26 +249,95 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	}
 
 	tracer := dns.NewTraceResolver(15 * time.Second)
-	records, logs, err := tracer.DoTrace(originalDomain, qtype)
+	var allRecords []models.DNSRecord
+	var finalLogs []models.TraceStep
+	var finalErr error
+
+	// Map to track unique records and avoid duplicates
+	seenRecords := make(map[string]bool)
+
+	// Seed seenRecords with existing Nameservers to avoid trace duplicates showing up in Records
+	for _, ns := range response.Data.Nameservers {
+		key := fmt.Sprintf("%s:NS:%s", ns.Domain, ns.Nameserver)
+		seenRecords[key] = true
+	}
+
+	for i, t := range types {
+		records, logs, err := tracer.DoTrace(originalDomain, t)
+		if i == 0 {
+			finalLogs = logs
+			finalErr = err
+		}
+
+		for _, rec := range records {
+			// Normalize for deduplication key
+			cleanDomain := strings.TrimSuffix(rec.Domain, ".")
+			cleanValue := ""
+			if rec.Type == "NS" {
+				cleanValue = strings.TrimSuffix(rec.Nameserver, ".")
+			} else if rec.Type == "A" || rec.Type == "AAAA" {
+				cleanValue = rec.Address
+			} else if rec.Type == "MX" {
+				cleanValue = fmt.Sprintf("%s:%d", strings.TrimSuffix(rec.Exchange, "."), rec.Priority)
+			} else {
+				cleanValue = strings.TrimSuffix(rec.Value, ".")
+			}
+
+			key := fmt.Sprintf("%s:%s:%s", cleanDomain, rec.Type, cleanValue)
+
+			if seenRecords[key] {
+				continue
+			}
+			seenRecords[key] = true
+
+			// IF record is NS and we are NOT in NS-only mode, redirect to Nameservers for top-grouping
+			if rec.Type == "NS" && req.Type != "NS" {
+				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+					Nameserver: cleanValue,
+					TTL:        rec.TTL,
+					Domain:     cleanDomain,
+				})
+			} else {
+				allRecords = append(allRecords, rec)
+			}
+		}
+	}
 
 	var apiRecords []interface{}
-	for i := range records {
-		rec := records[i]
+	for i := range allRecords {
+		rec := allRecords[i]
+		// Normalize for UI consistency
+		rec.Domain = strings.TrimSuffix(rec.Domain, ".")
 		if rec.Type == "A" || rec.Type == "AAAA" {
 			dns.EnrichIPInfoByString(&rec, rec.Address)
 		}
 		apiRecords = append(apiRecords, rec)
 	}
 
+	// Final normalization for Nameservers if any
+	for i := range response.Data.Nameservers {
+		response.Data.Nameservers[i].Domain = strings.TrimSuffix(response.Data.Nameservers[i].Domain, ".")
+	}
+
 	response.Success = true
 	response.Data.Records = apiRecords
-	response.Data.TraceLogs = logs
+	response.Data.TraceLogs = finalLogs
 
-	if len(apiRecords) == 0 && err == nil {
+	if req.Type == "ALL" && len(finalLogs) > 0 {
+		for j := len(finalLogs) - 1; j >= 0; j-- {
+			if strings.Contains(finalLogs[j].Message, "record(s) found") {
+				finalLogs[j].Message = fmt.Sprintf("\n%d record(s) found across all types.", len(apiRecords))
+				break
+			}
+		}
+	}
+
+	if len(apiRecords) == 0 && finalErr == nil {
 		response.Message = "Không có bản ghi nào được tìm thấy qua Root Trace"
 	}
-	if err != nil {
-		response.Message = "Lỗi trong quá trình Trace: " + err.Error()
+	if finalErr != nil {
+		fmt.Printf("Lỗi TraceRoot: %v\n", finalErr)
+		response.Message = "Lỗi trong quá trình Trace, vui lòng thử lại sau"
 	}
 
 	// Always send response even if empty
@@ -314,6 +385,14 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 
 	allRecords = append(allRecords, ptrRecords...)
 
+	if len(ptrRecords) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "Không tìm thấy bản ghi PTR cho IP này",
+		})
+		return
+	}
+
 	// 2. Add summary info
 	summary := map[string]interface{}{
 		"type":         "IP_SUMMARY",
@@ -325,14 +404,6 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 
 	// Insert summary at the beginning
 	response.Data.Records = append([]interface{}{summary}, allRecords...)
-
-	if len(ptrRecords) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "Không tìm thấy bản ghi PTR cho IP này",
-		})
-		return
-	}
 
 	sendResponse(c, req, response)
 }
@@ -351,7 +422,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-	recordTypes := []string{}
+
 
 	response.Data.Query.IsSubdomain = isSubdomain(domain)
 	// Map để track records đã thấy (deduplicate)
@@ -393,7 +464,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				canonicalName = dnslib.Fqdn(cnameRec.Value)
 			}
 		}
-		recordTypes = append(recordTypes, "CNAME")
+
 	}
 
 	// 3. Query A records (on canonical name if CNAME exists)
@@ -415,7 +486,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				}
 			}
 		}
-		recordTypes = append(recordTypes, "A")
+
 	}
 
 	// 4. Query AAAA records (on canonical name if CNAME exists)
@@ -437,7 +508,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				}
 			}
 		}
-		recordTypes = append(recordTypes, "AAAA")
+
 	}
 
 	// 5. Query MX records (always on original domain)
@@ -452,7 +523,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				}
 			}
 		}
-		recordTypes = append(recordTypes, "MX")
+
 	}
 
 	// 6. Query TXT records (always on original domain)
@@ -474,7 +545,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 				}
 			}
 		}
-		recordTypes = append(recordTypes, "TXT")
+
 	}
 
 	// 7. Check DNSSEC
@@ -487,10 +558,6 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 		c.JSON(http.StatusOK, response)
 		return
 	}
-	if allRecords == nil {
-		allRecords = make([]interface{}, 0)
-	}
-
 	response.Data.Records = allRecords
 	sendResponse(c, req, response)
 }

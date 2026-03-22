@@ -18,7 +18,6 @@ func HandleAnalyze(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "Invalid request payload",
-			"error":   err.Error(),
 		})
 		return
 	}
@@ -38,8 +37,7 @@ func HandleAnalyze(c *gin.Context) {
 		log.Error().Err(err).Str("url", logURL).Msg("Failed to analyze redirects")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to analyze redirects",
-			"error":   err.Error(),
+			"message": "Failed to analyze redirects. Possible connection issue or blocked URL.",
 		})
 		return
 	}

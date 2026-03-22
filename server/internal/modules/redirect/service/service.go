@@ -29,14 +29,32 @@ var (
 	reRobots      = regexp.MustCompile(`(?i)<meta[^>]+name=['"]robots['"][^>]+content=['"]([^'"]+)['"]`)
 )
 
+var blockedCIDRs = []string{
+	"0.0.0.0/8",
+	"100.64.0.0/10",
+	"169.254.0.0/16", // Link-local
+	"192.0.2.0/24",
+	"198.51.100.0/24",
+	"203.0.113.0/24",
+	"192.0.0.192/32", // Oracle Cloud Metadata
+}
+
 func isPrivateIP(ip net.IP) bool {
-	if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+	if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() {
 		return true
 	}
-	// AWS Metadata IP
+	// AWS/GCP/Azure Metadata IP
 	if ip.String() == "169.254.169.254" {
 		return true
 	}
+
+	for _, cidr := range blockedCIDRs {
+		_, block, _ := net.ParseCIDR(cidr)
+		if block != nil && block.Contains(ip) {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -77,16 +95,24 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 				if err != nil {
 					return nil, err
 				}
+				
+				var safeIP net.IP
 				for _, ip := range ips {
-					if isPrivateIP(ip) {
-						return nil, fmt.Errorf("SSRF Protection: blocked connection to private IP %s", ip.String())
+					if !isPrivateIP(ip) {
+						safeIP = ip
+						break
 					}
 				}
-				// Use the first resolved non-private IP
+				
+				if safeIP == nil {
+					return nil, fmt.Errorf("SSRF Protection: no safe IP found for %s", host)
+				}
+
+				// Pin the safe IP to avoid DNS Rebinding race conditions
 				return (&net.Dialer{
 					Timeout:   5 * time.Second,
 					KeepAlive: 30 * time.Second,
-				}).DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
+				}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
 			},
 		},
 	}
@@ -100,13 +126,17 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 		if hop != nil {
 			resp.Data.Chain = append(resp.Data.Chain, *hop)
 			
-			// Security checks
+			// Check for HTTPS -> HTTP downgrade on the NEXT hop
 			parsedURL, _ := url.Parse(currentURL)
-			if parsedURL != nil && parsedURL.Scheme == "https" {
-				chainWasHTTPS = true
-			}
+			
+			// Only set true if we were in an HTTPS chain and the current hop (destination of previous redirect) is HTTP
 			if chainWasHTTPS && parsedURL != nil && parsedURL.Scheme == "http" {
 				resp.Data.Security.IsHTTPSDowngrade = true
+			}
+			
+			// Update chainWasHTTPS for future hops if this one is HTTPS
+			if parsedURL != nil && parsedURL.Scheme == "https" {
+				chainWasHTTPS = true
 			}
 		}
 
@@ -154,13 +184,11 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 	totalTime := time.Since(totalTimeStart).Milliseconds()
 	resp.Data.Performance.TotalTime = totalTime
 	
-	// Better TotalRedirects logic
+	// Better TotalRedirects logic: Count hops with a 3xx status code
 	redirectCount := 0
-	if len(resp.Data.Chain) > 1 {
-		for i := 0; i < len(resp.Data.Chain)-1; i++ {
-			if resp.Data.Chain[i].Error == "" {
-				redirectCount++
-			}
+	for _, hop := range resp.Data.Chain {
+		if hop.StatusCode >= 300 && hop.StatusCode < 400 {
+			redirectCount++
 		}
 	}
 	resp.Data.Performance.TotalRedirects = redirectCount
@@ -186,6 +214,14 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 	if err != nil {
 		return nil, "", "", fmt.Errorf("invalid URL: %v", err)
 	}
+
+	// Sanitize User-Agent to prevent header injection
+	userAgent = strings.Map(func(r rune) rune {
+		if r == '\r' || r == '\n' {
+			return -1
+		}
+		return r
+	}, userAgent)
 
 	if userAgent != "" {
 		req.Header.Set("User-Agent", userAgent)
@@ -225,10 +261,17 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 	start := time.Now()
 	resp, err := client.Do(req)
 	
+	// Strip credentials from URL to prevent exposure
+	displayURL := targetURL
+	if parsed, err := url.Parse(targetURL); err == nil {
+		parsed.User = nil
+		displayURL = parsed.String()
+	}
+
 	// If there's an error, we still want to record the hop if possible
 	hop := &models.RedirectHop{
 		Step:     step,
-		URL:      targetURL,
+		URL:      displayURL,
 		IP:       serverIP,
 		Method:   req.Method,
 	}
@@ -276,10 +319,20 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 	hop.StatusCode = resp.StatusCode
 	hop.StatusText = resp.Status
 
-	hop.Headers = make(map[string][]string)
-	for k, v := range resp.Header {
-		hop.Headers[k] = v
+	// Filter sensitive headers
+	sensitiveHeaders := map[string]bool{
+		"server":           true,
+		"x-powered-by":     true,
+		"x-aspnet-version": true,
+		"via":              true,
 	}
+	filteredHeaders := make(map[string][]string)
+	for k, v := range resp.Header {
+		if !sensitiveHeaders[strings.ToLower(k)] && !strings.HasPrefix(strings.ToLower(k), "x-internal-") {
+			filteredHeaders[k] = v
+		}
+	}
+	hop.Headers = filteredHeaders
 
 	// Read up to 100KB of body for meta/seo directly into a string
 	var bodyHTML string
@@ -313,7 +366,8 @@ func isRedirect(code int) bool {
 	return code == 301 || code == 302 || code == 303 || code == 307 || code == 308
 }
 
-// checkMetaRefresh looks for <meta http-equiv="refresh" content="...;url=..."> in the HTML body
+// checkMetaRefresh scans HTML for meta or JS redirects.
+// Note: This is best-effort and can have false positives or miss obfuscated redirects.
 func checkMetaRefresh(hop *models.RedirectHop, bodyHTML string) string {
 	if bodyHTML == "" {
 		return ""

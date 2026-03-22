@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -246,7 +247,7 @@ func getGeoIPInfo(ip string) *GeoIPInfo {
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(fmt.Sprintf(
 		"http://ip-api.com/json/%s?fields=country,countryCode,isp,org",
-		ip,
+		url.PathEscape(ip),
 	))
 	if err != nil {
 		return nil
