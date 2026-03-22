@@ -86,6 +86,10 @@
 .font-semibold { font-weight: var(--font-weight-semibold) !important; }
 .font-bold     { font-weight: var(--font-weight-bold) !important; }
 
+.font-sans  { font-family: var(--font-family-sans) !important; }
+.font-serif { font-family: var(--font-family-serif) !important; }
+.font-mono  { font-family: var(--font-family-mono) !important; }
+
 .truncate {
   overflow: hidden !important;
   text-overflow: ellipsis !important;

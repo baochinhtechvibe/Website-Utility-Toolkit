@@ -21,7 +21,8 @@ import {
     formatDate,
 
     /* validation.js */
-    createRealtimeDomainValidator
+    createRealtimeDomainValidator,
+    escapeHTML
 } from "../../../utils/index.js";
 
 // ===================================================
@@ -99,11 +100,7 @@ const issuerBrandCache = new Map();
     HELPER UTILS FUNCTIONS
 ================================== */
 
-function escapeHTML(str = "") {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-}
+
 
 /**
  * @param {number} n
@@ -121,17 +118,12 @@ function formatDays(n) {
 
 
 function renderFatalError(msg) {
-
     btnWhoisChecker.onclick = null;
-
-    setDisplay(resultCheckerHeader, "none");
-    setDisplay(toolError, "block");
-
     showError(
         toolError,
         toolErrorMessage,
         msg,
-        [resultCheckerContent, toolShareLink]
+        [toolResultChecker, toolShareLink]
     );
 }
 
@@ -390,7 +382,7 @@ function renderTrustIssues(trust_issues) {
 
         if (issue.code === "cert_expired") {
             extra = `
-                <a href="https://tino.vn/chung-chi-bao-mat-ssl?php=4842" target="_blank" rel="noopener noreferrer" class="btn btn-renew">
+                <a href="https://tino.vn/chung-chi-bao-mat-ssl?php=4842" target="_blank" rel="noopener noreferrer" class="btn ssl-checker__btn-renew">
                     Renew
                 </a>
             `;
@@ -398,9 +390,9 @@ function renderTrustIssues(trust_issues) {
 
         return `
             <tr>
-                <td class="result-checker__icon result-checker__icon--trusted-issue">&nbsp;</td>
+                <td class="ssl-checker__icon ssl-checker__icon--trusted-issue">&nbsp;</td>
                 <td>
-                    <strong class="result-checker__message-trust-issues ${issue.code.toLowerCase()}">
+                    <strong class="ssl-checker__message-trust-issues ${issue.code.toLowerCase()}">
                         ${escapeHTML(issue.message || "")}
                         ${extra}
                     </strong>
@@ -575,9 +567,9 @@ function renderExpiryRow(expiry) {
 
     return `
         <tr>
-            <td class="result-checker__icon result-checker__icon--expiryDay-${expiry.iconClass}">&nbsp;</td>
+            <td class="ssl-checker__icon ssl-checker__icon--expiryDay-${expiry.iconClass}">&nbsp;</td>
             <td>
-                <span class="result-checker__message">${expiry.html}</span>
+                <span class="ssl-checker__message">${expiry.html}</span>
             </td>
         </tr>
     `;
@@ -692,9 +684,9 @@ function renderPerfect(data) {
 
     return `
         <tr>
-            <td class = "result-checker__icon result-checker__icon--trusted-${trustedInfo.iconClass}">&nbsp;</td>
+            <td class = "ssl-checker__icon ssl-checker__icon--trusted-${trustedInfo.iconClass}">&nbsp;</td>
             <td>
-                <strong class="result-checker__message result-checker__message-trustedMessage">
+                <strong class="ssl-checker__message ssl-checker__message-trustedMessage">
                     ${trustedInfo.message}
                 </strong>
             </td>
@@ -702,9 +694,9 @@ function renderPerfect(data) {
         ${renderExpiryRow(expiry)}
         ${hostnameOk.message ? `
         <tr>
-            <td class = "result-checker__icon result-checker__icon--hostname${hostnameOk.iconClass}">&nbsp;</td>
+            <td class = "ssl-checker__icon ssl-checker__icon--hostname${hostnameOk.iconClass}">&nbsp;</td>
             <td >
-                <strong class="result-checker__message result-checker__message--hostnameStatus">
+                <strong class="ssl-checker__message ssl-checker__message--hostnameStatus">
                     ${hostnameOk.message}
                 </strong>
             </td>
@@ -747,9 +739,9 @@ function renderUntrusted(data) {
         ${renderExpiryRow(expiry)}
         ${hostnameOk.message ? `
         <tr>
-            <td class = "result-checker__icon result-checker__icon--hostname${hostnameOk.iconClass}">&nbsp;</td>
+            <td class = "ssl-checker__icon ssl-checker__icon--hostname${hostnameOk.iconClass}">&nbsp;</td>
             <td >
-                <strong class="result-checker__message result-checker__message-hostnameStatus">
+                <strong class="ssl-checker__message ssl-checker__message-hostnameStatus">
                     ${hostnameOk.message}
                 </strong>
             </td>
@@ -821,9 +813,9 @@ function renderWeirdWithIssue(data) {
 
     return `
         <tr>
-            <td class = "result-checker__icon result-checker__icon--trusted-${trustedInfo.iconClass}">&nbsp;</td>
+            <td class = "ssl-checker__icon ssl-checker__icon--trusted-${trustedInfo.iconClass}">&nbsp;</td>
             <td>
-                <strong class="result-checker__message result-checker__message-trustedMessage">
+                <strong class="ssl-checker__message ssl-checker__message-trustedMessage">
                     ${trustedInfo.message}
                 </strong>
             </td>
@@ -839,7 +831,7 @@ function renderWeirdWithIssue(data) {
 
 function renderChainArrow() {
     return `
-        <div class="cert-card__arrow-down">
+        <div class="ssl-checker__cert-arrow">
             <img
                 src="/client/public/assets/images/tools/ssl/cert_chain/arrow_down.png"
                 alt="Chain link"
@@ -900,7 +892,7 @@ function renderCardIcon(level, not_after) {
             src="${data.src}"
             alt="${data.alt}"
             loading="lazy"
-            class="cert-card__img"
+            class="ssl-checker__cert-img"
         />
     `;
 }
@@ -1121,57 +1113,57 @@ function renderCertCard(c) {
     const notAfterStatus = getNotAfterStatus(notAfter);
 
     return `
-        <div class="cert-card__wrapper d-flex gap-2">
-            <div class="cert-card__img-wrapper">
+        <div class="ssl-checker__cert-card d-flex gap-2">
+            <div class="ssl-checker__cert-img-wrapper">
                 ${renderCardIcon(level, notAfter)}
             </div>
-            <div class="cert-card__content ${level.toLowerCase()} shadow-sm rounded-sm d-flex flex-col gap-1">
-                <div class="cert-card__level">
-                    <h4 class="cert-card__level-${level.toLowerCase()}">${renderLevelChain(level)}</h4>
+            <div class="ssl-checker__cert-content ${level.toLowerCase()} shadow-sm rounded-sm d-flex flex-col gap-1">
+                <div class="ssl-checker__cert-level">
+                    <h4 class="ssl-checker__cert-level-${level.toLowerCase()}">${renderLevelChain(level)}</h4>
                 </div>
-                <div class="cert-card__info cert-card__common-name">
-                    <strong class="cert-card__label">Common Name:&nbsp;</strong>
-                    <span class="cert-card__value">${commonName}</span>
+                <div class="ssl-checker__cert-info ssl-checker__cert-common-name">
+                    <strong class="ssl-checker__cert-label">Common Name:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value">${commonName}</span>
                 </div>
                 ${sanList.length > 0 ? `
-                <div class="cert-card__info cert-card__sans">
-                    <strong class="cert-card__label">SANs:&nbsp;</strong>
-                    <span class="cert-card__value">
+                <div class="ssl-checker__cert-info ssl-checker__cert-sans">
+                    <strong class="ssl-checker__cert-label">SANs:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value">
                         ${sanList.join(", ")}
                     </span>
                 </div>` : ""}
                 ${orgList.length > 0 ? `
-                <div class="cert-card__info cert-card__org">
-                    <strong class="cert-card__label">Organization:&nbsp;</strong>
-                    <span class="cert-card__value">
+                <div class="ssl-checker__cert-info ssl-checker__cert-org">
+                    <strong class="ssl-checker__cert-label">Organization:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value">
                         ${orgList.join(", ")}
                     </span>
                 </div>` : ""}
                 ${location.length > 0 ? `
-                <div class="cert-card__info cert-card__location">
-                    <strong class="cert-card__label">Location:&nbsp;</strong>
-                    <span class="cert-card__value">
+                <div class="ssl-checker__cert-info ssl-checker__cert-location">
+                    <strong class="ssl-checker__cert-label">Location:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value">
                         ${location}
                     </span>
                 </div>` : ""}
-                <div class="cert-card__info cert-card__valid">
-                    <strong class="cert-card__label">Valid:&nbsp;</strong>
-                    <div class="cert-card__value cert-card__value--date">
-                        <span class="cert-card__date-item">From&nbsp;<span class="cert-card__not-before">${formatDate(notBefore)}</span></span>
-                        <span class="cert-card__date-item">to&nbsp;<span class="cert-card__not-after ${notAfterStatus}">${formatDate(notAfter)}</span></span>
+                <div class="ssl-checker__cert-info ssl-checker__cert-valid">
+                    <strong class="ssl-checker__cert-label">Valid:&nbsp;</strong>
+                    <div class="ssl-checker__cert-value ssl-checker__cert-value--date">
+                        <span class="ssl-checker__cert-date-item">From&nbsp;<span class="ssl-checker__cert-date-not-before">${formatDate(notBefore)}</span></span>
+                        <span class="ssl-checker__cert-date-item">to&nbsp;<span class="ssl-checker__cert-date-not-after ${notAfterStatus}">${formatDate(notAfter)}</span></span>
                     </div>
                 </div>
-                <div class="cert-card__info cert-card__serial-number">
-                    <strong class="cert-card__label">Serial Number:&nbsp;</strong>
-                    <span class="cert-card__value" title="Decimal Format: ${serialDec}">${serialHex}</span>
+                <div class="ssl-checker__cert-info ssl-checker__cert-serial-number">
+                    <strong class="ssl-checker__cert-label">Serial Number:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value" title="Decimal Format: ${serialDec}">${serialHex}</span>
                 </div>
-                <div class="cert-card__info cert-card__signature-algo">
-                    <strong class="cert-card__label">Signature Algorithm:&nbsp;</strong>
-                    <span class="cert-card__value">${signatureAlgo}</span>
+                <div class="ssl-checker__cert-info ssl-checker__cert-signature-algo">
+                    <strong class="ssl-checker__cert-label">Signature Algorithm:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value">${signatureAlgo}</span>
                 </div>
-                <div class="cert-card__info cert-card__issuer">
-                    <strong class="cert-card__label">Issuer:&nbsp;</strong>
-                    <span class="cert-card__value">${issuer}</span>
+                <div class="ssl-checker__cert-info ssl-checker__cert-issuer">
+                    <strong class="ssl-checker__cert-label">Issuer:&nbsp;</strong>
+                    <span class="ssl-checker__cert-value">${issuer}</span>
                 </div>
             </div>
         </div>
@@ -1251,44 +1243,28 @@ async function performSSLChecker(domain) {
  */
 function displayResults(data) {
 
-    setDisplay(toolResultChecker, "block");
-
     // Nếu không có data
     if (!data) {
-        renderFatalError(data.error || "Không nhận được dữ liệu từ server");
+        renderFatalError("Không nhận được dữ liệu từ server");
         return;
     }
 
     // Nếu backend báo lỗi
     if (data.success === false) {
-
-        resultDomainName.textContent = data.hostname || "N/A";
         btnWhoisChecker.onclick = null;
-
-        // Lỗi do user / giới hạn
-        if (data.code === 422 || data.code === 429) {
-
-            setDisplay(resultCheckerHeader, "flex");
-            getWhoisDomain(btnWhoisChecker, data.hostname);
-
-
-            showError(
-                toolError,
-                toolErrorMessage,
-                data.error || "Không thể tra cứu",
-                [resultCheckerContent, toolShareLink]
-            );
-
-            return;
-        }
-
-        // Lỗi hệ thống
-        renderFatalError(data.error || "Hệ thống đang bận, vui lòng thử lại sau.");
-
+        const errMsg = data.error || "Hệ thống đang bận, vui lòng thử lại sau.";
+        
+        showError(
+            toolError,
+            toolErrorMessage,
+            errMsg,
+            [toolResultChecker, toolShareLink]
+        );
         return;
     }
 
     // ===== SUCCESS =====
+    setDisplay(toolResultChecker, "block");
 
     resultDomainName.textContent = data.hostname;
     setDisplay(resultCheckerHeader, "flex");
@@ -1299,6 +1275,16 @@ function displayResults(data) {
 
     // showElements("block", resultCheckerContent);
     setDisplay(toolError, "none");
+
+    const cacheNotice = document.getElementById("cacheNotice");
+    if (cacheNotice) {
+        const cacheTime = document.getElementById("cacheTime");
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + now.toLocaleDateString('vi-VN');
+        if (cacheTime) cacheTime.textContent = timeStr;
+        cacheNotice.classList.remove("d-none");
+        cacheNotice.classList.add("d-flex");
+    }
 
     renderSSLResult(data);
 }
@@ -1355,53 +1341,51 @@ function renderSSLResult(data) {
     const issuerLogoPath = getIssuerLogoPath(issuerBrand, issuerLogoMap);
 
     resultCheckerContent.innerHTML = `
-        <div class="result-checker__overview d-flex flex-row gap-2 items-center">
-            <span class="result-checker__icon result-checker__icon--result"></span>
-            <h3 class="result-checker__overview-title">
+        <div class="ssl-checker__overview d-flex flex-row gap-2 items-center">
+            <span class="ssl-checker__icon ssl-checker__icon--result"></span>
+            <h3 class="ssl-checker__overview-title">
                 Kết quả tổng quan:
             </h3>
-            <span class="result-checker__badge result-checker__badge--${badge.toLowerCase()} rounded-sm">
-                <span class="result-checker__badge-icon result-checker__badge-icon--${badge.toLowerCase()}">
-                    &nbsp;
-                </span>
+            <span class="ssl-checker__badge ssl-checker__badge--${badge.toLowerCase()} rounded-sm">
+                <span class="ssl-checker__badge-icon ssl-checker__badge-icon--${badge.toLowerCase()}"></span>
                 ${badge.toUpperCase()}
             </span>
         </div>
-        <table class="result-checker__table">
+        <table class="ssl-checker__table">
             <tbody>
                 <tr>
-                    <td class="result-checker__icon result-checker__icon--resolve">&nbsp;</td>
+                    <td class="ssl-checker__icon ssl-checker__icon--resolve">&nbsp;</td>
                     <td>
-                        <span class="result-checker__message">
-                            Tên miền <strong class="result-checker__message--value result-checker__message--hostname">${escapeHTML(safe(hostname))}</strong> được phân giải thành địa chỉ IP <strong class="result-checker__message--value result-checker__message--ip">${escapeHTML(safe(ip))}</strong>.
+                        <span class="ssl-checker__message">
+                            Tên miền <strong class="ssl-checker__message--value ssl-checker__message--hostname">${escapeHTML(safe(hostname))}</strong> được phân giải thành địa chỉ IP <strong class="ssl-checker__message--value ssl-checker__message--ip">${escapeHTML(safe(ip))}</strong>.
                         </span>
                     </td>
                 </tr>
                 <tr>
-                    <td class="result-checker__icon result-checker__icon--server">&nbsp;</td>
+                    <td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td>
                     <td>
-                        <span class="result-checker__message">
-                            Server Type: <strong class="result-checker__message--value result-checker__message--serverType">${escapeHTML(server_type)}</strong>.
+                        <span class="ssl-checker__message">
+                            Server Type: <strong class="ssl-checker__message--value ssl-checker__message--serverType">${escapeHTML(server_type)}</strong>.
                         </span>
                     </td>
                 </tr>
                 ${issuerText ? `
                 <tr>
-                    <td class="result-checker__icon result-checker__icon--issuer">&nbsp;</td>
+                    <td class="ssl-checker__icon ssl-checker__icon--issuer">&nbsp;</td>
                     <td >
-                        <span class="result-checker__message d-flex items-center">${issuerText} ${renderIssuerLogoHTML(issuerBrand, issuerLogoPath)}</span>
+                        <span class="ssl-checker__message d-flex items-center">${issuerText} ${renderIssuerLogoHTML(issuerBrand, issuerLogoPath)}</span>
                     </td>
                 </tr>` : ""}
                 ${tlsversion.message ? `
                 <tr>
-                    <td class = "result-checker__icon result-checker__icon--tls ${tlsversion.iconClass}">&nbsp;</td>
+                    <td class = "ssl-checker__icon ssl-checker__icon--tls ${tlsversion.iconClass}">&nbsp;</td>
                     <td >
-                        <span class="result-checker__message">
+                        <span class="ssl-checker__message">
                             Giao thức kết nối:
-                            <strong class="result-checker__message--value result-checker__message--tls">
+                            <strong class="ssl-checker__message--value ssl-checker__message--tls">
                                 ${tlsversion.message}.&nbsp;
                             </strong>
-                            <strong class="result-checker__message--value result-checker__message--tlsStatus ${tlsversion.iconClass}">
+                            <strong class="ssl-checker__message--value ssl-checker__message--tlsStatus ${tlsversion.iconClass}">
                             (${(tlsversion.iconClass).toUpperCase()})
                             </strong>
                         </span>
@@ -1460,6 +1444,11 @@ if (formChecker) {
         e.preventDefault();
         setElementsEnabled([inputChecker, btnSubmitChecker], false);
         resetUI([toolResultChecker, toolShareLink, toolError]);
+        const cacheNotice = document.getElementById("cacheNotice");
+        if (cacheNotice) {
+            cacheNotice.classList.add("d-none");
+            cacheNotice.classList.remove("d-flex");
+        }
         toggleLoading(btnSubmitChecker, iconCheckerArrow, iconCheckerLoading, true);
         const hostname = normalizeHostnameInput(inputChecker.value.trim());
         if (!hostname) return;
@@ -1477,12 +1466,32 @@ if (formChecker) {
             setElementsEnabled([inputChecker, btnSubmitChecker], true);
         }
     });
+
+    /**
+     * Handle Input changes to reset UI automatically
+     */
+    inputChecker.addEventListener("input", () => {
+        if (!toolError.classList.contains("d-none")) {
+            setDisplay(toolError, "none");
+        }
+        if (!toolResultChecker.classList.contains("d-none")) {
+            setDisplay(toolResultChecker, "none");
+        }
+    });
+}
+
+function handleCheck() {
+    formChecker?.dispatchEvent(new Event("submit"));
 }
 
 // =================================//
 //  APP LIFECYCLE
 //==================================//
 function initApp() {
+    document.getElementById("btnBypassCache")?.addEventListener("click", () => {
+        handleCheck();
+    });
+
     handleURLParams();
     inputChecker?.focus();
 
@@ -1500,8 +1509,6 @@ function initApp() {
 
     // Init copy button
     setupCopyButton(shareLinkChecker, btnCopyLinkChecker);
-
-    console.log("🚀 SSL Checker Tool Initialized");
 }
 
 

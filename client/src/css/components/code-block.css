@@ -3,7 +3,7 @@
 .code-block {
     background-color: var(--code-bg, var(--bg-surface));
     border-radius: var(--radius-lg);
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-4) var(--space-6);
     overflow: hidden;
 }
 
@@ -16,11 +16,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: var(--space-2);
+    border-bottom: var(--border-default);
 }
 
 .code-block__lang {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: var(--font-weight-bold);
     color: var(--text-primary);
     display: flex;
@@ -91,6 +91,7 @@
     font-family: var(--font-family-mono);
     font-size: var(--text-base);
     line-height: var(--line-height-relaxed);
+    padding: var(--space-1);
     white-space: pre;
     display: block;
 }

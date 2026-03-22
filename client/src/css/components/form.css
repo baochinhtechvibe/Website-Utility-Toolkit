@@ -116,6 +116,174 @@
     margin-top: var(--space-1); /* Spacing nội bộ của hint so với input */
 }
 
+/* =======================================
+   1.2. FORM TEXT AREA (Dành riêng mã Code/PEM)
+========================================== */
+.form-text-area {
+    width: 100%;
+    padding: var(--pad-y-3) var(--pad-x-4);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-family: var(--font-family-mono, monospace);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    min-height: 300px;
+    resize: vertical;
+    box-shadow: var(--form-shadow, var(--elevation-tooltip));
+    transition: border-color var(--transition-base), box-shadow var(--transition-base), background-color var(--transition-base);
+}
+
+.form-text-area:focus {
+    outline: none;
+    border-color: var(--form-focus-color, var(--color-brand));
+    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--form-focus-color, var(--color-brand)) 30%, transparent);
+}
+
+.form-text-area.is-invalid {
+    border-color: var(--red-500, #ef4444);
+    box-shadow: 0 4px 10px 3px color-mix(in srgb, var(--red-500, #ef4444) 30%, transparent);
+}
+
+.form-text-area.is-invalid:focus {
+    border-color: var(--red-600, #dc2626);
+}
+
+/* =======================================
+   1.3. FORM RADIO & FORM CHECKBOX
+========================================== */
+.form-radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium, 500);
+}
+
+/* Ẩn giao diện gốc của trình duyệt */
+.form-radio {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--color-surface);
+    margin: 0;
+    font: inherit;
+    color: var(--color-brand);
+    width: 1.15em;
+    height: 1.15em;
+    border: 2px solid var(--color-border);
+    border-radius: 50%;
+    display: inline-grid; /* Display grid để dễ căn giữa cái chấm */
+    place-content: center;
+    margin-right: var(--space-2);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.form-radio:hover {
+    border-color: var(--color-brand);
+}
+
+/* Chấm bi bên trong (sử dụng ::before) */
+.form-radio::before {
+    content: "";
+    width: 0.65em;
+    height: 0.65em;
+    border-radius: 50%;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em var(--color-brand);
+    background-color: var(--color-brand);
+}
+
+/* Khi bị focus */
+.form-radio:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
+}
+
+.form-radio:checked {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-brand) 50%, transparent);
+}
+
+.form-radio:checked::before {
+    transform: scale(1);
+}
+
+.form-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+    .form-radio-group {
+        flex-direction: row;
+        gap: var(--space-8);
+    }
+}
+
+/* =======================================
+   1.4. FORM CHECKBOX (Dấu Tick Vuông)
+========================================== */
+.form-checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium, 500);
+}
+
+.form-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--color-surface);
+    margin: 0;
+    font: inherit;
+    color: var(--color-brand);
+    border: 2px solid var(--color-border);
+    border-radius: 0; /* Vuông góc tuyệt đối */
+    display: inline-grid;
+    place-content: center;
+    margin-right: var(--space-2);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.form-checkbox:hover {
+    border-color: var(--color-brand);
+}
+
+/* Dấu tick SVG bằng CSS Clip-path */
+.form-checkbox::before {
+    content: "";
+    width: 0.65em;
+    height: 0.65em;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    background-color: var(--white); /* Luôn dùng màu trắng cho dấu tick để nổi bật */
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.form-checkbox:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
+}
+
+.form-checkbox:checked {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-brand) 50%, transparent);
+}
+
+.form-checkbox:checked::before {
+    transform: scale(1);
+}
 
 /* =======================================
    2. FORM LAYOUT OBJECTS (Cấu trúc Bố cục Form)
@@ -184,6 +352,12 @@
     grid-template-columns: 2fr 1fr;
 }
 
+.form-small {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
 /* Respnsive: Trả về 1 cột trên điện thoại nhỏ (< 576px) */
 @media (max-width: 639px) {
     .form-inline {
@@ -202,5 +376,10 @@
     .form-grid-3,
     .form-grid-2-wide {
         grid-template-columns: 1fr;
+    }
+
+    .form-text-area {
+        min-height: 150px;
+        padding: var(--pad-y-2) var(--pad-x-3);
     }
 }

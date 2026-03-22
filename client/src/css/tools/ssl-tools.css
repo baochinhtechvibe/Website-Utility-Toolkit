@@ -1,36 +1,16 @@
-:root {
-    /* Map cũ sang Semantic Tokens mới */
-    --ssl-tool-primary: var(--color-brand);
-    --ssl-tool-secondary: var(--slate-700);
-    --ssl-checker-bg-badge: var(--color-surface-muted);
-    
-    --ssl-checker-valid: var(--color-success);
-    --ssl-checker-warning: var(--color-warning);
-    --ssl-checker-critical: var(--color-error);
+/* 
+    SSL TOOL CSS 
+    Refactored with BEM & Semantic Tokens
+*/
 
-    --ssl-checker-good: var(--green-600);
-    --ssl-checker-ok: var(--blue-500);
-    --ssl-checker-weak: var(--yellow-500);
-    --ssl-checker-bad: var(--red-500);
-    --ssl-checker-insecure: var(--red-700);
-
-    --ssl-checker-domain-level: var(--blue-600);
-    --ssl-checker-intermediate-level: var(--orange-500);
-    --ssl-checker-root-level: var(--green-600);
-
-    --border-share-link: var(--blue-400);
-    --bg-share-link: var(--blue-50);
-}
-
+/* Page Header Icon */
 .page-ssl .ssl-icon {
     background: var(--gradient-gold-metallic);
-
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-
     background-clip: text;
+    -webkit-text-fill-color: transparent;
     color: transparent;
-
+    display: inline-block;
     line-height: var(--leading-tight);
     padding: 0.125rem;
 }
@@ -43,10 +23,8 @@
     flex-wrap: nowrap;
     gap: var(--space-4);
     overflow-x: auto;
-    /* Ẩn scrollbar default */
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-    
+    -ms-overflow-style: none;
+    scrollbar-width: none;
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border);
     justify-content: flex-start;
@@ -87,16 +65,13 @@
     box-shadow: var(--shadow-sm);
 }
 
-/* Panel animation */
+/* Tool Sections Visibility */
 .ssl-tools__section {
     opacity: 0;
     transform: translateY(16px) scale(0.98);
     pointer-events: none;
     display: none;
-
-    transition:
-        opacity 0.35s ease,
-        transform 0.35s ease;
+    transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
 .ssl-tools__section--active {
@@ -109,59 +84,36 @@
 /* ======================
     SSL CHECKER TOOL
  ====================== */
-.ssl-tools__form {
-    box-shadow: var(--shadow-sm);
+.ssl-checker__desc {
+    color: var(--color-text-secondary);
+    line-height: var(--leading-relaxed);
 }
 
-.ssl-tools__form .ssl-tools__form-heading {
-    background-color: var(--ssl-tool-primary);
-    color: var(--white);
+.ssl-checker__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
 }
 
-.ssl-tools__form .ssl-tools__input:focus {
-    border-color: var(--color-brand);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 20%, transparent);
+.ssl-checker__result {
+    margin-top: var(--space-6);
 }
 
-.ssl-tools__form .ssl-tools__btn-submit {
-    position: relative;
-    width: 100%;
-    background-color: var(--ssl-tool-primary);
-    color: var(--white);
-    overflow: hidden;
+.ssl-checker__overview {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.ssl-checker__overview-title {
+    font-size: var(--text-h5);
     font-weight: var(--font-weight-bold);
-    transition: all var(--transition-base);
-}
-
-.ssl-tools__form .ssl-tools__btn-submit:hover {
-    background-color: var(--slate-900);
-    transform: translateY(-2px);
-}
-
-/* ======================
-    RESULT CHECKER TOOL
- ====================== */
-
- .ssl-tools__result-body tr {
-    margin-top: var(--space-1);
-    margin-bottom: var(--space-1);
- }
-
-.result-checker .ssl-tools__result-header {
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--color-border);
-}
-
-.result-checker .ssl-tools__result-title {
     color: var(--color-text-primary);
 }
 
-.result-checker__overview-title {
-    font-size: var(--text-h5);
-    font-weight: var(--font-weight-bold);
-}
-
-.result-checker__badge {
+/* Badges */
+.ssl-checker__badge {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -173,40 +125,44 @@
     border: 1px solid transparent;
 }
 
-.result-checker__badge--valid { 
+.ssl-checker__badge--valid { 
     background-color: color-mix(in srgb, var(--color-success) 12%, transparent);
     color: var(--color-success);
     border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
 }
-.result-checker__badge--warning { 
+.ssl-checker__badge--warning { 
     background-color: color-mix(in srgb, var(--color-warning) 12%, transparent);
     color: var(--color-warning);
     border-color: color-mix(in srgb, var(--color-warning) 25%, transparent);
 }
-.result-checker__badge--critical { 
+.ssl-checker__badge--critical { 
     background-color: color-mix(in srgb, var(--color-error) 12%, transparent);
     color: var(--color-error);
     border-color: color-mix(in srgb, var(--color-error) 25%, transparent);
 }
 
-.result-checker__badge-icon {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    background-size: contain;
+.ssl-checker__badge-icon {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    background-size: 100% 100%;
     background-repeat: no-repeat;
     background-position: center;
+    flex-shrink: 0;
 }
 
-.result-checker__badge-icon--valid { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/valid.png"); }
-.result-checker__badge-icon--warning { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/warning.png"); }
-.btn-renew {
+.ssl-checker__badge-icon--valid { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/valid.png"); }
+.ssl-checker__badge-icon--warning { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/warning.png"); }
+.ssl-checker__badge-icon--critical { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
+
+/* Buttons */
+.ssl-checker__btn-renew {
     --btn-bg: var(--color-success);
     --btn-text: var(--white);
     --btn-hover-bg: var(--green-700);
     
     padding: var(--space-1) var(--space-3);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
     margin-left: var(--space-2);
     border-radius: var(--radius-sm);
@@ -214,118 +170,188 @@
     text-decoration: none;
     font-weight: var(--font-weight-bold);
     box-shadow: var(--elevation-sm);
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+    transition: all var(--transition-base);
 }
 
-[data-theme="dark"] .btn-renew {
+[data-theme="dark"] .ssl-checker__btn-renew {
     --btn-bg: var(--green-600);
     --btn-hover-bg: var(--green-500);
 }
-.result-checker__table {
-    padding: var(--space-4) 0;
-    margin-bottom: var(--space-4);
+
+.ssl-checker__btn-renew:hover {
+    background-color: var(--btn-hover-bg);
+    transform: translateY(-1px);
+    color: var(--white);
 }
 
-.result__title--icon,
-.result-checker__icon {
+/* Results Table */
+.ssl-checker__table {
+    width: 100%;
+    margin-bottom: var(--space-6);
+    border-collapse: separate;
+    border-spacing: 0 var(--space-2);
+}
+
+.ssl-checker__table tr td {
+    padding: var(--space-1) 0;
+    vertical-align: middle;
+}
+
+.ssl-checker__icon {
     width: 36px;
     height: 36px;
     background-repeat: no-repeat;
     background-position: center;
     background-size: 28px 28px;
+    flex-shrink: 0;
 }
 
-.result-checker__icon.result-checker__icon--result { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/result.png"); }
-.result-checker__icon.result-checker__icon--resolve { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/resolved.png"); }
-.result-checker__icon.result-checker__icon--server { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/server-type.png"); }
-.result-checker__icon.result-checker__icon--issuer { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/issued.png"); }
-.result-checker__icon.result-checker__icon--tls { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/tsl-version.png"); }
-.result-checker__icon.result-checker__icon--trusted-ok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/trusted-ok.png"); }
-.result-checker__icon.result-checker__icon--trusted-issue { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
-.result-checker__icon.result-checker__icon--expiryDay-ok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_ok.png"); }
-.result-checker__icon.result-checker__icon--expiryDay-warning { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_warning.png"); }
-.result-checker__icon.result-checker__icon--expiryDay-critical { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_critical.png"); }
-.result-checker__icon.result-checker__icon--hostnameok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/hostname_ok.png"); }
-.result-checker__icon.result-checker__icon--hostnamefalse { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
+.ssl-checker__icon--result { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/result.png"); }
+.ssl-checker__icon--resolve { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/resolved.png"); }
+.ssl-checker__icon--server { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/server-type.png"); }
+.ssl-checker__icon--issuer { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/issued.png"); }
+.ssl-checker__icon--tls { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/tsl-version.png"); }
+.ssl-checker__icon--trusted-ok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/trusted-ok.png"); }
+.ssl-checker__icon--trusted-false { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
+.ssl-checker__icon--trusted-issue { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
+.ssl-checker__icon--expiryDay-ok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_ok.png"); }
+.ssl-checker__icon--expiryDay-warning { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_warning.png"); }
+.ssl-checker__icon--expiryDay-critical { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_critical.png"); }
+.ssl-checker__icon--hostnameok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/hostname_ok.png"); }
+.ssl-checker__icon--hostnamefalse { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
 
-.result-checker__message { color: var(--color-text-secondary); }
-.result-checker__message--tlsStatus.good { color: var(--ssl-checker-good); }
-.result-checker__message .result-checker__message--expiry.ok,
-.result-checker__message .result-checker__message--tlsStatus.ok { color: var(--ssl-checker-ok); }
-.result-checker__message .result-checker__message--expiry.warning,
-.result-checker__message .result-checker__message--tlsStatus.weak { color: var(--ssl-checker-weak); }
-.result-checker__message .result-checker__message--tlsStatus.bad { color: var(--ssl-checker-bad); }
-.result-checker__message .result-checker__message--tlsStatus.insecure { color: var(--ssl-checker-insecure); }
-
-.result-checker__message-trust-issues { color: var(--ssl-checker-insecure); }
-.result-checker__message-trust-issues .btnRenewSSL {
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-sm);
-    background-color: var(--color-brand);
-    color: var(--white);
-    font-size: var(--text-sm);
-    transition: all var(--transition-base);
+.ssl-checker__message { 
+    color: var(--color-text-secondary);
+    font-size: var(--text-base);
 }
 
-.result-checker__message-trust-issues .btnRenewSSL:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
+.ssl-checker__message--value {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold);
 }
 
-.result-checker .cert-card__wrapper {
+.ssl-checker__message .ssl-checker__message--tlsStatus.good { color: var(--green-600); }
+.ssl-checker__message .ssl-checker__message--expiry.ok,
+.ssl-checker__message .ssl-checker__message--tlsStatus.ok { color: var(--blue-500); }
+.ssl-checker__message .ssl-checker__message--expiry.warning,
+.ssl-checker__message .ssl-checker__message--tlsStatus.weak { color: var(--yellow-500); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.bad { color: var(--red-500); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.insecure { color: var(--red-700); }
+
+/* CSR Decoder Results Row */
+.ssl-checker__result-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px dashed var(--color-border);
+}
+
+.ssl-checker__result-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.ssl-checker__result-label {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-1);
+    display: flex;
+    align-items: center;
+}
+
+.ssl-checker__result-value {
+    color: var(--color-text-primary);
+    margin-left: var(--space-4);
+    word-break: break-all;
+}
+
+.ssl-checker__message-trust-issues { 
+    color: var(--color-error);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Certificate Chain Cards */
+.ssl-checker__cert-card {
+    display: flex;
     flex-direction: column;
     width: 100%;
+    margin-bottom: var(--space-4);
 }
 
-.result-checker .cert-card__img-wrapper {
+.ssl-checker__cert-img-wrapper {
     width: 100%;
     display: flex;
     justify-content: center;
+    padding: var(--space-2) 0;
 }
 
-.result-checker .cert-card__img {
+.ssl-checker__cert-img {
     height: 80px;
     width: 80px;
+    object-fit: contain;
 }
 
-.result-checker .cert-card__content {
+.ssl-checker__cert-arrow {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-2) 0;
+}
+
+.ssl-checker__cert-content {
     width: 100%;
     padding: var(--space-4);
     border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
     background-color: var(--color-surface-elevated);
+    transition: border-color var(--transition-base);
+    box-shadow: var(--shadow-sm);
 }
 
-.result-checker .cert-card__content.domain { border-color: var(--ssl-checker-domain-level); }
-.result-checker .cert-card__content.intermediate { border-color: var(--ssl-checker-intermediate-level); }
-.result-checker .cert-card__content.root { border-color: var(--ssl-checker-root-level); }
+.ssl-checker__cert-content.domain { border-color: var(--blue-600); }
+.ssl-checker__cert-content.intermediate { border-color: var(--orange-500); }
+.ssl-checker__cert-content.root { border-color: var(--green-600); }
 
-.result-checker .cert-card__level {
+.ssl-checker__cert-level {
     padding-bottom: var(--space-2);
     margin-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border);
     text-align: center;
 }
 
-.result-checker .cert-card__level h4 {
+.ssl-checker__cert-level h4 {
     font-size: var(--text-h4);
     font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    margin: 0;
 }
 
-.result-checker .cert-card__level-domain { color: var(--ssl-checker-domain-level); }
-.result-checker .cert-card__level-intermediate { color: var(--ssl-checker-intermediate-level); }
-.result-checker .cert-card__level-root { color: var(--ssl-checker-root-level); }
+.ssl-checker__cert-level-domain { color: var(--blue-600); }
+.ssl-checker__cert-level-intermediate { color: var(--orange-500); }
+.ssl-checker__cert-level-root { color: var(--green-600); }
 
-.result-checker .cert-card__info {
+.ssl-checker__cert-info {
     display: flex;
     flex-direction: column;
+    margin-bottom: var(--space-1);
 }
 
-.result-checker .cert-card__info .cert-card__value {
-    margin-left: var(--space-4);
+.ssl-checker__cert-label {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.ssl-checker__cert-value {
     word-break: break-word;
     color: var(--color-text-primary);
+    font-size: var(--text-base);
 }
 
-.cert-card__value--date {
+.ssl-checker__cert-value--date {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -333,87 +359,96 @@
     row-gap: var(--space-1);
 }
 
-.result-checker .cert-card__info.cert-card__common-name .cert-card__value {
+.ssl-checker__cert-common-name .ssl-checker__cert-value {
     font-weight: var(--font-weight-bold);
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
+    color: var(--color-text-primary);
 }
 
-.result-checker .cert-card__not-before,
-.result-checker .cert-card__not-after { 
+.ssl-checker__cert-date-not-before,
+.ssl-checker__cert-date-not-after { 
     white-space: nowrap;
+    font-weight: var(--font-weight-medium);
 }
 
-.result-checker .cert-card__not-after.valid { color: var(--ssl-checker-valid); }
-.result-checker .cert-card__not-after.warning { color: var(--ssl-checker-warning); }
-.result-checker .cert-card__not-after.expired { color: var(--ssl-checker-critical); }
+.ssl-checker__cert-date-not-after.valid { color: var(--color-success); }
+.ssl-checker__cert-date-not-after.warning { color: var(--color-warning); }
+.ssl-checker__cert-date-not-after.expired { color: var(--color-error); }
 
-.result-checker .cert-card__issuer {
+.ssl-checker__cert-issuer {
     padding-top: var(--space-4);
     margin-top: var(--space-2);
     border-top: 1px solid var(--color-border);
 }
 
-.result-checker .cert-card__issuer .cert-card__value {
-    font-weight: var(--font-weight-bold);
-}
-
+/* Share Link Box */
 .ssl-tools__share-box {
     padding: var(--space-4);
-    border: 2px dashed var(--border-share-link);
+    border: 2px dashed var(--blue-400);
     border-radius: var(--radius-md);
-    background-color: var(--bg-share-link);
+    background-color: var(--blue-50);
 }
 
-.ssl-tools__share-box .ssl-tools__share-header {
+[data-theme="dark"] .ssl-tools__share-box {
+    background-color: color-mix(in srgb, var(--blue-500) 10%, transparent);
+    border-color: var(--blue-500);
+}
+
+.ssl-tools__share-header {
+    margin-bottom: var(--space-2);
     color: var(--color-brand);
     font-weight: var(--font-weight-bold);
 }
 
-.ssl-tools__share-box .ssl-tools__share-input {
-    flex: 1;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-brand);
-    border-radius: var(--radius-md) 0 0 var(--radius-md);
-    color: var(--color-brand);
-}
-
-.ssl-tools__share-box .ssl-tools__share-btn {
-    padding: var(--space-2) var(--space-4);
-    background-color: var(--color-brand);
-    color: var(--white);
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    transition: all var(--transition-base);
-}
-
-/* Responsive */
+/* Tablet & Desktop Responsive */
 @media (min-width: 640px) {
-    .result-checker .cert-card__wrapper {
+    .ssl-checker__cert-card {
         flex-direction: row;
         align-items: center;
         gap: var(--space-4);
     }
-    .result-checker .cert-card__content {
+    
+    .ssl-checker__cert-content {
         padding: var(--space-6);
     }
-    .result-checker .cert-card__img-wrapper { width: auto; }
-    .result-checker .cert-card__info {
-        flex-direction: row;
-        align-items: center;
-    }
-    .result-checker .cert-card__info .cert-card__label {
-        width: 140px;
-        flex-shrink: 0;
-    }
-    .result-checker .cert-card__info .cert-card__value { margin-left: 0; }
     
-    .cert-card__value--date {
+    .ssl-checker__cert-img-wrapper { 
+        width: auto; 
+        padding: 0;
+    }
+    
+    .ssl-checker__cert-info {
         flex-direction: row;
-        gap: var(--space-2);
+        align-items: flex-start;
+    }
+    
+    .ssl-checker__cert-label {
+        width: 160px;
+        flex-shrink: 0;
+        font-size: var(--text-base);
+    }
+    
+    /* CSR Decoder Results Row */
+    .ssl-checker__result-row {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    
+    .ssl-checker__result-label {
+        width: 250px;
+        flex-shrink: 0;
+        margin-bottom: 0;
+    }
+    
+    .ssl-checker__result-value {
+        margin-left: 0;
+        flex-grow: 1;
+        word-break: break-word;
     }
 }
 
 @media (min-width: 1024px) {
-    .result-checker {
-        padding: 0 var(--space-8);
+    .ssl-checker__result {
+        padding: 0 var(--space-4);
     }
 }
