@@ -6,7 +6,9 @@
 import { 
     $, 
     $$, 
+    escapeHTML,
 } from "../../utils/index.js";
+
 
 document.addEventListener("DOMContentLoaded", () => {
     initChmod();
@@ -139,6 +141,8 @@ function syncFromMaster(val) {
     }
 
     // 2. Detect Symbolic (10 chars, e.g., -rwxr-xr-x)
+    // Lưu ý: Chỉ accept '-' (file) và 'd' (directory) cho sự đơn giản.
+    // Các loại file khác (l, c, b, p, s) không hỗ trợ tại tool này.
     const symbolicRegex = /^[-d][r-][w-][xSs-][r-][w-][xSs-][r-][w-][xTt-]$/;
     if (symbolicRegex.test(val)) {
         setInvalid(false);
@@ -240,7 +244,7 @@ function updateTerminalPreview(symbolic) {
     
     // Note: 4096 is standard directory size in bytes, not the year.
     preview.innerHTML = `
-<span class="t-perm">-${symbolic}</span> <span class="t-meta">1 user group 4096 ${month} ${day} ${time}</span> <span class="t-file">${filename}</span>`;
+<span class="t-perm">-${symbolic}</span> <span class="t-meta">1 user group 4096 ${month} ${day} ${time}</span> <span class="t-file">${escapeHTML(filename)}</span>`;
 }
 
 /**
@@ -273,14 +277,15 @@ function updateCommandDisplay(octal) {
         if (cmdType === "find-d") displayOctal = "755";
     }
 
-    const span = (cls, text) => `<span class="${cls}">${text}</span>`;
+    const span = (cls, text) => `<span class="${cls}">${escapeHTML(text)}</span>`;
+    const safeName = escapeHTML(filename);
 
     if (cmdType === "chmod") {
-        commandHtml = `${span("code-program", "chmod")}${isRecursive ? " " + span("code-keyword", "-R") : ""} ${span("code-value", displayOctal)} ${span("code-string", filename)}`;
+        commandHtml = `${span("code-program", "chmod")}${isRecursive ? " " + span("code-keyword", "-R") : ""} ${span("code-value", displayOctal)} <span class="code-string">${safeName}</span>`;
     } else if (cmdType === "find-f") {
-        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type f")} ${span("code-keyword", "-name")} ${span("code-string", `"${filename}"`)} ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "{} +")}`;
+        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type f")} ${span("code-keyword", "-name")} <span class="code-string">"${safeName}"</span> ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "{} +")}`;
     } else if (cmdType === "find-d") {
-        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type d")} ${span("code-keyword", "-name")} ${span("code-string", `"${filename}"`)} ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "{} +")}`;
+        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type d")} ${span("code-keyword", "-name")} <span class="code-string">"${safeName}"</span> ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "{} +")}`;
     }
     
     display.innerHTML = commandHtml;
@@ -297,7 +302,8 @@ function checkSecurity(octal, symbolic) {
     let warning = null;
     const othersWrite = symbolic[7] === 'w';
     const is777 = octal.endsWith("777");
-    const hasSUID = octal.startsWith("4") || octal.startsWith("2") || octal.startsWith("6");
+    const specialBit = parseInt(octal[0]);
+    const hasSUID = specialBit > 0;
 
     if (is777) {
         warning = "<b>NGUY HIỂM: Phát hiện quyền 777.</b> Điều này cho phép TẤT CẢ MỌI NGƯỜI có thể đọc, ghi và thực thi file này. Cực kỳ rủi ro trong môi trường production.";
@@ -308,6 +314,7 @@ function checkSecurity(octal, symbolic) {
     }
 
     if (warning) {
+        // SAFE: warning is a hardcoded string, no user input
         message.innerHTML = warning;
         advisor.classList.remove("d-none");
     } else {
@@ -325,9 +332,7 @@ function setupEventListeners() {
     });
 
     // 2. Octal input change
-    $("#chmodOctal")?.addEventListener("input", (e) => {
-        syncFromOctal(e.target.value);
-    });
+    // chmodOctal là readonly - xoá listener dư thừa không cần thiết do thao tác đồng bộ xảy ra qua checkbox & masterInput.
 
     // 2.5 Master input change
     $("#masterChmodInput")?.addEventListener("input", (e) => {

@@ -22,6 +22,7 @@ import {
     stripLegalSuffix,
     formatTTL,
     formatExpirationDate,
+    escapeHTML,
 
     /* geo.js */
     getCountryCode,
@@ -47,8 +48,7 @@ const form = document.getElementById("dnsLookupForm");
 const hostnameInput = document.getElementById("domain"); // changed from hostname to domain due to html ID
 const recordTypeSelect = document.getElementById("record-type");
 const btnResolve = document.getElementById("btnResolve");
-const searchIcon = document.getElementById("searchIcon");
-const loadingIcon = document.getElementById("loadingIcon");
+
 const resultsSection = document.getElementById("resultCard");
 const errorSection = document.getElementById("errorCard");
 const errorMessage = document.getElementById("errorMessage");
@@ -66,7 +66,7 @@ const tableWrapperDNSKEY = document.getElementById("tableWrapperDNSKEY");
 const resultsTableHeadDNSKEY = document.getElementById("resultsTableHeadDNSKEY");
 const resultsTableBodyDNSKEY = document.getElementById("resultsTableBodyDNSKEY");
 const dnssecDetailTitleDS = document.getElementById("dnssecDetailTitleDS");
-const dnssecDetailHeaderDS = document.getElementById("dnssecDetailHeaderDS");
+
 const tableWrapperDS = document.getElementById("tableWrapperDS");
 const resultsTableHeadDS = document.getElementById("resultsTableHeadDS");
 const resultsTableBodyDS = document.getElementById("resultsTableBodyDS");
@@ -155,7 +155,7 @@ const BLACKLIST_PROVIDERS = [
 
 
 // Global flags / state
-let blacklistScrollbarFixed = false;
+
 let blacklistEventSource = null;
 let isBypassCache = false;
 
@@ -374,7 +374,7 @@ function performBlacklistStream(ip) {
     // Title ban đầu
     resultsTitle.innerHTML = `
         <i class="fas fa-shield-alt"></i>
-        Blacklist Check: ${ip}
+        Blacklist Check: ${escapeHTML(ip)}
         <span class="ml-2 badge badge-secondary">Checking...</span>
     `;
 
@@ -393,7 +393,7 @@ function performBlacklistStream(ip) {
             <i class="fas fa-shield-alt"></i>
             Blacklist Check:
             <div class="results__section-title-rbl-realtime">
-                ${data.ip}
+                ${escapeHTML(data.ip)}
                 <span class="ml-1 ${data.listed > 0 ? "badge-danger" : "badge-success"}">
                     ${data.listed}/${data.total} blacklist
                 </span>
@@ -414,7 +414,12 @@ function performBlacklistStream(ip) {
     blacklistEventSource.onerror = () => {
         blacklistEventSource.close();
         blacklistEventSource = null;
-        toggleLoading(btnResolve, searchIcon, loadingIcon, false);
+        toggleLoading(
+            btnResolve,
+            document.getElementById("dnsLookupIcon"),
+            document.getElementById("dnsLookupLoading"),
+            false
+        );
     };
 }
 
@@ -502,24 +507,7 @@ function showCopyFeedback(icon, type) {
     }, 1500);
 }
 
-/**
- * Copy to clipboard helper
- */
-function copyToClipboard(text, button) {
-    navigator.clipboard.writeText(text).then(() => {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i>';
-        button.classList.add('copied');
 
-        setTimeout(() => {
-            button.innerHTML = originalHTML;
-            button.classList.remove('copied');
-        }, 2000);
-
-    }).catch(err => {
-        console.error("Failed to copy:", err);
-    });
-}
 
 // =================================//
 //  UI RENDERING – ATOMIC
@@ -717,7 +705,8 @@ function displayResults(data) {
             <i class="fa-solid fa-route"></i> DNS Trace từ Root Server:
         </div>`;
         data.data.traceLogs.forEach(step => {
-            const boldedMessage = step.message.replace(/(\.\.\.took \d+ ms)/g, '<b>$1</b>');
+            const safeMsg = escapeHTML(step.message);
+            const boldedMessage = safeMsg.replace(/(\.\.\.took \d+ ms)/g, '<b>$1</b>');
             traceHtml += `<div>${boldedMessage}</div>`;
         });
         traceLogBox.innerHTML = traceHtml;
@@ -739,12 +728,12 @@ function displayResults(data) {
     if (type === "ALL") {
         resultsTitle.innerHTML = `
             <i class="fas fa-check-circle"></i>
-            ALL lookup – "${displayName}"
+            ALL lookup – "${escapeHTML(displayName)}"
         `;
     } else {
         resultsTitle.innerHTML = `
             <i class="fas fa-check-circle"></i>
-            ${type} lookup – "${displayName}"
+            ${type} lookup – "${escapeHTML(displayName)}"
         `;
     }
 
@@ -777,7 +766,7 @@ function displayResults(data) {
 
         resultsTableBody.innerHTML = `
             <tr>
-                <td class = "results-table__cell results-table__cell--domain">${hostname}</td>
+                <td class = "results-table__cell results-table__cell--domain">${escapeHTML(hostname)}</td>
                 <td class = "results-table__cell results-table__cell--type-dnssec">${getTypeBadge("DNSSEC")}</td>
                 <td class = "results-table__cell results-table__cell--status-dnssec">
                     <span class="status-badge ${getDNSSECStatusClass(data.data.dnssec.status)}">
@@ -936,7 +925,7 @@ function displayDNSSECResults(data) {
 
     resultsTitle.innerHTML = `
         <i class="fas fa-shield-alt"></i>
-        DNSSEC lookup – "${hostname}"
+        DNSSEC lookup – "${escapeHTML(hostname)}"
     `;
 
     shareLink.value = generateShareLink(hostname, "DNSSEC");
@@ -1141,7 +1130,6 @@ function initApp() {
     );
     handleURLParams();
     hostnameInput.focus();
-    console.log("🚀 DNS Lookup Tool Initialized");
 }
 
 
@@ -1217,6 +1205,20 @@ hostnameInput.addEventListener("keypress", (e) => {
 });
 
 /**
+ * Handle Input changes to reset UI automatically
+ */
+hostnameInput.addEventListener("input", () => {
+    // Ẩn kết quả cũ hoặc lỗi cũ ngay khi người dùng bắt đầu gõ mới
+    if (!errorCard.classList.contains("d-none")) {
+        setDisplay(errorCard, "none");
+    }
+    if (!resultCard.classList.contains("d-none")) {
+        setDisplay(resultCard, "none");
+    }
+});
+
+/**
+
  * Button
  */
 btnCopyLink.addEventListener("click", async () => {

@@ -6,6 +6,21 @@
 */
 
 import { LEGAL_SUFFIXES } from "./org.js";
+
+/**
+ * Lọc ký tự HTML đặc biệt để chống XSS
+ * @param {string} str Chuỗi đầu vào
+ * @returns {string} Chuỗi an toàn
+ */
+export function escapeHTML(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 /**
  * Cắt chuỗi theo số ký tự tối đa
  * Nếu vượt quá maxLength → thêm "..."
@@ -169,6 +184,7 @@ export function formatExpirationDate(dateString) {
     }
 
     // Trả về block HTML để render trực tiếp
+    // SECURITY: Trả về HTML string. Đảm bảo dynamic data (nếu thêm sau này) được escape.
     return `
         <div class="expiration-info">
             <div class="expiration-date">${formatted}</div>

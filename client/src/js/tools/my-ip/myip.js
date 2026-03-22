@@ -11,7 +11,9 @@ import {
     show, 
     hide, 
     toggleLoading,
+    escapeHTML,
 } from "../../utils/index.js";
+
 
 // Khởi tạo bản đồ (biến toàn cục để cập nhật)
 let ipMap = null;
@@ -89,15 +91,40 @@ async function initMyIP(forceRefresh = false) {
         const result = await response.json();
 
         if (result.success && result.data) {
-            console.log("IP Data Received:", result.data);
             renderIPData(result.data, result.meta);
             initMap(result.data.latitude, result.data.longitude, result.data.ip);
         } else {
             console.error("Failed to fetch IP data:", result.message || result.error);
+            showFetchError("Không thể lấy thông tin IP. Vui lòng thử lại.");
         }
     } catch (error) {
         console.error("Error initializing IP tool:", error);
+        showFetchError("Không kết nối được với máy chủ.");
     }
+}
+
+/**
+ * Hiển thị lỗi khi gọi API thất bại
+ */
+function showFetchError(msg) {
+    const errorHtml = `<span class="text-danger font-medium">${escapeHTML(msg)}</span>`;
+    const v4El = $("#my-ip-v4");
+    if (v4El) v4El.innerHTML = errorHtml;
+    const v6El = $("#my-ip-v6");
+    if (v6El) v6El.innerHTML = errorHtml;
+    
+    const targetEl = $("#detailIPTarget");
+    if (targetEl) targetEl.innerHTML = errorHtml;
+
+    const detailIds = [
+        "decimal", "hostname", "asn", "timezone", "isp", 
+        "services", "country", "region", "city", 
+        "latitude", "longitude", "os", "browser", "ua"
+    ];
+    detailIds.forEach(id => {
+        const el = $(`#ip-detail-${id}`);
+        if (el) el.innerHTML = `<span class="text-na">N/A</span>`;
+    });
 }
 
 /**
@@ -149,12 +176,12 @@ function renderIPData(data, meta = null) {
         countryEl.classList.remove("loading-text");
         if (data.country && data.country_code) {
             countryEl.innerHTML = `
-                <img src="https://flagcdn.com/24x18/${data.country_code}.png" 
-                     srcset="https://flagcdn.com/48x36/${data.country_code}.png 2x"
+                <img src="https://flagcdn.com/24x18/${escapeHTML(data.country_code.toLowerCase())}.png" 
+                     srcset="https://flagcdn.com/48x36/${escapeHTML(data.country_code.toLowerCase())}.png 2x"
                      width="24" height="18" 
-                     alt="${data.country}"
+                     alt="${escapeHTML(data.country)}"
                      class="ip-flag">
-                <span>${data.country}</span>
+                <span>${escapeHTML(data.country)}</span>
             `;
         } else {
             countryEl.innerHTML = `<span class="text-na">N/A</span>`;
@@ -187,7 +214,9 @@ function renderIPData(data, meta = null) {
     if (cacheNotice && meta) {
         cacheNotice.classList.remove("d-none");
         const spanEl = cacheNotice.querySelector("span");
-        const timeStr = new Date(meta.fetched_at || new Date()).toLocaleString('vi-VN');
+        const timeStr = meta.fetched_at 
+            ? new Date(meta.fetched_at).toLocaleString('vi-VN') 
+            : new Date().toLocaleString('vi-VN');
 
         if (meta.cached) {
             spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
@@ -242,6 +271,7 @@ function updateDetailField(id, value) {
  */
 function initMap(lat, lon, ip) {
     if (!lat || !lon) return;
+    if (typeof L === 'undefined') return;
 
     const mapEl = document.getElementById("ipMap");
     if (!mapEl) return;
