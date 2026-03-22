@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Kiểm tra chuỗi chuyển hướng (redirect chain) đầy đủ với Visual Path, Security Audit và Performance Metrics.">
+    <meta name="description"
+        content="Kiểm tra chuỗi chuyển hướng (redirect chain) đầy đủ với Visual Path, Security Audit và Performance Metrics.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
@@ -38,7 +39,8 @@
                         </div>
                     </div>
                     <p class="header__meta text-center justify-center">
-                        Phân tích toàn bộ chuỗi chuyển hướng: Visual Path, Security Audit, Performance Metrics và SEO Insight.
+                        Phân tích toàn bộ chuỗi chuyển hướng: Visual Path, Security Audit, Performance Metrics và SEO
+                        Insight.
                     </p>
                     <div class="header__theme-toggle">
                         <input type="checkbox" id="theme-toggle" class="header__theme-input">
@@ -71,10 +73,12 @@
                                     placeholder="Ví dụ: https://bit.ly/example hoặc http://your-site.com">
                                 <div id="urlValidationError" class="error-card mt-2 d-none">
                                     <div class="error-card__header">
-                                        <h3 class="error-card__title"><i class="fa-solid fa-triangle-exclamation"></i> URL không hợp lệ</h3>
+                                        <h3 class="error-card__title"><i class="fa-solid fa-triangle-exclamation"></i>
+                                            URL không hợp lệ</h3>
                                     </div>
                                     <div class="error-card__body">
-                                        <p class="error-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng <code>http://</code> hoặc <code>https://</code>.</p>
+                                        <p class="error-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
+                                            <code>http://</code> hoặc <code>https://</code>.</p>
                                     </div>
                                 </div>
                             </div>
@@ -85,55 +89,68 @@
                                     <label class="form-label" for="userAgent">User-Agent</label>
                                     <select id="userAgent" name="userAgent" class="form-input form-select">
                                         <optgroup label="🖥️ Trình duyệt - Desktop">
-                                            <option value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" selected>
+                                            <option
+                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                                                selected>
                                                 Chrome Desktop (Mặc định)
                                             </option>
-                                            <option value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0">
+                                            <option
+                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0">
                                                 Firefox Desktop
                                             </option>
-                                            <option value="Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15">
+                                            <option
+                                                value="Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15">
                                                 Safari Desktop (macOS)
                                             </option>
                                         </optgroup>
                                         <optgroup label="📱 Trình duyệt - Mobile">
-                                            <option value="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1">
+                                            <option
+                                                value="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1">
                                                 iPhone Safari
                                             </option>
-                                            <option value="Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36">
+                                            <option
+                                                value="Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36">
                                                 Android Chrome
                                             </option>
                                         </optgroup>
                                         <optgroup label="🤖 Search Engine Bots (SEO)">
-                                            <option value="Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)">
+                                            <option
+                                                value="Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)">
                                                 Googlebot
                                             </option>
-                                            <option value="Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)">
+                                            <option
+                                                value="Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)">
                                                 Googlebot Mobile
                                             </option>
-                                            <option value="Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)">
+                                            <option
+                                                value="Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)">
                                                 Bingbot
                                             </option>
                                             <option value="DuckDuckBot/1.0; (+http://duckduckgo.com/duckduckbot.html)">
                                                 DuckDuckBot
                                             </option>
-                                            <option value="Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)">
+                                            <option
+                                                value="Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)">
                                                 YandexBot
                                             </option>
                                         </optgroup>
                                         <optgroup label="📲 Social Preview Bots">
-                                            <option value="facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)">
+                                            <option
+                                                value="facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)">
                                                 Facebook Bot
                                             </option>
                                             <option value="Twitterbot/1.0">
                                                 Twitterbot
                                             </option>
-                                            <option value="Mozilla/5.0 (compatible; LinkedInBot/1.0; +http://www.linkedin.com)">
+                                            <option
+                                                value="Mozilla/5.0 (compatible; LinkedInBot/1.0; +http://www.linkedin.com)">
                                                 LinkedInBot
                                             </option>
                                             <option value="Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)">
                                                 Slackbot
                                             </option>
-                                            <option value="Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)">
+                                            <option
+                                                value="Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)">
                                                 Discordbot
                                             </option>
                                         </optgroup>
@@ -168,7 +185,13 @@
                             <div class="form-field mt-4 d-flex flex-row gap-5 items-center flex-wrap">
                                 <label class="form-checkbox-label" for="deepScan">
                                     <input type="checkbox" id="deepScan" name="deepScan" class="form-checkbox">
-                                    <span><i class="fa-solid fa-magnifying-glass-plus"></i> Deep Scan (JS & Meta Refresh)</span>
+                                    <span><i class="fa-solid fa-magnifying-glass-plus"></i> Deep Scan (JS & Meta
+                                        Refresh)</span>
+                                </label>
+                                <label class="form-checkbox-label" for="ignoreTLSErrors">
+                                    <input type="checkbox" id="ignoreTLSErrors" name="ignoreTLSErrors"
+                                        class="form-checkbox" checked>
+                                    <span><i class="fa-solid fa-ban"></i> Bỏ qua lỗi SSL</span>
                                 </label>
                                 <label class="form-checkbox-label" for="compareUAs">
                                     <input type="checkbox" id="compareUAs" name="compareUAs" class="form-checkbox">
@@ -181,6 +204,18 @@
                 <!-- End: Card Form -->
 
                 <!-- ===================== CARD: KẾT QUẢ PHÂN TÍCH ===================== -->
+                <!-- CACHE BANNER (Premium Refresh) -->
+                <div id="cacheNoticeRedirect"
+                    class="result-card__cache-notice mt-4 mb-4 p-2 flex-row justify-between items-center d-none">
+                    <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b
+                            id="cacheTimeRedirect"></b>.</span>
+                    <button type="button" id="btnBypassCacheRedirect"
+                        class="btn btn-sm btn-outline cache-notice__btn-refresh">
+                        <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                    </button>
+                </div>
+
+                <!-- Result Section -->
                 <div id="resultSection" class="d-none mt-4">
 
                     <!-- REDIRECT SCORE -->
@@ -318,7 +353,8 @@
                         <div class="card__body">
                             <div id="compareWarning" class="warning-card d-none">
                                 <div class="warning-card__header">
-                                    <h3 class="warning-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Phát hiện: Redirect khác nhau theo User-Agent</h3>
+                                    <h3 class="warning-card__title"><i class="fa-solid fa-triangle-exclamation"></i>
+                                        Phát hiện: Redirect khác nhau theo User-Agent</h3>
                                 </div>
                                 <div class="warning-card__body">
                                     <p class="warning-card__message" id="compareWarningMsg"></p>
@@ -349,7 +385,7 @@
                             </h4>
                         </div>
                         <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                            <input type="text" id="shareLink" readonly class="share-card__input" value=""/>
+                            <input type="text" id="shareLink" readonly class="share-card__input" value="" />
                             <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
                                 <i class="fas fa-copy"></i>
                                 <span>Copy</span>
