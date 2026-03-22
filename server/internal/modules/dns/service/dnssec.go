@@ -20,7 +20,7 @@ func ValidateDNSSEC(serverKey, domain string) models.DNSSECInfo {
 	var records []models.DNSSECRecord
 
 	dnskeys, dnskeyErr := fetchDNSKEY(udpServer, fqdn)
-	dsRecords, dsErr := fetchDS(udpServer, fqdn)
+	dsRecords, _ := fetchDS(udpServer, fqdn)
 	rrsigs, rrsigErr := fetchRRSIG(udpServer, fqdn, dns.TypeDNSKEY)
 
 	records = append(records, dnskeys...)
@@ -41,7 +41,7 @@ func ValidateDNSSEC(serverKey, domain string) models.DNSSECInfo {
 	hasRRSIG := len(rrsigs) > 0
 
 	// ❗ Có DNSKEY nhưng không lấy được DS → broken chain
-	if hasDNSKEY && !hasDS && dsErr != nil {
+	if hasDNSKEY && !hasDS {
 		return models.DNSSECInfo{
 			Enabled: true,
 			Status:  "BOGUS",
