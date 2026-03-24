@@ -102,8 +102,10 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		resp, _, err := client.ExchangeContext(ctx, msg, net.JoinHostPort(nsIP, "53"))
 		duration := time.Since(start).Milliseconds()
 
+		// Descriptive log message
 		targetTypeStr := dns.TypeToString[qtype]
-		logMsg := fmt.Sprintf("Searching for %s %s record at %s. [%s] ...took %d ms", strings.TrimSuffix(domain, "."), targetTypeStr, nsName, nsIP, duration)
+		domainNoDot := strings.TrimSuffix(domain, ".")
+		logMsg := fmt.Sprintf("Searching for %s. %s record at %s. [%s] ...took %d ms", domainNoDot, targetTypeStr, nsName, nsIP, duration)
 		logs = append(logs, models.TraceStep{
 			ServerName: nsName,
 			ServerIP:   nsIP,
@@ -112,7 +114,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		})
 
 		if err != nil {
-			logs = append(logs, models.TraceStep{ServerName: nsName, ServerIP: nsIP, Message: fmt.Sprintf("Error: %v", err)})
+			logs = append(logs, models.TraceStep{ServerName: nsName, ServerIP: nsIP, Message: fmt.Sprintf("Error querying %s: %v", nsName, err)})
 			return nil, logs, err
 		}
 
@@ -153,19 +155,20 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 				records = append(records, rec)
 			}
 
-			// If we got a CNAME but asked for A/AAAA/etc, we should technically follow the CNAME.
-			// But for a simple trace, returning the CNAME is fine. (DNSWatch does this if tracing stops).
-			// Let's just return what we got.
 			logs = append(logs, models.TraceStep{
-				Message: fmt.Sprintf("\n%d record(s) found.", len(records)),
+				Message: fmt.Sprintf("%d record(s) found.", len(records)),
 			})
 			return records, logs, nil
 		}
 
-		// Check for NXDOMAIN or other errors
+		// Check for NXDOMAIN or other errors at authoritative level
 		if resp.Rcode != dns.RcodeSuccess {
+			statusMsg := dns.RcodeToString[resp.Rcode]
+			if resp.Rcode == dns.RcodeNameError {
+				statusMsg = "No such host " + domainNoDot
+			}
 			logs = append(logs, models.TraceStep{
-				Message: fmt.Sprintf("\nResponse Code: %s", dns.RcodeToString[resp.Rcode]),
+				Message: fmt.Sprintf("Nameserver %s reports: %s", nsName, statusMsg),
 			})
 			return records, logs, nil
 		}
@@ -173,6 +176,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		// 2. No Answer -> Check Authority for Delegation (NS records for the next zone)
 		if len(resp.Ns) > 0 {
 			var nextNsName string
+			// Prefer NS records pointing to sub-zones
 			for _, rr := range resp.Ns {
 				if ns, ok := rr.(*dns.NS); ok {
 					nextNsName = strings.TrimSuffix(ns.Ns, ".")
@@ -181,8 +185,22 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			}
 
 			if nextNsName == "" {
-				logs = append(logs, models.TraceStep{Message: "Authority section has no NS records. Trace stopped."})
-				break
+				// If no NS but it's an authoritative empty response (SOA in Ns)
+				var isSOA bool
+				for _, rr := range resp.Ns {
+					if _, ok := rr.(*dns.SOA); ok {
+						isSOA = true
+						break
+					}
+				}
+				if isSOA {
+					logs = append(logs, models.TraceStep{
+						Message: fmt.Sprintf("Nameserver %s reports: No %s records for %s", nsName, targetTypeStr, domainNoDot),
+					})
+				} else {
+					logs = append(logs, models.TraceStep{Message: "Authority section returned but no delegation found. Trace stopped."})
+				}
+				return records, logs, nil
 			}
 
 			// Find glue IP in Extra
@@ -196,16 +214,14 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 				}
 			}
 
-			// If no glue record, we would normally resolve the NS name.
-			// For simplicity in this implementation, if no glue, try resolving it using system resolver.
+			// If no glue record, resolve it
 			if nextNsIP == "" {
-				logs = append(logs, models.TraceStep{Message: fmt.Sprintf("No glue record found for %s, resolving...", nextNsName)})
 				ips, err := net.LookupHost(nextNsName)
 				if err == nil && len(ips) > 0 {
 					nextNsIP = ips[0]
 				} else {
-					logs = append(logs, models.TraceStep{Message: fmt.Sprintf("Failed to resolve NS %s. Trace aborted.", nextNsName)})
-					break
+					logs = append(logs, models.TraceStep{Message: fmt.Sprintf("Failed to resolve authoritative nameserver %s. Trace aborted.", nextNsName)})
+					return records, logs, nil
 				}
 			}
 
@@ -216,7 +232,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		}
 
 		// No Answer and No Authority
-		logs = append(logs, models.TraceStep{Message: "No answer and no delegation found. Trace stopped."})
+		logs = append(logs, models.TraceStep{Message: fmt.Sprintf("Nameserver %s reports: No %s records found (Incomplete delegation).", nsName, targetTypeStr)})
 		break
 	}
 

@@ -15,6 +15,7 @@ type APIResponse struct {
 	Success bool        `json:"success"`
 	Data    interface{} `json:"data,omitempty"`
 	Error   string      `json:"error,omitempty"`
+	Message string      `json:"message,omitempty"`
 	Meta    *Meta       `json:"meta,omitempty"`
 }
 
@@ -26,6 +27,19 @@ func Success(c *gin.Context, data interface{}, isCached bool, fetchedAt time.Tim
 		Meta: &Meta{
 			Cached:    isCached,
 			FetchedAt: fetchedAt,
+		},
+	})
+}
+
+// SuccessWithMessage trả về response thành công kèm theo một thông báo (message)
+func SuccessWithMessage(c *gin.Context, data interface{}, message string) {
+	c.JSON(200, APIResponse{
+		Success: true,
+		Data:    data,
+		Message: message,
+		Meta: &Meta{
+			Cached:    false,
+			FetchedAt: time.Now(),
 		},
 	})
 }

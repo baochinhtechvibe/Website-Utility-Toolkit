@@ -155,6 +155,17 @@
     margin-bottom: var(--space-3);
     max-height: 250px;
     overflow-y: auto;
+    /* white-space: pre-wrap;  */
+    /* Quan trọng để hiển thị \n từ backend */
+}
+
+.page--dns .result-card__trace-log b {
+    color: var(--dns-tool-primary);
+    font-weight: 700;
+}
+
+[data-theme="dark"] .page--dns .result-card__trace-log b {
+    color: var(--sky-400);
 }
 
 .page--dns .option-blacklist {

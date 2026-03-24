@@ -47,7 +47,7 @@
     --color-background: var(--gray-900);
     --color-surface: var(--gray-800);
     --color-surface-elevated: var(--gray-700);
-    --color-surface-muted: var(--gray-800);
+    --color-surface-muted: var(--gray-900);
 
     /* Text & Brand */
     --color-brand: var(--slate-950);

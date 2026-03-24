@@ -4,8 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"tools.bctechvibe.com/server/internal/middleware"
 	"tools.bctechvibe.com/server/internal/modules/dns"
-	"tools.bctechvibe.com/server/internal/modules/ip"
-	"tools.bctechvibe.com/server/internal/modules/redirect"
+	iplookup "tools.bctechvibe.com/server/internal/modules/ip-lookup"
+	mixedcontent "tools.bctechvibe.com/server/internal/modules/mixed-content"
+	redirectchecker "tools.bctechvibe.com/server/internal/modules/redirect-checker"
 	"tools.bctechvibe.com/server/internal/modules/ssl"
 	"tools.bctechvibe.com/server/internal/modules/visits"
 )
@@ -24,8 +25,9 @@ func SetupRouter() *gin.Engine {
 	api := r.Group("/api")
 	{
 		dns.RegisterRoutes(api)
-		ip.RegisterRoutes(api)
-		redirect.RegisterRoutes(api)
+		iplookup.RegisterRoutes(api)
+		mixedcontent.RegisterRoutes(api)
+		redirectchecker.RegisterRoutes(api)
 		visits.RegisterRoutes(api)
 		ssl.RegisterRoutes(api)
 	}

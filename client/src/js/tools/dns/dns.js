@@ -471,7 +471,8 @@ function resetUI() {
         btnWhois,
         errorSection,
         tableWrapper,
-        resultDNSSECSection
+        resultDNSSECSection,
+        shareLinkSection
     );
     if(cacheNotice) setDisplay(cacheNotice, "none"); // Reset cache text
     setDisplay(resultsSection, "none"); // Hide main card
@@ -812,7 +813,9 @@ function displayResults(data) {
     resultsTableBody.innerHTML = "";
 
     // Check if we have actual records
-    if (!actualRecords || actualRecords.length === 0) {
+    const hasTraceLogs = data.data && data.data.traceLogs && data.data.traceLogs.length > 0;
+
+    if ((!actualRecords || actualRecords.length === 0) && !hasTraceLogs) {
         setDisplay(tableWrapper, "none");
         setDisplay(resultsSection, "none");
         showError(errorSection, errorMessage, resultsMessage || "Không tìm thấy bản ghi DNS cho truy vấn này", [
@@ -822,8 +825,21 @@ function displayResults(data) {
         return;
     }
 
-    setDisplay(resultsSection, "block");
-    showElements("block", tableWrapper, shareLinkSection);
+    // If we have trace logs but no records, show both trace log and error card
+    if (actualRecords.length === 0 && hasTraceLogs) {
+        setDisplay(tableWrapper, "none");
+        setDisplay(resultsSection, "block");
+        showElements("block", resultsTitle); // Removed shareLinkSection
+        setDisplay(shareLinkSection, "none"); 
+        
+        // Use showError but DONT hide resultsSection
+        showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS", []);
+    } else {
+        setDisplay(tableWrapper, "block");
+        setDisplay(resultsSection, "block");
+        showElements("block", resultsTitle, tableWrapper, shareLinkSection);
+        setDisplay(errorSection, "none"); // Hide error if we have records
+    }
 
     // Add nameservers as NS records (for ALL type, show them)
     if (nameservers && nameservers.length > 0 &&
@@ -1209,12 +1225,10 @@ hostnameInput.addEventListener("keypress", (e) => {
  */
 hostnameInput.addEventListener("input", () => {
     // Ẩn kết quả cũ hoặc lỗi cũ ngay khi người dùng bắt đầu gõ mới
-    if (!errorCard.classList.contains("d-none")) {
-        setDisplay(errorCard, "none");
-    }
-    if (!resultCard.classList.contains("d-none")) {
-        setDisplay(resultCard, "none");
-    }
+    // dùng setDisplay trực tiếp vì showElements() set inline style, không toggle class d-none
+    setDisplay(errorSection, "none");
+    setDisplay(resultsSection, "none");
+    setDisplay(shareLinkSection, "none");
 });
 
 /**

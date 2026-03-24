@@ -161,6 +161,10 @@
     content: url("../../../public/assets/images/layout/header/ssl.png");
 }
 
+.header--mixed .header__icon img {
+    content: url("../../../public/assets/images/layout/header/mixed-content.png");
+}
+
 @container (min-width: 750px) {
     .header__theme-toggle {
         position: absolute;

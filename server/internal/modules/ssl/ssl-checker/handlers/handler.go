@@ -29,7 +29,7 @@ import (
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/service"
-	"tools.bctechvibe.com/server/pkg/validator"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 // ===========================
@@ -77,15 +77,9 @@ func HandleSSLCheck(c *gin.Context) {
 		return
 	}
 
-	// 3. Validate domain format (IsValidDomain thường sẽ chặn IP và local hostname)
+	// 3. Validate domain syntax
 	if !validator.IsValidDomain(domain) {
 		response.Error(c, http.StatusBadRequest, "Định dạng tên miền không hợp lệ")
-		return
-	}
-
-	// 3.1 Check Safe Hostname (Chặn private IP / Internal domain)
-	if !validator.IsSafeHostname(domain) {
-		response.Error(c, http.StatusBadRequest, "Tên miền không được phép (Local/Internal). Vui lòng sử dụng tên miền Public.")
 		return
 	}
 

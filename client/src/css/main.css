@@ -56,10 +56,11 @@
    6. PAGES & TOOLS
    ================================= */
 @import './tools/dns.css';
-@import './tools/ssl-tools.css';
-@import './tools/ip.css';
-@import './tools/redirect.css';
+@import './tools/ssl-checker.css';
+@import './tools/ip-lookup.css';
+@import './tools/redirect-checker.css';
 @import './tools/chmod.css';
+@import './tools/mixed-content.css';
 
 
 /* ===================================

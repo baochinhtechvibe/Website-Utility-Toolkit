@@ -14,12 +14,13 @@ import (
 
 	// "time"
 
+	"time"
+
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
 	dns "tools.bctechvibe.com/server/internal/modules/dns/service"
-	"tools.bctechvibe.com/server/pkg/validator"
-	"tools.bctechvibe.com/server/pkg/cache"
+	"tools.bctechvibe.com/server/internal/platform/cache"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 	responseAPI "tools.bctechvibe.com/server/internal/response"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	dnslib "github.com/miekg/dns"
@@ -34,7 +35,11 @@ func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSL
 		if !req.TraceRoot {
 			dnsCache.Set(cacheKey, res.Data)
 		}
-		responseAPI.Success(c, res.Data, false, time.Now())
+		if res.Message != "" {
+			responseAPI.SuccessWithMessage(c, res.Data, res.Message)
+		} else {
+			responseAPI.Success(c, res.Data, false, time.Now())
+		}
 	} else {
 		// return 200 normal JSON for error conditions that shouldn't be 400
 		c.JSON(http.StatusOK, res)
@@ -133,8 +138,8 @@ func HandleDNSLookup(c *gin.Context) {
 	// ✅ Normalize hostname AFTER bind
 	req.Hostname = normalizeHostname(req.Hostname)
 
-	// ✅ Validate input to prevent SSRF and invalid formats
-	valRes := validator.ValidateAndDetect(req.Hostname)
+	// ✅ Validate input syntax (allow resolve to any IP for DNS tool)
+	valRes := validator.ValidateSyntax(req.Hostname)
 	if !valRes.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -333,7 +338,32 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	}
 
 	if len(apiRecords) == 0 && finalErr == nil {
-		response.Message = "Không có bản ghi nào được tìm thấy qua Root Trace"
+		if len(finalLogs) > 0 {
+			lastIdx := len(finalLogs) - 1
+			lastMsg := finalLogs[lastIdx].Message
+
+			// ✅ NEW: Custom formatting for "No records" trace
+			// Pattern: "Nameserver [ns] reports: [msg]"
+			if strings.Contains(lastMsg, "reports:") {
+				// Remove the report line from TraceLogs to keep it technical
+				response.Data.TraceLogs = finalLogs[:lastIdx]
+
+				// Translate the message for the Error Card
+				// Example: "Nameserver ns1.matbao.vn reports: No A records for meowtopia.com.vn"
+				msg := strings.TrimSpace(lastMsg)
+				msg = strings.Replace(msg, " reports: ", " báo cáo: ", 1)
+				msg = strings.Replace(msg, "No such host ", "Không tồn tại hostname ", 1)
+				msg = strings.Replace(msg, "No ", "Không tìm thấy bản ghi ", 1)
+				msg = strings.Replace(msg, " records for ", " cho hostname ", 1)
+				msg = strings.Replace(msg, " records found", "", 1)
+
+				response.Message = msg
+			} else {
+				response.Message = strings.TrimSpace(lastMsg)
+			}
+		} else {
+			response.Message = "Không có bản ghi nào được tìm thấy qua Root Trace"
+		}
 	}
 	if finalErr != nil {
 		fmt.Printf("Lỗi TraceRoot: %v\n", finalErr)
@@ -388,7 +418,7 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 	if len(ptrRecords) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "Không tìm thấy bản ghi PTR cho IP này",
+			"message": "Không tìm thấy bản ghi PTR cho IP này.",
 		})
 		return
 	}
@@ -422,7 +452,6 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-
 
 	response.Data.Query.IsSubdomain = isSubdomain(domain)
 	// Map để track records đã thấy (deduplicate)
@@ -554,8 +583,8 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 
 	if len(allRecords) == 0 {
 		response.Success = true
-		response.Message = "Không tìm thấy bản ghi nào cho tên miền này!"
-		c.JSON(http.StatusOK, response)
+		response.Message = fmt.Sprintf("Không tìm thấy bản ghi nào cho hostname %s.", domain)
+		sendResponse(c, req, response)
 		return
 	}
 	response.Data.Records = allRecords
@@ -577,7 +606,7 @@ func handlePTRLookup(c *gin.Context, serverKey string, req *models.DNSLookupRequ
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "Không thể đảo ngược địa chỉ IP",
+			"message": "Không thể đảo ngược địa chỉ IP.",
 		})
 		return
 	}
@@ -705,7 +734,7 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Loại bản ghi không hợp lệ",
+			"message": "Loại bản ghi không hợp lệ.",
 		})
 		return
 	}
@@ -755,8 +784,8 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 	}
 	if len(records) == 0 {
 		response.Success = true
-		response.Message = "Không tìm thấy bản ghi DNS cho truy vấn này"
-		c.JSON(http.StatusOK, response)
+		response.Message = fmt.Sprintf("Không tìm thấy bản ghi %s cho hostname %s.", req.Type, originalDomain)
+		sendResponse(c, req, response)
 		return
 	}
 
@@ -781,7 +810,7 @@ func HandleBlacklistStream(c *gin.Context) {
 	if parsedIP == nil || parsedIP.To4() == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Invalid IPv4 address",
+			"message": "Invalid IPv4 address.",
 		})
 		return
 	}
