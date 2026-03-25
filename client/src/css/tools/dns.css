@@ -218,7 +218,7 @@
     width: 100%;
     border-collapse: collapse;
     box-shadow: var(--shadow-sm);
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 .page--dns .results-table thead th {
@@ -237,29 +237,42 @@
     border-top-right-radius: var(--radius-md);
 }
 
+/* DOMAIN — min-width để thoáng, không wrap */
 .page--dns .results-table td:nth-child(1),
 .page--dns .results-table th:nth-child(1) {
-    width: 20%;
+    white-space: nowrap;
+    min-width: 160px;
     text-align: left;
 }
 
+/* TYPE, TTL — min-width để thoáng, centered */
 .page--dns .results-table td:nth-child(2),
-.page--dns .results-table th:nth-child(2),
-.page--dns .results-table td:nth-child(3),
-.page--dns .results-table th:nth-child(3) {
+.page--dns .results-table th:nth-child(2) {
+    white-space: nowrap;
     width: 8%;
+    min-width: 60px;
     text-align: center;
 }
 
+.page--dns .results-table td:nth-child(3),
+.page--dns .results-table th:nth-child(3) {
+    white-space: nowrap;
+    width: 10%;
+    min-width: 70px;
+    text-align: center;
+}
+
+/* ANSWER — chiếm hết phần còn lại */
 .page--dns .results-table td:nth-child(4),
 .page--dns .results-table th:nth-child(4) {
-    width: 51%;
+    width: 100%;
     text-align: left;
 }
 
+/* ISP / ORG — fit-content, không wrap */
 .page--dns .results-table td:nth-child(5),
 .page--dns .results-table th:nth-child(5) {
-    width: 13%;
+    white-space: nowrap;
     text-align: left;
 }
 

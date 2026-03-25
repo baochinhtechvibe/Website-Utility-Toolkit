@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"tools.bctechvibe.com/server/internal/middleware"
+	botsimulator "tools.bctechvibe.com/server/internal/modules/bot-simulator"
 	"tools.bctechvibe.com/server/internal/modules/dns"
 	iplookup "tools.bctechvibe.com/server/internal/modules/ip-lookup"
 	mixedcontent "tools.bctechvibe.com/server/internal/modules/mixed-content"
@@ -30,6 +31,7 @@ func SetupRouter() *gin.Engine {
 		redirectchecker.RegisterRoutes(api)
 		visits.RegisterRoutes(api)
 		ssl.RegisterRoutes(api)
+		botsimulator.RegisterRoutes(api)
 	}
 
 	return r

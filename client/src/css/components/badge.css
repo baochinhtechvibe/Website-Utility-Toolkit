@@ -4,11 +4,6 @@
 ========================================== */
 
 /* =======================================
-    src/css/components/badge.css
-    Badge Component
-========================================== */
-
-/* =======================================
    1. KHUNG XƯƠNG (BASE COMPONENT)
 ========================================== */
 
@@ -29,7 +24,7 @@
     justify-content: center;
 
     padding: var(--pad-y-1) var(--pad-x-3);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
 
     font-size: var(--text-base);
     font-weight: var(--font-weight-semibold);
@@ -97,10 +92,10 @@
 
 .badge-sm {
     font-size: var(--text-base);
-    padding: var(--pad-y-xxs) var(--pad-x-xs);
+    padding: var(--pad-y-1) var(--pad-x-1);
 }
 
 .badge-lg {
     font-size: var(--text-base);
-    padding: var(--pad-y-sm) var(--pad-x-md);
+    padding: var(--pad-y-2) var(--pad-x-3);
 }

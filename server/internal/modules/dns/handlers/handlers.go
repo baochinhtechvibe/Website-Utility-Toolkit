@@ -216,14 +216,27 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	// Always seed Nameservers for better UX (NS always at top)
 	// EXCEPT if the user specifically asked for NS only (in which case it goes to Records)
 	if req.Type != "NS" {
-		nsRecords, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
-		for _, record := range nsRecords {
-			if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+		tracer := dns.NewTraceResolver(10 * time.Second)
+		nsRecords, err := tracer.DiscoverAuthorities(originalDomain)
+		if err == nil {
+			for _, ns := range nsRecords {
 				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
-					Nameserver: strings.TrimSuffix(nsRec.Nameserver, "."),
-					TTL:        nsRec.TTL,
-					Domain:     strings.TrimSuffix(apexDomain, "."),
+					Nameserver: ns.Nameserver,
+					TTL:        ns.TTL,
+					Domain:     ns.Domain,
 				})
+			}
+		} else {
+			// Fallback to public DNS if trace fails
+			nsRecordsPub, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+			for _, record := range nsRecordsPub {
+				if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+					response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+						Nameserver: strings.TrimSuffix(nsRec.Nameserver, "."),
+						TTL:        nsRec.TTL,
+						Domain:     strings.TrimSuffix(apexDomain, "."),
+					})
+				}
 			}
 		}
 	}
@@ -295,16 +308,23 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 			}
 			seenRecords[key] = true
 
-			// IF record is NS and we are NOT in NS-only mode, redirect to Nameservers for top-grouping
+
+			// IF record is NS and we are NOT in NS-only mode:
+			// Only add to Nameservers if Registry discovery failed (Nameservers list is empty).
+			// This prevents Child Zone NS records from overwriting the Registry-level ones.
 			if rec.Type == "NS" && req.Type != "NS" {
-				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
-					Nameserver: cleanValue,
-					TTL:        rec.TTL,
-					Domain:     cleanDomain,
-				})
+				if len(response.Data.Nameservers) == 0 {
+					response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+						Nameserver: cleanValue,
+						TTL:        rec.TTL,
+						Domain:     cleanDomain,
+					})
+				}
+				// else: Registry NS already populated — skip Child Zone NS records
 			} else {
 				allRecords = append(allRecords, rec)
 			}
+
 		}
 	}
 
@@ -464,15 +484,28 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	}
 	apexFQDN := dnslib.Fqdn(apexDomain)
 
-	// 1. Query NS records (for nameservers) - always on apex domain
-	nsRecords, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
-	for _, record := range nsRecords {
-		if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+	// 1. Query NS records (for nameservers) - ALWAYS use authoritative trace first
+	tracer := dns.NewTraceResolver(5 * time.Second)
+	nsRecords, err := tracer.DiscoverAuthorities(originalDomain)
+	if err == nil {
+		for _, ns := range nsRecords {
 			response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
-				Nameserver: nsRec.Nameserver,
-				TTL:        nsRec.TTL,
-				Domain:     apexDomain, // ✅ Add apex domain
+				Nameserver: ns.Nameserver,
+				TTL:        ns.TTL,
+				Domain:     ns.Domain,
 			})
+		}
+	} else {
+		// Fallback to public DNS
+		nsRecordsPub, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+		for _, record := range nsRecordsPub {
+			if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+					Nameserver: nsRec.Nameserver,
+					TTL:        nsRec.TTL,
+					Domain:     apexDomain,
+				})
+			}
 		}
 	}
 
@@ -687,16 +720,29 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 
 	var records []interface{}
 
-	// 1. Query NS records (nameservers) - always on apex domain
+	// 1. Query NS records (nameservers) - ALWAYS use authoritative trace first
 	if req.Type != "NS" {
-		nsRecords, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
-		for _, record := range nsRecords {
-			if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+		tracer := dns.NewTraceResolver(5 * time.Second)
+		nsRecords, err := tracer.DiscoverAuthorities(originalDomain)
+		if err == nil {
+			for _, ns := range nsRecords {
 				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
-					Nameserver: nsRec.Nameserver,
-					TTL:        nsRec.TTL,
-					Domain:     apexDomain,
+					Nameserver: ns.Nameserver,
+					TTL:        ns.TTL,
+					Domain:     ns.Domain,
 				})
+			}
+		} else {
+			// Fallback to public DNS
+			nsRecordsPub, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+			for _, record := range nsRecordsPub {
+				if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
+					response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+						Nameserver: nsRec.Nameserver,
+						TTL:        nsRec.TTL,
+						Domain:     apexDomain,
+					})
+				}
 			}
 		}
 	}

@@ -61,6 +61,7 @@
 @import './tools/redirect-checker.css';
 @import './tools/chmod.css';
 @import './tools/mixed-content.css';
+@import './tools/bot-simulator.css';
 
 
 /* ===================================

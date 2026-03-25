@@ -1,0 +1,314 @@
+/* =======================================
+    src/css/tools/bot-simulator.css
+    Bot Simulator – Indexability Analyzer
+   ======================================= */
+
+/* ─── Verdict Banner ─────────────────────────────────────────── */
+.bs-verdict-banner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius-lg);
+    border: 2px solid transparent;
+    transition: border-color var(--transition-base), background-color var(--transition-base);
+}
+
+.bs-verdict-banner.bs-verdict--indexable {
+    background-color: var(--green-50, #f0fdf4);
+    border-color: var(--green-300);
+}
+
+.bs-verdict-banner.bs-verdict--blocked {
+    background-color: var(--red-50, #fef2f2);
+    border-color: var(--red-300);
+}
+
+.bs-verdict-banner.bs-verdict--risky {
+    background-color: var(--yellow-50, #fefce8);
+    border-color: var(--yellow-300);
+}
+
+.bs-verdict-banner.bs-verdict--unknown {
+    background-color: var(--color-surface-muted);
+    border-color: var(--color-border);
+}
+
+[data-theme="dark"] .bs-verdict-banner.bs-verdict--indexable {
+    background-color: color-mix(in srgb, var(--green-900) 60%, transparent);
+    border-color: var(--green-600);
+}
+
+[data-theme="dark"] .bs-verdict-banner.bs-verdict--blocked {
+    background-color: color-mix(in srgb, var(--red-900) 60%, transparent);
+    border-color: var(--red-600);
+}
+
+[data-theme="dark"] .bs-verdict-banner.bs-verdict--risky {
+    background-color: color-mix(in srgb, var(--yellow-900) 60%, transparent);
+    border-color: var(--yellow-600);
+}
+
+.bs-verdict-banner__icon {
+    flex-shrink: 0;
+}
+
+.bs-verdict--indexable .bs-verdict-banner__icon { color: var(--color-success); }
+.bs-verdict--blocked   .bs-verdict-banner__icon { color: var(--color-error); }
+.bs-verdict--risky     .bs-verdict-banner__icon { color: var(--color-warning); }
+.bs-verdict--unknown   .bs-verdict-banner__icon { color: var(--color-text-muted); }
+
+.bs-verdict-banner__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.bs-verdict-banner__bot {
+    flex-shrink: 0;
+}
+
+.bs-verdict-label {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold, 700);
+}
+
+.bs-verdict--indexable .bs-verdict-label { color: var(--color-success); }
+.bs-verdict--blocked   .bs-verdict-label { color: var(--color-error); }
+.bs-verdict--risky     .bs-verdict-label { color: var(--color-warning); }
+.bs-verdict--unknown   .bs-verdict-label { color: var(--color-text-muted); }
+
+.bs-verdict-summary {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+/* ─── Summary Strip (3 ô) ────────────────────────────────────── */
+.bs-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+    .bs-summary-strip {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bs-summary-cell {
+    text-align: center;
+}
+
+.bs-summary-cell .card__body {
+    padding: 1rem;
+}
+
+.bs-summary-cell__label {
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.bs-summary-cell__value {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.bs-summary-cell__value.status--allowed   { color: var(--color-success); }
+.bs-summary-cell__value.status--blocked   { color: var(--color-error); }
+.bs-summary-cell__value.status--risky,
+.bs-summary-cell__value.status--deferred  { color: var(--color-warning); }
+.bs-summary-cell__value.status--unknown   { color: var(--color-text-muted); }
+
+
+/* ─── Evidence Grid (2 cột) ──────────────────────────────────── */
+.bs-evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .bs-evidence-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bs-evidence-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.bs-evidence-row:last-child {
+    border-bottom: none;
+}
+
+.bs-evidence-label {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    min-width: 7rem;
+}
+
+.bs-evidence-value {
+    color: var(--color-text-primary);
+    word-break: break-all;
+    text-align: right;
+}
+
+.bs-evidence-code {
+    background: var(--code-bg, var(--gray-100));
+    color: var(--code-text, var(--gray-700));
+    border: 1px solid var(--code-border, var(--gray-200));
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-xs, 0.25rem);
+    word-break: break-all;
+    max-width: 100%;
+}
+
+.text-truncate-url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+    display: inline-block;
+}
+
+/* ─── Redirect Chain ─────────────────────────────────────────── */
+.bs-redirect-chain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+}
+
+.bs-redirect-hop {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--pad-y-1) var(--pad-x-2);
+    border-radius: var(--radius-xs, 0.25rem);
+    background-color: var(--color-surface-muted);
+}
+
+.bs-redirect-hop__step {
+    font-weight: 600;
+    color: var(--color-text-muted);
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+.bs-redirect-hop__code {
+    font-weight: 700;
+    min-width: 2.5rem;
+}
+
+.bs-redirect-hop__url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+}
+
+/* ─── Reason Codes ───────────────────────────────────────────── */
+.bs-reason-codes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* ─── Suggestion List ────────────────────────────────────────── */
+.bs-suggestion-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bs-suggestion-list li {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5rem;
+    color: var(--color-text-secondary);
+    padding: var(--pad-y-1) var(--pad-x-2);
+    background-color: var(--color-surface-muted);
+    border-radius: var(--radius-xs, 0.25rem);
+    border-left: 3px solid var(--color-info);
+}
+
+.bs-suggestion-list li::before {
+    content: "→";
+    color: var(--color-info);
+    flex-shrink: 0;
+    font-weight: 700;
+}
+
+/* ─── Limitations List ───────────────────────────────────────── */
+.bs-limitation-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bs-limitation-list li {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.bs-limitation-list li::before {
+    content: "❖";
+    flex-shrink: 0;
+}
+
+/* ─── Compare Table ──────────────────────────────────────────── */
+.bs-compare-table th,
+.bs-compare-table td {
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+}
+
+.bs-compare-table td.has-diff {
+    background-color: color-mix(in srgb, var(--yellow-300) 20%, transparent);
+}
+
+.bs-diff-badge {
+    display: inline-block;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+    background-color: var(--yellow-100);
+    color: var(--yellow-800);
+    border: 1px solid var(--yellow-300);
+    margin-inline: 0.15rem;
+}
+
+/* ─── Loading States ─────────────────────────────────────────── */
+.bs-skeleton {
+    background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--color-surface) 50%, var(--color-surface-muted) 75%);
+    background-size: 200% 100%;
+    animation: bs-shimmer 1.5s infinite;
+    border-radius: var(--radius-xs, 0.25rem);
+    height: 1em;
+    display: block;
+}
+
+@keyframes bs-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

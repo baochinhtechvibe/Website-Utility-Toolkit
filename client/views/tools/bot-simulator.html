@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Kiểm tra khả năng crawl và index của Googlebot, AI bots, và social preview bots. Phân tích robots.txt, meta robots, X-Robots-Tag, canonical và đưa ra phán quyết Indexable / Blocked / Risky.">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../src/css/tools/bot-simulator.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title>Bot Simulator – Indexability Analyzer | Website Utility Toolkit</title>
+</head>
+
+<body>
+    <div class="wrapper page--bot-simulator">
+        <!-- Begin: Header -->
+        <header id="header" class="header header--bot-sim py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/bot-simulator.png" alt="Bot Simulator">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">BOT SIMULATOR</h1>
+                            <p class="header__subtitle uppercase font-bold">Indexability Analyzer</p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Mô phỏng cách Googlebot, AI crawlers và social bots tiếp cận trang web. Phân tích robots.txt,
+                        meta robots, X-Robots-Tag và đưa ra phán quyết khả năng lập chỉ mục.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header -->
+
+        <main id="main" class="main pt-2 pb-6">
+            <div class="container">
+
+                <!-- ========== CARD: FORM ========== -->
+                <div class="card">
+                    <div class="card__header">
+                        <h2 class="card__title text-xl font-bold text-center">
+                            <i class="fa-solid fa-robot"></i>
+                            Phân tích khả năng tiếp cận của Bot
+                        </h2>
+                    </div>
+                    <div class="card__body">
+                        <form id="botSimulatorForm" action="" method="post" class="form">
+                            <div class="form-inline">
+                                <div class="form-field form-field--wide">
+                                    <label class="form-label" for="botSimUrl">URL cần kiểm tra</label>
+                                    <input type="text" id="botSimUrl" name="url" class="form-input"
+                                        placeholder="Ví dụ: https://example.com/blog/bai-viet" autocomplete="off">
+                                </div>
+
+                                <div class="form-field">
+                                    <label class="form-label" for="botSelect">Bot Agent</label>
+                                    <select id="botSelect" name="bot" class="form-input form-select">
+                                        <optgroup label="Search Crawlers">
+                                            <option value="googlebot-desktop">Googlebot (Desktop)</option>
+                                            <option value="googlebot-smartphone">Googlebot (Smartphone)</option>
+                                            <option value="bingbot">Bingbot</option>
+                                            <option value="yandexbot">YandexBot</option>
+                                        </optgroup>
+                                        <optgroup label="AI Search Crawlers">
+                                            <option value="oai-searchbot">OAI-SearchBot (OpenAI)</option>
+                                            <option value="perplexitybot">PerplexityBot</option>
+                                            <option value="claude-searchbot">Claude-SearchBot (Anthropic)</option>
+                                        </optgroup>
+                                        <optgroup label="AI Training Bots">
+                                            <option value="gptbot">GPTBot (OpenAI Training)</option>
+                                            <option value="claudebot">ClaudeBot (Anthropic Training)</option>
+                                        </optgroup>
+                                        <optgroup label="User-Triggered Fetchers">
+                                            <option value="chatgpt-user">ChatGPT-User</option>
+                                            <option value="perplexity-user">Perplexity-User</option>
+                                            <option value="claude-user">Claude-User</option>
+                                        </optgroup>
+                                        <optgroup label="Social Preview Bots">
+                                            <option value="facebookbot">Facebook Preview Bot</option>
+                                            <option value="twitterbot">Twitterbot (X)</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                <div class="form-field form-field--button">
+                                    <button id="btnAnalyze" type="submit" class="btn btn-action btn-block">
+                                        <i class="fa-solid fa-magnifying-glass" id="analyzeIcon"></i>
+                                        Phân tích
+                                        <i class="fa-solid fa-spinner fa-spin d-none" id="analyzeLoading"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Options -->
+                            <div class="form-field mt-4 d-flex flex-row gap-6 items-center flex-wrap">
+                                <label class="form-checkbox-label mr-2" for="checkSitemap">
+                                    <input type="checkbox" id="checkSitemap" name="checkSitemap" class="form-checkbox"
+                                        checked>
+                                    <span><i class="fa-solid fa-sitemap"></i> Kiểm tra Sitemap</span>
+                                </label>
+                                <label class="form-checkbox-label mr-2" for="ignoreTLSErrors">
+                                    <input type="checkbox" id="ignoreTLSErrors" name="ignoreTLSErrors"
+                                        class="form-checkbox">
+                                    <span><i class="fa-solid fa-ban"></i> Bỏ qua lỗi SSL</span>
+                                </label>
+                                <label class="form-checkbox-label mr-2" for="compareMode">
+                                    <input type="checkbox" id="compareMode" name="compareMode" class="form-checkbox">
+                                    <span><i class="fa-solid fa-code-compare"></i> So sánh nhiều bot</span>
+                                </label>
+                            </div>
+
+                            <div id="urlValidationError" class="error-card mt-2 d-none">
+                                <div class="error-card__header">
+                                    <h3 class="error-card__title">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        URL không hợp lệ
+                                    </h3>
+                                </div>
+                                <div class="error-card__body">
+                                    <p class="error-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
+                                        <code>http://</code> hoặc <code>https://</code>.</p>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ========== ERROR CARD ========== -->
+                <div id="errorCard" class="error-card mt-6 d-none">
+                    <div class="error-card__header">
+                        <h3 class="error-card__title text-xl font-bold">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            Phân tích thất bại
+                        </h3>
+                    </div>
+                    <div class="error-card__body">
+                        <p id="errorMessage" class="error-card__message">Không thể kết nối tới URL. Vui lòng kiểm tra và
+                            thử lại.</p>
+                    </div>
+                </div>
+
+                <!-- ========== RESULT SECTION ========== -->
+                <div id="resultSection" class="d-none mt-6">
+
+                    <!-- CACHE BANNER -->
+                    <div id="cacheNotice" class="result-card__cache-notice mb-4 flex-row justify-between items-center d-none">
+                        <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
+                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-notice__btn-refresh"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                    </div>
+
+                    <!-- Verdict Banner (live, thay thế nội dung bằng JS) -->
+                    <div id="verdictBanner" class="bs-verdict-banner mb-4">
+                        <div class="bs-verdict-banner__icon">
+                            <i id="verdictIcon" class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div class="bs-verdict-banner__content">
+                            <div class="d-flex flex-row gap-2 items-center flex-wrap">
+                                <span id="verdictLabel" class="bs-verdict-label"></span>
+                                <span id="verdictConfidence" class="badge badge-sm badge-default"></span>
+                                <span id="cachedBadge" class="badge badge-sm badge-info d-none"><i
+                                        class="fa-solid fa-database"></i> Cached</span>
+                            </div>
+                            <p id="verdictSummary" class="bs-verdict-summary mt-1"></p>
+                        </div>
+                        <div class="bs-verdict-banner__bot">
+                            <span id="activeBotLabel" class="badge badge-default"></span>
+                        </div>
+                    </div>
+
+                    <!-- Summary Strip: 3 ô Crawl / Index / Serving -->
+                    <div class="bs-summary-strip mb-4 d-flex flex-row gap-4 flex-wrap">
+                        <div class="card card--flat bs-summary-cell">
+                            <div class="card__body">
+                                <p class="bs-summary-cell__label"><i class="fa-solid fa-robot"></i> Crawl Access</p>
+                                <p id="crawlStatus" class="bs-summary-cell__value">–</p>
+                            </div>
+                        </div>
+                        <div class="card card--flat bs-summary-cell">
+                            <div class="card__body">
+                                <p class="bs-summary-cell__label"><i class="fa-solid fa-eye"></i> Indexability</p>
+                                <p id="indexStatus" class="bs-summary-cell__value">–</p>
+                            </div>
+                        </div>
+                        <div class="card card--flat bs-summary-cell">
+                            <div class="card__body">
+                                <p class="bs-summary-cell__label"><i class="fa-solid fa-server"></i> HTTP Status</p>
+                                <p id="httpStatus" class="bs-summary-cell__value">–</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Evidence Cards: Grid 2 cột -->
+                    <div class="bs-evidence-grid mb-4">
+
+                        <!-- Robots.txt Card -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3 class="card__title font-bold">
+                                    <i class="fa-solid fa-shield-halved"></i> Robots.txt
+                                </h3>
+                            </div>
+                            <div class="card__body">
+                                <div id="robotsContent">
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Trạng thái fetch</span>
+                                        <span id="robotsFetchStatus" class="badge badge-default">–</span>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Group match</span>
+                                        <span id="robotsMatchedGroup" class="bs-evidence-value">–</span>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Rule match</span>
+                                        <code id="robotsMatchedRule" class="bs-evidence-code">–</code>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Quyết định</span>
+                                        <span id="robotsDecision" class="badge">–</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Meta Signals Card -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3 class="card__title font-bold">
+                                    <i class="fa-solid fa-code"></i> Tín hiệu Indexability
+                                </h3>
+                            </div>
+                            <div class="card__body">
+                                <div id="metaContent">
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Meta robots</span>
+                                        <code id="metaRobotsVal" class="bs-evidence-code">–</code>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">X-Robots-Tag</span>
+                                        <code id="xRobotsVal" class="bs-evidence-code">–</code>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Canonical</span>
+                                        <span id="canonicalVal" class="bs-evidence-value text-truncate-url">–</span>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Canonical self?</span>
+                                        <span id="canonicalSelf" class="badge">–</span>
+                                    </div>
+                                    <div class="bs-evidence-row">
+                                        <span class="bs-evidence-label">Index status</span>
+                                        <span id="indexDetail" class="badge">–</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Serving Card -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3 class="card__title font-bold">
+                                    <i class="fa-solid fa-arrows-rotate"></i> HTTP Serving
+                                </h3>
+                            </div>
+                            <div class="card__body">
+                                <div class="bs-evidence-row">
+                                    <span class="bs-evidence-label">Final URL</span>
+                                    <span id="servingFinalUrl" class="bs-evidence-value text-truncate-url">–</span>
+                                </div>
+                                <div class="bs-evidence-row">
+                                    <span class="bs-evidence-label">HTTP Status</span>
+                                    <span id="servingStatus" class="badge">–</span>
+                                </div>
+                                <div class="bs-evidence-row">
+                                    <span class="bs-evidence-label">Content-Type</span>
+                                    <span id="servingContentType" class="bs-evidence-value">–</span>
+                                </div>
+                                <div class="bs-evidence-row">
+                                    <span class="bs-evidence-label">Payload</span>
+                                    <span id="servingPayload" class="bs-evidence-value">–</span>
+                                </div>
+                                <div class="bs-evidence-row">
+                                    <span class="bs-evidence-label">Redirects</span>
+                                    <span id="servingRedirects" class="bs-evidence-value">–</span>
+                                </div>
+                                <div id="redirectChainWrap" class="mt-2 d-none">
+                                    <div class="bs-redirect-chain" id="redirectChainList"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sitemap Card -->
+                        <div class="card" id="sitemapCard">
+                            <div class="card__header">
+                                <h3 class="card__title font-bold">
+                                    <i class="fa-solid fa-sitemap"></i> Sitemap
+                                </h3>
+                            </div>
+                            <div class="card__body">
+                                <div id="sitemapContent">
+                                    <p class="bs-evidence-value text-center">Chưa kiểm tra sitemap.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- End: Evidence Grid -->
+
+                    <!-- Reason Codes & Suggestions -->
+                    <div class="card mb-4" id="reasonCard">
+                        <div class="card__header">
+                            <h3 class="card__title font-bold">
+                                <i class="fa-solid fa-lightbulb"></i> Nhận xét & Đề xuất
+                            </h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="reasonCodes" class="bs-reason-codes d-flex flex-row gap-2 flex-wrap mb-3"></div>
+                            <ul id="suggestionList" class="bs-suggestion-list"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Compare Table -->
+                    <div class="card mb-4 d-none" id="compareCard">
+                        <div class="card__header">
+                            <h3 class="card__title font-bold">
+                                <i class="fa-solid fa-code-compare"></i> So sánh Bot Profiles
+                            </h3>
+                        </div>
+                        <div class="card__body p-0">
+                            <div class="table-wrapper w-full overflow-x-auto">
+                                <table class="results-table w-full bs-compare-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Bot</th>
+                                            <th>Crawl</th>
+                                            <th>Index</th>
+                                            <th>HTTP</th>
+                                            <th>Final URL</th>
+                                            <th>Title</th>
+                                            <th>Diff</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="compareTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Limitations Card -->
+                    <div id="limitationsCard" class="warning-card mt-4">
+                        <div class="warning-card__header">
+                            <h3 class="warning-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Giới hạn của công cụ (UA Simulation)</h3>
+                        </div>
+                        <div class="warning-card__body">
+                            <ul id="limitationsList" class="bs-limitation-list"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Share Card -->
+                    <div id="shareCard" class="share-card mt-4">
+                        <div class="share-card__header">
+                            <h4 class="share-card__title text-xl font-bold">
+                                <i class="fa-solid fa-share-nodes"></i>
+                                Chia sẻ kết quả:
+                            </h4>
+                        </div>
+                        <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                            <input type="text" id="shareLink" readonly class="share-card__input" value="">
+                            <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                <i class="fas fa-copy"></i>
+                                <span>Copy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- End: Result Section -->
+
+            </div>
+        </main>
+
+        <!-- Begin: Footer -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">Tổng lượt truy cập:</span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+                </div>
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer -->
+    </div>
+
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/bot-simulator/bot-simulator.js"></script>
+</body>
+
+</html>

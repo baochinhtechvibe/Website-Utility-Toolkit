@@ -45,13 +45,8 @@
     background-color: transparent;
     color: var(--color-text-secondary);
     font-weight: 500;
-    font-size: var(--text-base);
     transition: all var(--transition-base);
     cursor: pointer;
-}
-
-.ssl-tools__list .ssl-tools__item i {
-    font-size: var(--text-lg);
 }
 
 .ssl-tools__list .ssl-tools__item:hover {
@@ -107,7 +102,7 @@
 }
 
 .ssl-checker__overview-title {
-    font-size: var(--text-h5);
+    font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
     color: var(--color-text-primary);
 }
@@ -120,7 +115,6 @@
     padding: var(--pad-y-1) var(--pad-x-3);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-bold);
-    font-size: var(--text-sm);
     line-height: 1;
     border: 1px solid transparent;
 }
@@ -162,7 +156,6 @@
     --btn-hover-bg: var(--green-700);
     
     padding: var(--space-1) var(--space-3);
-    font-size: 0.75rem;
     text-transform: uppercase;
     margin-left: var(--space-2);
     border-radius: var(--radius-sm);
@@ -224,7 +217,6 @@
 
 .ssl-checker__message { 
     color: var(--color-text-secondary);
-    font-size: var(--text-base);
 }
 
 .ssl-checker__message--value {
@@ -323,7 +315,6 @@
 }
 
 .ssl-checker__cert-level h4 {
-    font-size: var(--text-h4);
     font-weight: var(--font-weight-bold);
     text-transform: uppercase;
     margin: 0;
@@ -342,13 +333,11 @@
 .ssl-checker__cert-label {
     font-weight: var(--font-weight-bold);
     color: var(--color-text-secondary);
-    font-size: var(--text-sm);
 }
 
 .ssl-checker__cert-value {
     word-break: break-word;
     color: var(--color-text-primary);
-    font-size: var(--text-base);
 }
 
 .ssl-checker__cert-value--date {
@@ -361,7 +350,7 @@
 
 .ssl-checker__cert-common-name .ssl-checker__cert-value {
     font-weight: var(--font-weight-bold);
-    font-size: var(--text-lg);
+    font-size: var(--text-md);
     color: var(--color-text-primary);
 }
 
@@ -425,7 +414,6 @@
     .ssl-checker__cert-label {
         width: 160px;
         flex-shrink: 0;
-        font-size: var(--text-base);
     }
     
     /* CSR Decoder Results Row */

@@ -93,8 +93,8 @@ export function createRealtimeURLValidator(inputEl, errorEl, submitBtn) {
 
 
 // Regex domain đơn giản nhưng đủ dùng cho realtime UX check
-// Chấp nhận: google.com, sub.example.org, my-site.co.uk, localhost
-export const DOMAIN_RE = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$/;
+// Chấp nhận: google.com, sub.example.org, my-site.co.uk, localhost, _domainkey (DKIM/DMARC)
+export const DOMAIN_RE = /^([a-zA-Z0-9_]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,}$|^localhost$/;
 
 // IPv4
 export const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;

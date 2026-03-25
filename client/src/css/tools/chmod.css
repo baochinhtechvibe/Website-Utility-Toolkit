@@ -29,7 +29,7 @@
 .master-input {
     width: 100% !important; /* Force full width */
     padding: var(--space-4);
-    font-size: var(--text-h6) !important;
+    font-size: var(--text-md);
     text-align: center;
     font-weight: var(--font-weight-bold);
     color: var(--color-brand);
@@ -72,16 +72,11 @@
 @media (max-width: 500px) {
     .master-input {
         height: 60px !important;
-        font-size: var(--text-h3) !important;
         padding: 0 var(--space-2);
     }
     
     .terminal-body {
         padding: var(--space-3);
-    }
-    
-    .terminal-box {
-        font-size: var(--text-sm); /* Using token instead of 13px */
     }
 
     .card__body {
@@ -147,7 +142,6 @@
 }
 
 .checkbox-label {
-    font-size: var(--text-base);
     color: var(--color-text-primary);
     font-weight: var(--font-weight-medium);
 }
@@ -195,11 +189,9 @@
 }
 
 .terminal-badge {
-    font-size: var(--text-sm);
     background: rgba(255, 255, 255, 0.1);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
 }
 
 .terminal-body {
@@ -216,7 +208,6 @@
 .terminal-box {
     margin: 0;
     white-space: pre;
-    font-size: var(--text-base);
     line-height: var(--line-height-relaxed);
     min-width: min-content;
     display: inline-block;
@@ -333,7 +324,6 @@
     }
 
     .command-display {
-        font-size: var(--text-base) !important;
         overflow-x: auto;
     }
 }
@@ -344,7 +334,6 @@
     padding: var(--space-4);
     border-radius: var(--radius-md);
     font-family: var(--font-family-mono);
-    font-size: var(--text-base);
     border: 1px dashed var(--color-border-strong);
     display: block; /* Sửa flex thành block để tránh rớt hàng spans */
     white-space: pre-wrap;

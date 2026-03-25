@@ -6,6 +6,8 @@
     /* Body text */
     --text-sm: var(--font-size-100);
     --text-base: var(--font-size-200);
+    --text-md: var(--font-size-300);
+    --text-lg: var(--font-size-400);
 
     /* Headings */
     --text-h6: var(--font-size-200);

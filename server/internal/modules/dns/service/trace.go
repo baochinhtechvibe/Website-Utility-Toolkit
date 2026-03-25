@@ -75,7 +75,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 
 	client := &dns.Client{
 		Net:     "udp",
-		Timeout: 2 * time.Second, // Timeout per hop
+		Timeout: 3 * time.Second, // Increased timeout per hop
 	}
 
 	visited := make(map[string]bool)
@@ -126,37 +126,50 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 					Domain: domain,
 					TTL:    ans.Header().Ttl,
 				}
+				valStr := ""
 				switch rr := ans.(type) {
 				case *dns.A:
 					rec.Type = "A"
 					rec.Address = rr.A.String()
+					valStr = rec.Address
 				case *dns.AAAA:
 					rec.Type = "AAAA"
 					rec.Address = rr.AAAA.String()
+					valStr = rec.Address
 				case *dns.CNAME:
 					rec.Type = "CNAME"
 					rec.Value = strings.TrimSuffix(rr.Target, ".")
+					valStr = rec.Value
 				case *dns.MX:
 					rec.Type = "MX"
 					rec.Priority = rr.Preference
 					rec.Exchange = strings.TrimSuffix(rr.Mx, ".")
+					valStr = fmt.Sprintf("%s (Priority: %d)", rec.Exchange, rec.Priority)
 				case *dns.NS:
 					rec.Type = "NS"
 					rec.Nameserver = strings.TrimSuffix(rr.Ns, ".")
+					valStr = rec.Nameserver
 				case *dns.TXT:
 					rec.Type = "TXT"
 					rec.Value = strings.Join(rr.Txt, " ")
+					valStr = rec.Value
 				case *dns.PTR:
 					rec.Type = "PTR"
 					rec.Value = strings.TrimSuffix(rr.Ptr, ".")
+					valStr = rec.Value
 				default:
 					continue
 				}
 				records = append(records, rec)
+
+				// Log each found record like DNS Watch
+				logs = append(logs, models.TraceStep{
+					Message: fmt.Sprintf("%s record found: %s", rec.Type, valStr),
+				})
 			}
 
 			logs = append(logs, models.TraceStep{
-				Message: fmt.Sprintf("%d record(s) found.", len(records)),
+				Message: fmt.Sprintf("\nTrace complete: %d record(s) found.", len(records)),
 			})
 			return records, logs, nil
 		}
@@ -176,7 +189,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		// 2. No Answer -> Check Authority for Delegation (NS records for the next zone)
 		if len(resp.Ns) > 0 {
 			var nextNsName string
-			// Prefer NS records pointing to sub-zones
+			// Pick the first NS record in the delegation
 			for _, rr := range resp.Ns {
 				if ns, ok := rr.(*dns.NS); ok {
 					nextNsName = strings.TrimSuffix(ns.Ns, ".")
@@ -214,7 +227,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 				}
 			}
 
-			// If no glue record, resolve it
+			// If no glue record, resolve it silently
 			if nextNsIP == "" {
 				ips, err := net.LookupHost(nextNsName)
 				if err == nil && len(ips) > 0 {
@@ -231,6 +244,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			continue
 		}
 
+
 		// No Answer and No Authority
 		logs = append(logs, models.TraceStep{Message: fmt.Sprintf("Nameserver %s reports: No %s records found (Incomplete delegation).", nsName, targetTypeStr)})
 		break
@@ -238,3 +252,156 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 
 	return records, logs, nil
 }
+
+// DiscoverAuthorities traces from Root to find the authoritative nameservers for a domain.
+// It returns the NS records that the PARENT zone (Registry) delegates to — not the zone's own NS.
+// Strategy: keep track of the "last delegation" seen, and when we get an ANSWER (zone-self),
+// return the last delegation instead — that gives ns1/ns2, not ns3/ns4.
+func (tr *TraceResolver) DiscoverAuthorities(domain string) ([]models.NameserverInfo, error) {
+	domain = dns.Fqdn(domain)
+	nsIP, _ := getRandomRoot()
+
+	ctx, cancel := context.WithTimeout(context.Background(), tr.Timeout)
+	defer cancel()
+
+	client := &dns.Client{
+		Net:     "udp",
+		Timeout: 2 * time.Second,
+	}
+
+	visited := make(map[string]bool)
+	targetDomain := strings.TrimSuffix(domain, ".")
+
+	// Keep the last delegation seen from an "intermediate" server.
+	// When we finally get an ANSWER (self-referential), return this instead.
+	var lastDelegation []models.NameserverInfo
+
+	for {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		if visited[nsIP] {
+			if len(lastDelegation) > 0 {
+				return lastDelegation, nil
+			}
+			return nil, fmt.Errorf("loop detected during discovery")
+		}
+		visited[nsIP] = true
+
+		msg := new(dns.Msg)
+		msg.SetQuestion(domain, dns.TypeNS)
+		msg.RecursionDesired = false
+
+		resp, _, err := client.ExchangeContext(ctx, msg, net.JoinHostPort(nsIP, "53"))
+		if err != nil {
+			if len(lastDelegation) > 0 {
+				return lastDelegation, nil
+			}
+			return nil, err
+		}
+
+		// If we got an ANSWER section:
+		// This is the zone's authoritative server answering about itself (ns3/ns4 self-referential).
+		// We want what the PARENT said, so return lastDelegation (which holds ns1/ns2 from parent).
+		if len(resp.Answer) > 0 {
+			if len(lastDelegation) > 0 {
+				// Return parent delegation = Registry-level NS
+				return lastDelegation, nil
+			}
+			// Fallback: no prior delegation found, return these Answer records
+			var nsInfos []models.NameserverInfo
+			for _, ans := range resp.Answer {
+				if ns, ok := ans.(*dns.NS); ok {
+					nsInfos = append(nsInfos, models.NameserverInfo{
+						Nameserver: strings.TrimSuffix(ns.Ns, "."),
+						TTL:        ns.Header().Ttl,
+						Domain:     strings.TrimSuffix(ns.Hdr.Name, "."),
+					})
+				}
+			}
+			if len(nsInfos) > 0 {
+				return nsInfos, nil
+			}
+		}
+
+		// If we got Authority (delegation):
+		if len(resp.Ns) > 0 {
+			var nsRecords []models.NameserverInfo
+			var nextName string
+			var nextIP string
+			var delegatedZone string
+
+			for _, rr := range resp.Ns {
+				if ns, ok := rr.(*dns.NS); ok {
+					nsNameFound := strings.TrimSuffix(ns.Ns, ".")
+					hdrZone := strings.TrimSuffix(ns.Hdr.Name, ".")
+					nsRecords = append(nsRecords, models.NameserverInfo{
+						Nameserver: nsNameFound,
+						TTL:        ns.Header().Ttl,
+						Domain:     hdrZone,
+					})
+					if delegatedZone == "" {
+						delegatedZone = hdrZone
+					}
+					if nextName == "" {
+						nextName = nsNameFound
+					}
+				}
+			}
+
+			// If this delegation is exactly for our target domain — these ARE the registry NS.
+			// (e.g., TLD .vn directly delegates thehaf.io.vn. → ns1/ns2)
+			if strings.EqualFold(delegatedZone, targetDomain) && len(nsRecords) > 0 {
+				return nsRecords, nil
+			}
+
+			// Otherwise, this is an intermediate delegation (e.g., Root → .vn)
+			// Save as "last delegation" and descend to next NS
+			if len(nsRecords) > 0 {
+				lastDelegation = nsRecords
+			}
+
+			if nextName == "" {
+				if len(lastDelegation) > 0 {
+					return lastDelegation, nil
+				}
+				return nil, fmt.Errorf("incomplete delegation")
+			}
+
+			// Find glue
+			for _, extra := range resp.Extra {
+				if a, ok := extra.(*dns.A); ok {
+					if strings.TrimSuffix(a.Hdr.Name, ".") == nextName {
+						nextIP = a.A.String()
+						break
+					}
+				}
+			}
+
+			if nextIP == "" {
+				ips, _ := net.LookupHost(nextName)
+				if len(ips) > 0 {
+					nextIP = ips[0]
+				} else {
+					if len(lastDelegation) > 0 {
+						return lastDelegation, nil
+					}
+					return nil, fmt.Errorf("failed to resolve: %s", nextName)
+				}
+			}
+
+			nsIP = nextIP
+			continue
+		}
+
+		break
+	}
+
+	if len(lastDelegation) > 0 {
+		return lastDelegation, nil
+	}
+	return nil, fmt.Errorf("no authoritative nameservers found")
+}
+
+

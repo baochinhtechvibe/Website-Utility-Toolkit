@@ -79,16 +79,40 @@ function setupEventListeners() {
     // Export JSON
     $('#btnExportJson')?.addEventListener('click', exportJson);
 
-    // Copy cURL
-    $('#btnCopyCurl')?.addEventListener('click', () => {
-        const text = $('#curlOutput')?.textContent;
-        copyText(text, $('#btnCopyCurl'));
-    });
-
     // Copy share link
     $('#btnCopyLink')?.addEventListener('click', () => {
         const text = $('#shareLink')?.value;
         copyText(text, $('#btnCopyLink'));
+    });
+
+    // Global copy handler for .js-copy-code (code-blocks)
+    document.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".js-copy-code");
+        if (!btn) return;
+        if (btn.disabled) return;
+
+        try {
+            const selector = btn.getAttribute("data-clipboard-target");
+            if (!selector) return;
+
+            const codeEl = document.querySelector(selector);
+            if (!codeEl) return;
+
+            btn.disabled = true;
+            const textToCopy = codeEl.innerText || codeEl.textContent;
+            await navigator.clipboard.writeText(textToCopy.trim());
+
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-check"></i>`;
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }, 2000);
+        } catch (err) {
+            btn.disabled = false;
+            console.error("COPY FAIL:", err);
+        }
     });
 }
 
@@ -532,11 +556,16 @@ function renderSEO(seo) {
 // 6. cURL Output
 // ==============================
 function renderCurl(url, steps) {
-    const el = $('#curlOutput');
-    if (!el) return;
+    const curlEl = $('#curlOutput');
+    const pathEl = $('#pathOutput');
 
-    const chainUrls = steps.map(s => `# Step → ${s.statusCode ?? '?'} ${escHtml(s.url ?? '')}`).join('\n');
-    el.textContent = `# Kiểm tra redirect bằng curl:\ncurl -v -L -A "Mozilla/5.0 (compatible; RedirectAnalyzer/1.0)" \\\n  "${url}"\n\n# Lộ trình được phân tích:\n${chainUrls}`;
+    if (curlEl) {
+        curlEl.textContent = `curl -v -L -A "Mozilla/5.0 (compatible; RedirectAnalyzer/1.0)" \\\n  "${url}"`;
+    }
+
+    if (pathEl) {
+        pathEl.textContent = steps.map((s, i) => `# Step ${i + 1} → ${s.statusCode ?? '?'} ${s.url ?? ''}`).join('\n');
+    }
 }
 
 // ==============================

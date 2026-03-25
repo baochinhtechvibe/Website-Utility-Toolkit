@@ -52,7 +52,7 @@
 }
 
 .mc-stat__label {
-    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-muted);
     margin-top: var(--spacing-1);
     text-align: center;
@@ -82,7 +82,6 @@
     border: 1px solid var(--yellow-400);
     border-radius: var(--radius-md);
     color: var(--yellow-700);
-    font-size: var(--text-base);
 }
 
 [data-theme="dark"] .mc-truncated-banner {
@@ -168,7 +167,6 @@
 
 .mc-table td {
     vertical-align: middle;
-    font-size: var(--text-base);
     color: var(--color-text-secondary);
     padding: var(--space-3) var(--space-4);
 }
@@ -205,19 +203,16 @@
 
 .mc-fix-arrow {
     color: var(--color-text-muted);
-    font-size: var(--text-sm);
     white-space: nowrap;
 }
 
 .mc-fix-url {
     color: var(--color-success);
-    font-size: var(--text-sm);
     word-break: break-all;
 }
 
 .mc-foundin {
     font-family: var(--font-family-mono);
-    font-size: var(--text-sm);
     color: var(--color-text-muted);
     background-color: var(--color-surface-muted);
     padding: var(--space-1) var(--space-2);
