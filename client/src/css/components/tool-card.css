@@ -86,3 +86,7 @@
 .tool-card--mixed {
     --tool-card-icon: var(--red-500);
 }
+
+.tool-card--imap {
+    --tool-card-icon: var(--blue-500);
+}

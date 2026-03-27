@@ -11,12 +11,16 @@ import (
 	"github.com/rs/zerolog/log"
 	"tools.bctechvibe.com/server/internal/config"
 	"tools.bctechvibe.com/server/internal/logger"
+	"tools.bctechvibe.com/server/internal/modules/imap-migrator/service"
 	"tools.bctechvibe.com/server/internal/router"
 )
 
 func main() {
 	cfg := config.LoadConfig()
 	logger.InitLogger(cfg.LogLevel)
+
+	// Dọn dẹp các file tạm của tiến trình IMAP Migrator nếu có từ trước
+	service.StartupCleanup()
 
 	r := router.SetupRouter()
 

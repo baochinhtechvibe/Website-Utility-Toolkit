@@ -4,9 +4,10 @@ go 1.25.5
 
 require (
 	github.com/didip/tollbooth/v7 v7.0.2
-	github.com/didip/tollbooth_gin v0.0.0-20250404214326-bb1a1fc0384e
+	github.com/emersion/go-imap v1.2.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/miekg/dns v1.1.72
 	github.com/oschwald/geoip2-golang v1.13.0
@@ -19,6 +20,7 @@ require (
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
+	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect
