@@ -22,10 +22,11 @@ type VisitStats struct {
 var (
 	statsFile = "data/visits.json"
 	statsMu   sync.Mutex
-	currentStats *VisitStats
+	// Store stats per tool ID (e.g. "home", "imap-migrator")
+	globalStats map[string]*VisitStats
 )
 
-// Ensure stats file exists
+// Ensure stats file exists and load it
 func initStats() error {
 	statsMu.Lock()
 	defer statsMu.Unlock()
@@ -35,14 +36,10 @@ func initStats() error {
 		os.MkdirAll(dir, 0755)
 	}
 
+	globalStats = make(map[string]*VisitStats)
+
 	if _, err := os.Stat(statsFile); os.IsNotExist(err) {
-		currentStats = &VisitStats{
-			TotalVisits:   0,
-			TodayVisits:   0,
-			LastResetDate: time.Now().Format("2006-01-02"),
-			DailyIPs:      make(map[string]struct{}),
-			DailyIPVals:   []string{},
-		}
+		// No file, start fresh
 		return saveStatsLocked()
 	}
 
@@ -51,34 +48,62 @@ func initStats() error {
 		return err
 	}
 
-	currentStats = &VisitStats{DailyIPs: make(map[string]struct{})}
-	if err := json.Unmarshal(data, currentStats); err != nil {
-		// If corruption, reset
-		currentStats = &VisitStats{
+	// Try to unmarshal into the new map format
+	err = json.Unmarshal(data, &globalStats)
+	if err != nil || len(globalStats) == 0 {
+		// It might be the old format (single root object)
+		var oldFormat VisitStats
+		if errOld := json.Unmarshal(data, &oldFormat); errOld == nil {
+			if oldFormat.DailyIPs == nil {
+				oldFormat.DailyIPs = make(map[string]struct{})
+			}
+			globalStats = map[string]*VisitStats{
+				"home": &oldFormat,
+			}
+		} else {
+			// Complete corruption, start fresh
+			globalStats = make(map[string]*VisitStats)
+		}
+	}
+
+	// Rebuild mapped sets from slices for all tools
+	for _, stats := range globalStats {
+		if stats.DailyIPs == nil {
+			stats.DailyIPs = make(map[string]struct{})
+		}
+		for _, ip := range stats.DailyIPVals {
+			stats.DailyIPs[ip] = struct{}{}
+		}
+	}
+
+	return nil
+}
+
+func getOrCreateToolStats(toolName string) *VisitStats {
+	stats, exists := globalStats[toolName]
+	if !exists {
+		stats = &VisitStats{
 			TotalVisits:   0,
 			TodayVisits:   0,
 			LastResetDate: time.Now().Format("2006-01-02"),
 			DailyIPs:      make(map[string]struct{}),
 			DailyIPVals:   []string{},
 		}
+		globalStats[toolName] = stats
 	}
-
-	// Rebuild map from slice
-	for _, ip := range currentStats.DailyIPVals {
-		currentStats.DailyIPs[ip] = struct{}{}
-	}
-
-	return nil
+	return stats
 }
 
 func saveStatsLocked() error {
-	// Rebuild slice from map before saving
-	currentStats.DailyIPVals = []string{}
-	for ip := range currentStats.DailyIPs {
-		currentStats.DailyIPVals = append(currentStats.DailyIPVals, ip)
+	// Rebuild slices from maps before saving
+	for _, stats := range globalStats {
+		stats.DailyIPVals = []string{}
+		for ip := range stats.DailyIPs {
+			stats.DailyIPVals = append(stats.DailyIPVals, ip)
+		}
 	}
 
-	data, err := json.MarshalIndent(currentStats, "", "  ")
+	data, err := json.MarshalIndent(globalStats, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -86,58 +111,67 @@ func saveStatsLocked() error {
 }
 
 func GetStats(c *gin.Context) {
-	if currentStats == nil {
+	if globalStats == nil {
 		initStats()
 	}
 	
+	toolName := c.DefaultQuery("tool", "home")
+
 	statsMu.Lock()
 	defer statsMu.Unlock()
 
+	stats := getOrCreateToolStats(toolName)
+
 	today := time.Now().Format("2006-01-02")
-	if currentStats.LastResetDate != today {
-		currentStats.TodayVisits = 0
-		currentStats.LastResetDate = today
-		currentStats.DailyIPs = make(map[string]struct{})
+	if stats.LastResetDate != today {
+		stats.TodayVisits = 0
+		stats.LastResetDate = today
+		stats.DailyIPs = make(map[string]struct{})
 		saveStatsLocked()
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
-		"total_visits": currentStats.TotalVisits,
-		"today_visits": currentStats.TodayVisits,
+		"tool":         toolName,
+		"total_visits": stats.TotalVisits,
+		"today_visits": stats.TodayVisits,
 	})
 }
 
 func TrackVisit(c *gin.Context) {
-	if currentStats == nil {
+	if globalStats == nil {
 		initStats()
 	}
+
+	toolName := c.DefaultQuery("tool", "home")
 
 	statsMu.Lock()
 	defer statsMu.Unlock()
 
+	stats := getOrCreateToolStats(toolName)
 	today := time.Now().Format("2006-01-02")
 	
 	// Reset logic at midnight
-	if currentStats.LastResetDate != today {
-		currentStats.TodayVisits = 0
-		currentStats.LastResetDate = today
-		currentStats.DailyIPs = make(map[string]struct{})
+	if stats.LastResetDate != today {
+		stats.TodayVisits = 0
+		stats.LastResetDate = today
+		stats.DailyIPs = make(map[string]struct{})
 	}
 
 	ip := c.ClientIP()
 
-	// Only increment if IP hasn't visited today
-	if _, exists := currentStats.DailyIPs[ip]; !exists {
-		currentStats.DailyIPs[ip] = struct{}{}
-		currentStats.TotalVisits++
-		currentStats.TodayVisits++
+	// Only increment if IP hasn't visited today for this specific tool
+	if _, exists := stats.DailyIPs[ip]; !exists {
+		stats.DailyIPs[ip] = struct{}{}
+		stats.TotalVisits++
+		stats.TodayVisits++
 		saveStatsLocked()
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
-		"total_visits": currentStats.TotalVisits,
-		"today_visits": currentStats.TodayVisits,
+		"tool":         toolName,
+		"total_visits": stats.TotalVisits,
+		"today_visits": stats.TodayVisits,
 	})
 }

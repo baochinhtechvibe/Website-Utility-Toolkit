@@ -1,11 +1,57 @@
 {
-  "total_visits": 13,
-  "today_visits": 1,
-  "last_reset_date": "2026-03-27",
-  "daily_ips": {
-    "::1": {}
+  "dns": {
+    "total_visits": 1,
+    "today_visits": 1,
+    "last_reset_date": "2026-03-28",
+    "daily_ips": {
+      "::1": {}
+    },
+    "daily_ip_vals": [
+      "::1"
+    ]
   },
-  "daily_ip_vals": [
-    "::1"
-  ]
+  "home": {
+    "total_visits": 14,
+    "today_visits": 1,
+    "last_reset_date": "2026-03-28",
+    "daily_ips": {
+      "::1": {}
+    },
+    "daily_ip_vals": [
+      "::1"
+    ]
+  },
+  "imap-migrator": {
+    "total_visits": 1,
+    "today_visits": 1,
+    "last_reset_date": "2026-03-28",
+    "daily_ips": {
+      "::1": {}
+    },
+    "daily_ip_vals": [
+      "::1"
+    ]
+  },
+  "index": {
+    "total_visits": 1,
+    "today_visits": 1,
+    "last_reset_date": "2026-03-28",
+    "daily_ips": {
+      "::1": {}
+    },
+    "daily_ip_vals": [
+      "::1"
+    ]
+  },
+  "ssl-checker": {
+    "total_visits": 1,
+    "today_visits": 1,
+    "last_reset_date": "2026-03-28",
+    "daily_ips": {
+      "::1": {}
+    },
+    "daily_ip_vals": [
+      "::1"
+    ]
+  }
 }

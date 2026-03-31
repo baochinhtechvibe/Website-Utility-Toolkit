@@ -12,7 +12,7 @@ import (
 
 const (
 	rblMaxConcurrency = 10
-	rblTimeout        = 1200 * time.Millisecond
+	rblTimeout        = 3500 * time.Millisecond
 )
 
 // =======================

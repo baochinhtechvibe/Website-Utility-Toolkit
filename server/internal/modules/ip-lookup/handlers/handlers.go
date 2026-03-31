@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,8 @@ func HandleMyIP(c *gin.Context) {
 	clientIP := c.ClientIP()
 
 	// Fallback cho môi trường phát triển (Localhost)
-	if isLocalIP(clientIP) {
+	// Chỉ bật fallback khi có biến môi trường APP_ENV=development
+	if isLocalIP(clientIP) && os.Getenv("APP_ENV") == "development" {
 		publicIP := fetchPublicIPFallback()
 		if publicIP != "" {
 			clientIP = publicIP
