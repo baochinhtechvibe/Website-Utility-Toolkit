@@ -90,3 +90,27 @@
 .tool-card--imap {
     --tool-card-icon: var(--blue-500);
 }
+
+.tool-card--broken-link {
+    --tool-card-icon: var(--red-500);
+}
+
+.tool-card--security-header {
+    --tool-card-icon: var(--blue-500);
+}
+
+.tool-card--web-latency {
+    --tool-card-icon: var(--cyan-500);
+}
+
+.tool-card--json-tools {
+    --tool-card-icon: var(--orange-500);
+}
+
+.tool-card--encode-decode {
+    --tool-card-icon: var(--purple-500);
+}
+
+.tool-card--whois {
+    --tool-card-icon: var(--green-600);
+}

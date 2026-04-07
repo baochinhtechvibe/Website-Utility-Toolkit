@@ -1411,7 +1411,9 @@ function updateURL(hostname) {
 
     url.searchParams.set("hostname", hostname);
 
-    window.history.pushState({}, "", url.toString());
+    if (window.location.search !== url.search) {
+        window.history.pushState({}, "", url.toString());
+    }
 }
 
 
@@ -1491,6 +1493,19 @@ function initApp() {
 
     handleURLParams();
     inputChecker?.focus();
+
+    window.addEventListener("popstate", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hostname = urlParams.get("hostname");
+
+        if (hostname) {
+            inputChecker.value = hostname;
+            formChecker?.dispatchEvent(new Event("submit"));
+        } else {
+            inputChecker.value = "";
+            resetUI([toolError, toolResultChecker, toolShareLink]);
+        }
+    });
 
     // Hook realtime domain validator (dùng chung từ utils/validation.js)
     createRealtimeDomainValidator(

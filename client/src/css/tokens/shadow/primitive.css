@@ -1,21 +1,59 @@
 :root {
 
-  /* Elevation scale */
+  /* Elevation scale (Layered Shadows for Smooth Depth) */
   --shadow-0: none;
 
-  --shadow-1:
-    0 1px 2px rgba(0,0,0,0.05);
+  --shadow-1: 
+    0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-  --shadow-2:
-    0 4px 12px rgba(0,0,0,0.08);
+  --shadow-2: 
+    0 4px 20px 0 rgba(0, 0, 0, 0.12),
+    0 2px 8px -2px rgba(0, 0, 0, 0.08);
 
-  --shadow-3:
-    0 4px 10px 3px rgba(0,0,0,0.12);
+  --shadow-3: 
+    0 12px 24px -4px rgba(0, 0, 0, 0.15),
+    0 6px 12px -6px rgba(0, 0, 0, 0.1);
 
-  --shadow-4:
-    0 20px 60px rgba(0,0,0,0.16);
+  --shadow-4: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.18),
+    0 12px 48px -8px rgba(0, 0, 0, 0.15);
 
   /* Inset */
   --shadow-inset-1:
-    inset 0 2px 6px rgba(0,0,0,0.08);
+    inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* Accent Shadows (Layered for Premium Feel) */
+  --shadow-accent-blue:
+    0 4px 20px 0 var(--overlay-blue),
+    0 8px 32px 0 var(--overlay-blue);
+
+  --shadow-accent-green:
+    0 4px 20px 0 var(--overlay-green),
+    0 8px 32px 0 var(--overlay-green);
+
+  --shadow-accent-red:
+    0 4px 20px 0 var(--overlay-red),
+    0 8px 32px 0 var(--overlay-red);
+
+  --shadow-accent-yellow:
+    0 4px 20px 0 var(--overlay-yellow),
+    0 8px 32px 0 var(--overlay-yellow);
+
+  --shadow-accent-purple:
+    0 4px 20px 0 var(--overlay-purple),
+    0 8px 32px 0 var(--overlay-purple);
+
+  --shadow-accent-brand:
+    0 4px 20px 0 var(--overlay-slate),
+    0 8px 32px 0 var(--overlay-slate);
+
+  /* Target Focus Shadows */
+  --shadow-focus:
+    0 0 0 3px var(--overlay-blue);
+
+  --shadow-focus-error:
+    0 0 0 3px var(--overlay-red);
+
+  --shadow-focus-success:
+    0 0 0 3px var(--overlay-green);
 }

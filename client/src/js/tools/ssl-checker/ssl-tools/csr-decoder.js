@@ -40,7 +40,7 @@ const toolResult = document.getElementById("resultCardCsr");
 const sslResultTitle = document.querySelector("#resultCardCsr .result-card__title");
 const resultsContent = document.getElementById("resultBodyCsr");
 const toolError = document.getElementById("errorCardCsr");
-const toolErrorTitle = document.querySelector("#errorCardCsr .error-card__title");
+const toolErrorTitle = document.querySelector("#errorCardCsr .message-card__title");
 const toolErrorMessage = document.getElementById("errorMsgCsr");
 
 const CSR_STORAGE_KEY = "web_utility_kit_csr_decoder_input";
@@ -282,7 +282,7 @@ function renderCSRResult(data) {
                     <i class="fa-solid fa-circle-check text-success mr-2"></i>
                     Algorithm:
                 </div>
-                <div class="ssl-checker__result-value uppercase text-sm font-semibold">${safeStr(algorithm)}</div>
+                <div class="ssl-checker__result-value uppercase font-semibold">${safeStr(algorithm)}</div>
             </div>
         </div>
     `;
@@ -332,7 +332,7 @@ function initApp() {
         // Validate realtime
         const val = inputCsr.value.trim();
         const csrValidationError = document.getElementById("csrValidationError");
-        const csrValidationMsg = document.querySelector("#csrValidationError .error-card__message");
+        const csrValidationMsg = document.querySelector("#csrValidationError .message-card__message");
 
         if (!val) {
             inputCsr.classList.remove('is-invalid');

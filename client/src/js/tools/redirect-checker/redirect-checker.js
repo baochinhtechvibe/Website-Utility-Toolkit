@@ -17,6 +17,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function initRedirectAnalyzer() {
     setupEventListeners();
     loadFromURL();
+
+    window.addEventListener("popstate", () => {
+        const params = new URLSearchParams(window.location.search);
+        const url = params.get('url');
+        const input = $('#redirectUrl');
+        
+        if (url) {
+            if (input) input.value = url;
+            handleAnalyze();
+        } else {
+            if (input) input.value = '';
+            hideResults();
+            hideError();
+        }
+    });
 }
 
 // ==============================
@@ -371,7 +386,7 @@ function renderChain(steps) {
     if (!container) return;
 
     if (steps.length === 0) {
-        container.innerHTML = `<p class="text-muted text-sm">Không có dữ liệu chuỗi redirect.</p>`;
+        container.innerHTML = `<p class="text-muted">Không có dữ liệu chuỗi redirect.</p>`;
         return;
     }
 
@@ -650,8 +665,11 @@ function updateShareLink(url) {
 function updateURL(url) {
     const params = new URLSearchParams(window.location.search);
     params.set('url', url);
-    const newURL = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({ url }, '', newURL);
+    const newSearch = `?${params.toString()}`;
+    const newURL = `${window.location.pathname}${newSearch}`;
+    if (window.location.search !== newSearch) {
+        window.history.pushState({ url }, '', newURL);
+    }
 }
 
 // ==============================

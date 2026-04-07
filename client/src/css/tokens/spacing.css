@@ -26,12 +26,14 @@
    --pad-y-2: var(--space-3);  /* 12px */
    --pad-y-3: var(--space-4);  /* 16px */
    --pad-y-4: var(--space-6);  /* 24px */
+   --pad-y-5: var(--space-8);  /* 32px */
    
    /* Padding Semantic - Trục ngang (X - Left/Right) */
    --pad-x-1: var(--space-2);  /* 8px */
    --pad-x-2: var(--space-3);  /* 12px */
    --pad-x-3: var(--space-4);  /* 16px */
    --pad-x-4: var(--space-6);  /* 24px */
+   --pad-x-5: var(--space-8);  /* 32px */
 
    /* Margin Semantic - Trục dọc (Y - Top/Bottom) 
    */
@@ -39,12 +41,21 @@
    --margin-y-2: var(--space-3);  /* 12px */
    --margin-y-3: var(--space-4);  /* 16px */
    --margin-y-4: var(--space-6);  /* 24px */
+   --margin-y-5: var(--space-8);  /* 32px */
    
    /* Margin Semantic - Trục ngang (X - Left/Right) */
    --margin-x-1: var(--space-2);  /* 8px */
    --margin-x-2: var(--space-3);  /* 12px */
    --margin-x-3: var(--space-4);  /* 16px */
    --margin-x-4: var(--space-6);  /* 24px */
+   --margin-x-5: var(--space-8);  /* 32px */
+
+   /* Gap Semantic - Khoảng cách Flexbox/Grid
+   */
+   --gap-1: var(--space-2);  /* 8px */
+   --gap-2: var(--space-3);  /* 12px */
+   --gap-3: var(--space-4);  /* 16px */
+   --gap-4: var(--space-6);  /* 24px */
 
    /* Layout Spacing Semantic
       Khoảng cách phân tách các section lớn trên trang

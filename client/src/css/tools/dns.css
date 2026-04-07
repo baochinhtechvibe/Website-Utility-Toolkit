@@ -124,7 +124,7 @@
     background-color: var(--dns-tool-primary);
     padding: var(--space-3);
     color: var(--dns-tool-text-primary);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
 }
 
 .page--dns .btn-whois:not(:disabled):hover,
@@ -151,7 +151,7 @@
     font-size: var(--text-sm);
     line-height: var(--line-height-relaxed);
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-subtle);
+    border: var(--border-subtle);
     margin-bottom: var(--space-3);
     max-height: 250px;
     overflow-y: auto;
@@ -161,7 +161,7 @@
 
 .page--dns .result-card__trace-log b {
     color: var(--dns-tool-primary);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
 }
 
 [data-theme="dark"] .page--dns .result-card__trace-log b {
@@ -206,7 +206,7 @@
     overflow-y: auto;
 
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
+    border: var(--border-default);
     scrollbar-width: thin;
     scrollbar-color: var(--dns-tool-primary) #f1f1f1;
     
@@ -224,7 +224,7 @@
 .page--dns .results-table thead th {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: var(--z-sticky);
     background-color: var(--dns-tool-primary);
 }
 
@@ -290,15 +290,15 @@
     padding: var(--space-4) var(--space-3);
     white-space: normal;
     text-align: left;
-    vertical-align: top;
+    vertical-align: middle;
     color: var(--dns-tool-text-primary);
 }
 
 .page--dns .results-table__body .results-table__cell,
 .page--dns .results-table td {
     padding: var(--space-4) var(--space-3);
-    border-bottom: 1px solid var(--color-border);
-    vertical-align: top;
+    border-bottom: var(--border-width-1) solid var(--color-border);
+    vertical-align: middle;
 
     color: var(--dns-tool-text-base);
 }
@@ -312,19 +312,10 @@
 
 .page--dns .results-table__cell--isp .isp-link {
     white-space: nowrap;
-    padding: var(--space-1);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-success-dns);
-
-    font-weight: 600;
-    color: var(--isp-link);
-
-    transition: all 0.2s;
 }
 
 .page--dns .results-table__cell--isp .isp-link:hover {
     background-color: var(--isp-link);
-    color: var(--white);
 }
 
 .page--dns .results-table__cell--isp .isp-link__text,
@@ -334,7 +325,7 @@
 }
 
 .page--dns .results-table__cell--isp .isp-link__icon {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
 }
 
 /* DNSSEC CSS */
@@ -342,13 +333,13 @@
     padding: var(--space-1);
     background-color: var(--bg-type-dnssec);
     border-radius: var(--radius-sm);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
 }
 
 .page--dns .results-table__cell--status-dnssec .status-badge {
     padding: var(--space-1);
     border-radius: var(--radius-sm);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     color: var(--text-status-dnssec);
 }
 
@@ -397,7 +388,7 @@
     padding: var(--space-1);
     border-radius: var(--radius-sm);
     background-color: var(--bg-key-role-badge);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
 }
 
 .page--dns .results-table--dnssec-dnskey .key-role-zsk {
@@ -456,7 +447,7 @@
 }
 
 .page--dns .expiration-status {
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
 }
 
 .page--dns .expiration-status.expires-ok {
@@ -482,7 +473,7 @@
     gap: var(--space-2);
 }
 
-.page--dns .results__section-title-rbl-realtime .badge-danger {
+.page--dns .results__section-title-rbl-realtime .badge-error {
     padding: var(--space-1);
     background-color: var(--bg-badge-blacklist-danger);
     border-radius: var(--radius-sm);
@@ -500,14 +491,14 @@
     padding: var(--space-1);
     background-color: var(--bg-type-blacklist);
     border-radius: var(--radius-sm);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     color: var(--text-type-blacklist);
 }
 
 .page--dns .results-table__cell .level-badge {
     padding: var(--space-1);
     border-radius: var(--radius-sm);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     color: var(--text-level-blacklist);
 }
 
@@ -525,7 +516,7 @@
 
 .page--dns .results-table__cell--rbl-status.status-cell {
     white-space: nowrap;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
 }
 
 .page--dns .results-table__cell--rbl-status .icon-listed {

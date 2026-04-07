@@ -173,6 +173,22 @@
     content: url("../../../public/assets/images/layout/header/mail-transfer.png");
 }
 
+.header--broken-link .header__icon img {
+    content: url("../../../public/assets/images/layout/header/broken-link.png");
+}
+
+.header--security-headers .header__icon img {
+    content: url("../../../public/assets/images/layout/header/security-headers.png");
+}
+
+.header--web-latency .header__icon img {
+    content: url("../../../public/assets/images/layout/header/latency.png");
+}
+
+.header--encode-decode .header__icon img {
+    content: url("../../../public/assets/images/layout/header/encoding.png");
+}
+
 @container (min-width: 750px) {
     .header__theme-toggle {
         position: absolute;

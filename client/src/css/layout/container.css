@@ -5,14 +5,14 @@
 .container {
     width: 100%;
     margin-inline: auto;
-    padding-inline: var(--pad-x-md, 1rem);
+    padding-inline: var(--pad-x-3);
 }
 
 
 @media (min-width: 640px) {
     .container {
         max-width: 600px;
-        padding-inline: var(--pad-x-lg, 1.5rem);
+        padding-inline: var(--pad-x-4);
     }
 }
 
@@ -31,7 +31,7 @@
 @media (min-width: 1280px) {
     .container {
         max-width: 1200px;
-        padding-inline: var(--space-8, 2rem);
+        padding-inline: var(--pad-x-5);
     }
 }
 

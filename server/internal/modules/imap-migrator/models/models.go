@@ -68,19 +68,21 @@ type SSEEvent struct {
 // ─── Job Snapshot ─────────────────────────────────────────────────────────────
 
 type JobSnapshot struct {
-	JobID           string    `json:"jobId"`
-	Status          string    `json:"status"` // running | done | error | cancelled
-	Mode            string    `json:"mode"`
-	SelectedFolders []string  `json:"selectedFolders"`
-	TotalFolders    int       `json:"totalFolders"`
-	CurrentFolder   string    `json:"currentFolder"`
-	CompletedFolders int      `json:"completedFolders"`
-	TotalCopied     int       `json:"totalCopied"`
-	TotalSkipped    int       `json:"totalSkipped"`
-	TotalErrors     int       `json:"totalErrors"`
-	RecentErrors    []string  `json:"recentErrors"`
-	LastError       string    `json:"lastError,omitempty"`
-	StartedAt       time.Time `json:"startedAt"`
-	FinishedAt      *time.Time `json:"finishedAt,omitempty"`
-	CanReconnect    bool      `json:"canReconnect"`
+	JobID            string     `json:"jobId"`
+	Status           string     `json:"status"` // running | done | error | cancelled
+	Source           string     `json:"source"`
+	Dest             string     `json:"dest"`
+	Mode             string     `json:"mode"`
+	SelectedFolders  []string   `json:"selectedFolders"`
+	TotalFolders     int        `json:"totalFolders"`
+	CurrentFolder    string     `json:"currentFolder"`
+	CompletedFolders int        `json:"completedFolders"`
+	TotalCopied      int        `json:"totalCopied"`
+	TotalSkipped     int        `json:"totalSkipped"`
+	TotalErrors      int        `json:"totalErrors"`
+	RecentErrors     []string   `json:"recentErrors"`
+	LastError        string     `json:"lastError,omitempty"`
+	StartedAt        time.Time  `json:"startedAt"`
+	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
+	CanReconnect     bool       `json:"canReconnect"`
 }

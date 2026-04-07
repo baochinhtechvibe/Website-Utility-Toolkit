@@ -70,10 +70,20 @@ func lookupNS(zone string) ([]string, error) {
 	return out, nil
 }
 
+// Task 3: Cache RBL provider nameservers to avoid redundant lookups.
+var rblNSCache sync.Map // map[string][]string
+
 func queryRBL(qname, provider string) ([]dns.RR, error) {
-	nsList, err := lookupNS(provider)
-	if err != nil || len(nsList) == 0 {
-		return nil, err
+	var nsList []string
+	if cached, ok := rblNSCache.Load(provider); ok {
+		nsList = cached.([]string)
+	} else {
+		var err error
+		nsList, err = lookupNS(provider)
+		if err != nil || len(nsList) == 0 {
+			return nil, err
+		}
+		rblNSCache.Store(provider, nsList)
 	}
 
 	m := new(dns.Msg)
@@ -161,10 +171,11 @@ func StreamBlacklist(ip string, cb func(models.BlacklistStreamEvent)) {
 
 	// === PHASE 1: INIT ===
 	cb(models.BlacklistStreamEvent{
-		Type:   "BLACKLIST_INIT",
-		IP:     ip,
-		Listed: 0,
-		Total:  total,
+		Type:      "BLACKLIST_INIT",
+		IP:        ip,
+		Listed:    0,
+		Total:     total,
+		Providers: RBLProviders, // Task 2: Gửi cho FE vẽ skeleton
 	})
 
 	if reversed == "" {

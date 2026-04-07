@@ -1,0 +1,70 @@
+package handlers
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/net/publicsuffix"
+	"tools.bctechvibe.com/server/internal/modules/whois/models"
+	"tools.bctechvibe.com/server/internal/modules/whois/service"
+)
+
+// HandleWhoisLookup xử lý GET /api/whois/lookup?domain=...&bypassCache=true
+func HandleWhoisLookup(c *gin.Context) {
+	domain := strings.TrimSpace(c.Query("domain"))
+	bypassCacheStr := c.Query("bypassCache")
+	bypassCache := bypassCacheStr == "true"
+
+	if domain == "" {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Message: "Vui lòng nhập tên miền cần tra cứu.",
+		})
+		return
+	}
+
+	// Strip http/https prefix nếu user paste URL
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	// Strip trailing paths
+	if idx := strings.Index(domain, "/"); idx != -1 {
+		domain = domain[:idx]
+	}
+	domain = strings.ToLower(strings.TrimSpace(domain))
+
+	// Extract apex domain (eTLD+1) từ subdomain
+	// VD: subdomain.bctechvibe.com → bctechvibe.com
+	//     subdomain.bctechvibe.io.vn → bctechvibe.io.vn
+	//     www.google.com → google.com
+	// WHOIS chỉ hoạt động trên registered domain, không phải subdomain
+	if apexDomain, err := publicsuffix.EffectiveTLDPlusOne(domain); err == nil {
+		if apexDomain != domain {
+			log.Info().
+				Str("input", domain).
+				Str("apex", apexDomain).
+				Msg("WHOIS: input is subdomain, using apex domain")
+			domain = apexDomain
+		}
+	}
+
+	log.Info().Str("domain", domain).Bool("bypassCache", bypassCache).Msg("WHOIS lookup request")
+
+	resp, meta, err := service.LookupWhois(domain, bypassCache)
+	if err != nil {
+		log.Error().Err(err).Str("domain", domain).Msg("WHOIS lookup error")
+		c.JSON(http.StatusOK, models.APIResponse{
+			Success: false,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Tra cứu WHOIS thành công.",
+		Data:    resp,
+		Meta:    meta,
+	})
+}

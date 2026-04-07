@@ -7,14 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"tools.bctechvibe.com/server/internal/middleware"
 	botsimulator "tools.bctechvibe.com/server/internal/modules/bot-simulator"
+	brokenlinkscanner "tools.bctechvibe.com/server/internal/modules/broken-link-scanner"
 	"tools.bctechvibe.com/server/internal/modules/dns"
 	imapmigrator "tools.bctechvibe.com/server/internal/modules/imap-migrator"
 	iplookup "tools.bctechvibe.com/server/internal/modules/ip-lookup"
+	jsontools "tools.bctechvibe.com/server/internal/modules/json-tools"
 	mixedcontent "tools.bctechvibe.com/server/internal/modules/mixed-content"
 	redirectchecker "tools.bctechvibe.com/server/internal/modules/redirect-checker"
+	securityheaders "tools.bctechvibe.com/server/internal/modules/security-headers"
 	"tools.bctechvibe.com/server/internal/modules/ssl"
 	"tools.bctechvibe.com/server/internal/modules/visits"
+	weblatency "tools.bctechvibe.com/server/internal/modules/web-latency"
+	"tools.bctechvibe.com/server/internal/modules/whois"
 )
+
 
 func SetupRouter() *gin.Engine {
 	// Disable Gin's default logger and recovery because we're managing them with zerolog and custom recovery
@@ -50,11 +56,23 @@ func SetupRouter() *gin.Engine {
 		visits.RegisterRoutes(standardApi)
 		ssl.RegisterRoutes(standardApi)
 		botsimulator.RegisterRoutes(standardApi)
+		securityheaders.RegisterRoutes(standardApi)
+		weblatency.RegisterRoutes(standardApi)
+		jsontools.RegisterRoutes(standardApi)
+		whois.RegisterRoutes(standardApi)
 	}
 
 	// IMAP Migrator handles its own rate limits internally
 	imapmigrator.RegisterRoutes(api)
 
+	// Broken Link Scanner is purely heavy, distinct limiting: 2/min + 1 InFlight + 8 Semaphore
+	heavyApi := api.Group("")
+	heavyApi.Use(middleware.RateLimitMiddlewareWithBurst(2.0/60.0, 2)) // 2 per minute
+	heavyApi.Use(middleware.InFlightLimiter(1))
+	heavyApi.Use(middleware.GlobalSemaphore(8))
+	{
+		brokenlinkscanner.RegisterRoutes(heavyApi)
+	}
+
 	return r
 }
-

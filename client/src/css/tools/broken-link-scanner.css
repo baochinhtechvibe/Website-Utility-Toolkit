@@ -1,0 +1,532 @@
+/* ===================================================
+   src/css/tools/broken-link-scanner.css
+   Broken Link & Asset Scanner — Tool-scoped Styles
+   Sử dụng color tokens từ semantic.css và palette.css
+=================================================== */
+
+/* ─── 1. Page-level Local Variables ─────────────────── */
+.page--broken-link {
+    --bls-primary:        var(--color-brand);
+    --bls-text-primary:   var(--color-text-inverse);
+    --bls-text-base:      var(--color-text-primary);
+
+    /* Status colors */
+    --bls-color-ok:       var(--green-600);
+    --bls-color-redirect: var(--yellow-600);
+    --bls-color-broken:   var(--red-600);
+    --bls-color-blocked:  var(--orange-600);
+    --bls-color-timeout:  var(--color-text-muted);
+
+    /* Stat box */
+    --bls-stat-bg:        var(--color-surface-muted);
+    --bls-stat-border:    var(--color-border-subtle);
+
+    /* Table */
+    --bls-table-head-bg:  var(--color-brand);
+    --bls-table-head-text: var(--color-text-inverse);
+    --bls-table-row-border: var(--color-border);
+    --bls-table-text:     var(--color-text-primary);
+}
+
+/* Dark mode overrides */
+[data-theme="dark"] .page--broken-link {
+    --bls-color-ok:       var(--green-400);
+    --bls-color-redirect: var(--yellow-400);
+    --bls-color-broken:   var(--red-400);
+    --bls-color-blocked:  var(--orange-400);
+    --bls-table-head-text: var(--white);
+}
+
+/* ─── 2. Form variants ───────────────────────────────── */
+.page--broken-link .form--bls {
+    --form-focus-color:  var(--color-brand);
+}
+
+/* Advanced option checkboxes (dùng native checkbox + label đơn giản) */
+.page--broken-link .bls-advanced-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+    .page--broken-link .bls-advanced-options {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: var(--space-5);
+    }
+}
+
+.page--broken-link .bls-advanced-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    user-select: none;
+}
+
+/* Worker range slider */
+.page--broken-link .bls-range {
+    width: 100%;
+    accent-color: var(--color-brand);
+    cursor: pointer;
+}
+
+.page--broken-link .bls-range-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page--broken-link #bls-worker-val {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── 3. Live Progress Bar ───────────────────────────── */
+.page--broken-link .bls-progress-wrap {
+    background-color: var(--bls-stat-bg);
+    border: var(--border-width-1) solid var(--bls-stat-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.page--broken-link .bls-progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background-color: var(--color-border);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.page--broken-link .bls-progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--color-brand);
+    border-radius: var(--radius-full);
+    transition: width var(--transition-slow);
+}
+
+.page--broken-link .bls-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── 4. Summary Stats Strip ─────────────────────────── */
+.page--broken-link .bls-stats {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.page--broken-link .bls-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 90px;
+    flex: 1 1 90px;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    background-color: var(--bls-stat-bg);
+    border: var(--border-width-1) solid var(--bls-stat-border);
+    transition: transform var(--transition-base);
+}
+
+.page--broken-link .bls-stat:hover {
+    transform: translateY(-2px);
+}
+
+.page--broken-link .bls-stat__value {
+    font-size: var(--text-h2);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-none);
+    font-variant-numeric: tabular-nums;
+}
+
+.page--broken-link .bls-stat__label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-muted);
+    margin-top: var(--space-1);
+    text-align: center;
+}
+
+/* Status-specific value colors */
+.page--broken-link .bls-stat--total  .bls-stat__value { color: var(--bls-text-base); }
+.page--broken-link .bls-stat--ok     .bls-stat__value { color: var(--bls-color-ok); }
+.page--broken-link .bls-stat--redirect .bls-stat__value { color: var(--bls-color-redirect); }
+.page--broken-link .bls-stat--broken .bls-stat__value { color: var(--bls-color-broken); }
+.page--broken-link .bls-stat--blocked .bls-stat__value { color: var(--bls-color-blocked); }
+.page--broken-link .bls-stat--timeout .bls-stat__value { color: var(--bls-color-timeout); }
+
+/* ─── 5. Filter Bar ──────────────────────────────────── */
+.page--broken-link .bls-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page--broken-link .bls-filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+/* Active filter button */
+.page--broken-link .btn-filter.is-active {
+    --btn-bg: var(--color-text-primary);
+    --btn-text: var(--color-text-inverse);
+    --btn-hover-bg: var(--color-text-primary);
+    --btn-hover-text: var(--color-text-inverse);
+}
+
+/* ─── 6. Results Table ───────────────────────────────── */
+.page--broken-link .bls-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: var(--border-width-1) solid var(--bls-table-row-border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-brand) var(--color-surface-muted);
+}
+
+.page--broken-link .bls-table {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+    table-layout: auto;
+    padding: clamp(1rem, 0.8469rem + 0.6803vw, 1.5rem);
+}
+
+.page--broken-link .bls-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    background-color: var(--bls-table-head-bg);
+    color: var(--bls-table-head-text);
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    white-space: nowrap;
+    font-weight: var(--font-weight-semibold);
+}
+
+.page--broken-link .bls-table thead tr th:first-child {
+    border-top-left-radius: var(--radius-md);
+}
+.page--broken-link .bls-table thead tr th:last-child {
+    border-top-right-radius: var(--radius-md);
+}
+
+.page--broken-link .bls-table td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: var(--border-width-1) solid var(--bls-table-row-border);
+    vertical-align: middle;
+    color: var(--bls-table-text);
+    font-size: var(--text-sm);
+}
+
+/* Column widths */
+.page--broken-link .bls-table td:nth-child(1),
+.page--broken-link .bls-table th:nth-child(1) {
+    width: 100px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.page--broken-link .bls-table td:nth-child(2),
+.page--broken-link .bls-table th:nth-child(2) {
+    white-space: nowrap;
+    min-width: 80px;
+}
+
+.page--broken-link .bls-table td:nth-child(3),
+.page--broken-link .bls-table th:nth-child(3) {
+    width: 100%;
+    word-break: break-all;
+}
+
+.page--broken-link .bls-table td:nth-child(4),
+.page--broken-link .bls-table th:nth-child(4) {
+    white-space: nowrap;
+    min-width: 100px;
+    text-align: left;
+}
+
+/* URL display */
+
+
+.page--broken-link .bls-url-main {
+    word-break: break-all;
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--space-1);
+}
+
+.page--broken-link .bls-url-parent {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-family: var(--font-family-mono);
+    word-break: break-all;
+}
+
+/* ─── 7. Status Badges (tool-scoped, map qua badge component) ── */
+.page--broken-link .bls-badge--ok {
+    --badge-bg:     var(--green-100);
+    --badge-border: var(--green-300);
+    --badge-text:   var(--green-700);
+}
+
+.page--broken-link .bls-badge--redirect {
+    --badge-bg:     var(--yellow-100);
+    --badge-border: var(--yellow-300);
+    --badge-text:   var(--yellow-800);
+}
+
+.page--broken-link .bls-badge--broken {
+    --badge-bg:     var(--red-100);
+    --badge-border: var(--red-300);
+    --badge-text:   var(--red-700);
+}
+
+.page--broken-link .bls-badge--blocked {
+    --badge-bg:     color-mix(in srgb, var(--orange-500) 15%, transparent);
+    --badge-border: var(--orange-300);
+    --badge-text:   var(--orange-800);
+}
+
+.page--broken-link .bls-badge--timeout {
+    --badge-bg:     var(--color-surface-muted);
+    --badge-border: var(--color-border);
+    --badge-text:   var(--color-text-muted);
+}
+
+[data-theme="dark"] .page--broken-link .bls-badge--ok {
+    --badge-bg:     color-mix(in srgb, var(--green-500) 20%, transparent);
+    --badge-text:   var(--green-300);
+    --badge-border: var(--green-700);
+}
+
+[data-theme="dark"] .page--broken-link .bls-badge--redirect {
+    --badge-bg:     color-mix(in srgb, var(--yellow-500) 15%, transparent);
+    --badge-text:   var(--yellow-300);
+    --badge-border: var(--yellow-600);
+}
+
+[data-theme="dark"] .page--broken-link .bls-badge--broken {
+    --badge-bg:     color-mix(in srgb, var(--red-500) 20%, transparent);
+    --badge-text:   var(--red-300);
+    --badge-border: var(--red-700);
+}
+
+[data-theme="dark"] .page--broken-link .bls-badge--blocked {
+    --badge-bg:     color-mix(in srgb, var(--orange-500) 15%, transparent);
+    --badge-text:   var(--orange-300);
+    --badge-border: var(--orange-700);
+}
+
+/* ─── 8. Tag Type Badges (a, img, script, link...) ──── */
+.page--broken-link .bls-tag-badge {
+    font-family: var(--font-family-mono);
+    font-size: var(--text-xs);
+    background-color: var(--color-surface-muted);
+    border: var(--border-subtle);
+    color: var(--color-text-secondary);
+    padding: var(--space-half) var(--space-2);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+/* ─── 9. Latency cell ────────────────────────────────── */
+.page--broken-link .bls-latency {
+    font-variant-numeric: tabular-nums;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+/* ─── 10. Empty / No-Result State ───────────────────── */
+.page--broken-link .bls-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-10) var(--space-4);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.page--broken-link .bls-empty__icon {
+    font-size: var(--icon-size-200);
+    color: var(--color-success);
+}
+
+.page--broken-link .bls-empty__title {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+/* ─── 11. Responsive ─────────────────────────────────── */
+@media (max-width: 639px) {
+    .page--broken-link .bls-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .page--broken-link .bls-stat {
+        min-width: 70px;
+    }
+}
+
+/* ─── 12. Pagination ─────────────────────────────────── */
+.page--broken-link .bls-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-top: var(--border-width-1) solid var(--color-border-subtle);
+    gap: var(--space-4);
+}
+
+.page--broken-link .bls-pagination__info {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.page--broken-link .bls-pagination__controls {
+    display: flex;
+    justify-content: center;
+    flex: 1;
+}
+
+.page--broken-link .bls-pagination__list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-2);
+}
+
+.page--broken-link .bls-page-item {
+    display: inline-flex;
+}
+
+/* Base style for all pagination buttons */
+.page--broken-link .bls-page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border: var(--border-default);
+    text-decoration: none;
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+/* Specific pill shapes and circles */
+.page--broken-link .bls-page-link--num {
+    min-width: 36px;
+    border-radius: 50%;
+    padding: 0;
+}
+
+.page--broken-link .bls-page-link--prev {
+    padding: 0 var(--space-4);
+    border-radius: 18px 4px 4px 18px;
+}
+
+.page--broken-link .bls-page-link--next {
+    padding: 0 var(--space-4);
+    border-radius: 4px 18px 18px 4px;
+}
+
+/* Ellipsis specific styling */
+.page--broken-link .bls-page-link--ellipsis {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-text-muted);
+    cursor: default;
+}
+.page--broken-link .bls-page-link--ellipsis:hover {
+    background-color: transparent;
+    transform: none;
+}
+
+/* Hover and Active states */
+.page--broken-link .bls-page-link:hover:not(.bls-page-link--ellipsis) {
+    background-color: var(--color-surface-muted);
+    color: var(--color-text-primary);
+    border-color: var(--color-text-primary);
+    transform: translateY(-1px);
+}
+
+.page--broken-link .bls-page-item.is-active .bls-page-link {
+    background-color: var(--color-text-primary);
+    color: var(--color-text-inverse);
+    border-color: var(--color-text-primary);
+}
+
+.page--broken-link .bls-page-item.is-disabled .bls-page-link {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+}
+
+.page--broken-link .bls-btn-group {
+    display: inline-flex;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: var(--border-default);
+}
+
+.page--broken-link .bls-btn-group .btn-size {
+    border: none;
+    border-radius: 0;
+    border-right: var(--border-width-1) solid var(--color-border);
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--color-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.page--broken-link .bls-btn-group .btn-size:last-child {
+    border-right: none;
+}
+
+.page--broken-link .bls-btn-group .btn-size:hover {
+    background-color: var(--color-surface-muted);
+}
+
+.page--broken-link .bls-btn-group .btn-size.is-active {
+    background-color: var(--color-surface-muted);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 767px) {
+    .page--broken-link .bls-pagination {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}

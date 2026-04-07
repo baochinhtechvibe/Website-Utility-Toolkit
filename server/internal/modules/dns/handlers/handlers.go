@@ -11,9 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	// "time"
-
+	"sync" // Task 3: For parallel trace processing
 	"time"
 
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
@@ -165,7 +163,8 @@ func HandleDNSLookup(c *gin.Context) {
 	response.Data.Query.Hostname = req.Hostname
 	response.Data.Query.Type = req.Type
 
-	serverKey := "waterfall" // Abstract concept of the pipeline
+	serverKey := "cloudflare" // Task 10: Clear magic string; defaults to Cloudflare
+
 
 	if !isIPAddress(req.Hostname) {
 		response.Data.Query.IsSubdomain = isSubdomain(req.Hostname)
@@ -213,15 +212,18 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	}
 	apexFQDN := dnslib.Fqdn(apexDomain)
 
+	// Task 7: Initialize tracer once to reuse delegation cache
+	tracer := dns.NewTraceResolver(20 * time.Second)
+
 	// Always seed Nameservers for better UX (NS always at top)
 	// EXCEPT if the user specifically asked for NS only (in which case it goes to Records)
 	if req.Type != "NS" {
-		tracer := dns.NewTraceResolver(10 * time.Second)
 		nsRecords, err := tracer.DiscoverAuthorities(originalDomain)
 		if err == nil {
 			for _, ns := range nsRecords {
 				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
 					Nameserver: ns.Nameserver,
+					IP:         ns.IP,
 					TTL:        ns.TTL,
 					Domain:     ns.Domain,
 				})
@@ -266,7 +268,6 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 		return
 	}
 
-	tracer := dns.NewTraceResolver(15 * time.Second)
 	var allRecords []models.DNSRecord
 	var finalLogs []models.TraceStep
 	var finalErr error
@@ -280,53 +281,67 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 		seenRecords[key] = true
 	}
 
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
 	for i, t := range types {
-		records, logs, err := tracer.DoTrace(originalDomain, t)
-		if i == 0 {
-			finalLogs = logs
-			finalErr = err
-		}
+		wg.Add(1)
+		go func(idx int, qType uint16) {
+			defer wg.Done()
 
-		for _, rec := range records {
-			// Normalize for deduplication key
-			cleanDomain := strings.TrimSuffix(rec.Domain, ".")
-			cleanValue := ""
-			if rec.Type == "NS" {
-				cleanValue = strings.TrimSuffix(rec.Nameserver, ".")
-			} else if rec.Type == "A" || rec.Type == "AAAA" {
-				cleanValue = rec.Address
-			} else if rec.Type == "MX" {
-				cleanValue = fmt.Sprintf("%s:%d", strings.TrimSuffix(rec.Exchange, "."), rec.Priority)
-			} else {
-				cleanValue = strings.TrimSuffix(rec.Value, ".")
+			records, logs, err := tracer.DoTrace(originalDomain, qType)
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			// Task 8: Take the most detailed logs (longest trace)
+			if len(logs) > len(finalLogs) {
+				finalLogs = logs
+			}
+			if err != nil && finalErr == nil {
+				finalErr = err
 			}
 
-			key := fmt.Sprintf("%s:%s:%s", cleanDomain, rec.Type, cleanValue)
-
-			if seenRecords[key] {
-				continue
-			}
-			seenRecords[key] = true
-
-
-			// IF record is NS and we are NOT in NS-only mode:
-			// Only add to Nameservers if Registry discovery failed (Nameservers list is empty).
-			// This prevents Child Zone NS records from overwriting the Registry-level ones.
-			if rec.Type == "NS" && req.Type != "NS" {
-				if len(response.Data.Nameservers) == 0 {
-					response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
-						Nameserver: cleanValue,
-						TTL:        rec.TTL,
-						Domain:     cleanDomain,
-					})
+			for _, rec := range records {
+				// Normalize for deduplication key
+				cleanDomain := strings.TrimSuffix(rec.Domain, ".")
+				cleanValue := ""
+				if rec.Type == "NS" {
+					cleanValue = strings.TrimSuffix(rec.Nameserver, ".")
+				} else if rec.Type == "A" || rec.Type == "AAAA" {
+					cleanValue = rec.Address
+				} else if rec.Type == "MX" {
+					cleanValue = fmt.Sprintf("%s:%d", strings.TrimSuffix(rec.Exchange, "."), rec.Priority)
+				} else {
+					cleanValue = strings.TrimSuffix(rec.Value, ".")
 				}
-				// else: Registry NS already populated — skip Child Zone NS records
-			} else {
-				allRecords = append(allRecords, rec)
-			}
 
-		}
+				key := fmt.Sprintf("%s:%s:%s", cleanDomain, rec.Type, cleanValue)
+
+				if seenRecords[key] {
+					continue
+				}
+				seenRecords[key] = true
+
+				// IF record is NS and we are NOT in NS-only mode:
+				// Only add to Nameservers if Registry discovery failed (Nameservers list is empty).
+				// This prevents Child Zone NS records from overwriting the Registry-level ones.
+				if rec.Type == "NS" && req.Type != "NS" {
+					if len(response.Data.Nameservers) == 0 {
+						response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
+							Nameserver: cleanValue,
+							TTL:        rec.TTL,
+							Domain:     cleanDomain,
+						})
+					}
+					// else: Registry NS already populated — skip Child Zone NS records
+				} else {
+					allRecords = append(allRecords, rec)
+				}
+			}
+		}(i, t)
 	}
+	wg.Wait()
 
 	var apiRecords []interface{}
 	for i := range allRecords {

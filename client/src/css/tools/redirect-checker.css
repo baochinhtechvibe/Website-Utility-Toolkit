@@ -41,7 +41,7 @@
     justify-content: center;
     font-weight: var(--font-weight-bold);
     color: var(--white);
-    z-index: 1;
+    z-index: var(--z-elevated);
     margin-top: var(--space-1);
     box-shadow: var(--shadow-sm);
 }
@@ -59,11 +59,11 @@
 .redirect-step__content {
     flex: 1;
     background: var(--color-surface);
-    border: 1px solid var(--color-border-subtle);
+    border: var(--border-subtle);
     border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);
     margin-bottom: var(--space-3);
-    transition: box-shadow 0.2s ease;
+    transition: box-shadow var(--transition-base);
 }
 
 .redirect-step__content:hover {
@@ -109,7 +109,7 @@
 
 .redirect-step__badge {
     font-weight: var(--font-weight-semibold);
-    padding: 2px var(--space-2);
+    padding: var(--space-half) var(--space-2);
     border-radius: var(--radius-full);
     white-space: nowrap;
 }
@@ -193,7 +193,7 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-subtle);
+    border: var(--border-subtle);
     background: var(--color-surface);
 }
 
@@ -209,7 +209,7 @@
 
 .security-item__icon {
     flex-shrink: 0;
-    margin-top: 2px;
+    margin-top: var(--space-half);
 }
 
 .security-item--pass .security-item__icon { color: var(--color-success); }
@@ -242,7 +242,7 @@
     gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-subtle);
+    border: var(--border-subtle);
     background: var(--color-surface);
 }
 
@@ -250,7 +250,7 @@
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--letter-spacing-wider);
 }
 
 .seo-item__value {
@@ -262,7 +262,7 @@
 .seo-item__value--missing {
     color: var(--color-error);
     font-style: italic;
-    font-family: var(--font-family-base);
+    font-family: var(--font-family-sans);
 }
 
 .seo-item__value--ok { color: var(--color-success); }
@@ -272,7 +272,7 @@
 ========================================== */
 .redirect-curl-output {
     background: var(--code-bg);
-    border: 1px solid var(--code-border);
+    border: var(--border-width-1) solid var(--code-border);
     border-radius: var(--radius-md);
     padding: var(--space-4);
     overflow-x: auto;
@@ -295,13 +295,13 @@
 .results-table th,
 .results-table td {
     padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border-subtle);
+    border-bottom: var(--border-width-1) solid var(--color-border-subtle);
 }
 
 .results-table th {
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-secondary);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-muted);
     white-space: nowrap;
 }
 

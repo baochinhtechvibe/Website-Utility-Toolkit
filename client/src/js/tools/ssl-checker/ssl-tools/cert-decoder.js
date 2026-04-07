@@ -370,7 +370,7 @@ inputCert.addEventListener("input", function (e) {
     } catch (err) {
         // Có lỗi format -> Hiện cảnh báo real-time
         setDisplay(certValidationError, "block");
-        certValidationError.querySelector('.error-card__message').textContent = err.message;
+        certValidationError.querySelector('.message-card__message').textContent = err.message;
         inputCert.classList.add("is-invalid");
         setElementsEnabled([btnCertDecoder], false);
     }

@@ -45,8 +45,7 @@
 @import './components/badge.css';
 @import './components/card.css';
 @import './components/tool-card.css';
-@import './components/error-card.css';
-@import './components/warning-card.css';
+@import './components/message-card.css';
 @import './components/share-card.css';
 @import './components/form.css';
 @import './components/result-card.css';
@@ -63,6 +62,12 @@
 @import './tools/mixed-content.css';
 @import './tools/bot-simulator.css';
 @import './tools/imap-migrator.css';
+@import './tools/security-headers.css';
+@import './tools/web-latency.css';
+@import './tools/json-tools.css';
+@import './tools/encode-decode.css';
+@import './tools/whois.css';
+@import './tools/admin-dashboard.css';
 
 
 /* ===================================

@@ -37,17 +37,8 @@ export function getWhoisDomain(btnWhois, domain) {
 
     btnWhois.onclick = () => {
 
-        let whoisURL = "";
-
-        // Domain Việt Nam
-        if (domain.endsWith(".vn")) {
-            whoisURL = `https://tino.vn/whois?domain=${encodeURIComponent(domain)}`;
-        }
-
-        // Quốc tế
-        else {
-            whoisURL = `https://www.whois.com/whois/${encodeURIComponent(domain)}`;
-        }
+        // Tra cứu nội bộ thông qua tools.bctechvibe.com
+        const whoisURL = `https://tools.bctechvibe.com/client/views/tools/whois.html?domain=${encodeURIComponent(domain)}`;
 
         // Mở tab mới
         window.open(whoisURL, "_blank", "noopener,noreferrer");

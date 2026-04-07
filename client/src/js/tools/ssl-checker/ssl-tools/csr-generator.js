@@ -237,29 +237,29 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (toolResultCard && resultBody) {
                 resultBody.innerHTML = `
-                    <div class="result-card__item mb-4 bg-gray-50 rounded-md border border-gray-100 shadow-sm mt-4">
+                    <div class="result-card__item mb-4 rounded-md shadow-sm mt-4">
                         <div class="grid grid-cols-1 md-grid-cols-2 w-full" style="gap: 1.5rem;">
                             <div class="code-block w-full" style="width: 100%; max-width: 100%; overflow: hidden;">
                                 <div class="code-block__header">
                                     <span class="code-block__lang text-brand font-bold">
                                         <i class="fa-solid fa-file-shield text-brand mr-2"></i> Certificate Signing Request
                                     </span>
-                                    <button class="code-block__btn-copy js-copy-code font-bold text-gray-500 hover:text-gray-900" type="button" data-clipboard-target="#generatedCsrCode">
+                                    <button class="code-block__btn-copy js-copy-code font-bold" type="button" data-clipboard-target="#generatedCsrCode">
                                         <i class="fa-regular fa-clone mr-2"></i> Copy CSR
                                     </button>
                                 </div>
-                                <pre class="code-block__pre rounded-b-md" style="width: 100%; max-width: 100%; margin: 0; padding: 1rem; overflow-x: auto; background-color: var(--color-gray-50);"><code id="generatedCsrCode" class="font-mono text-xs" style="white-space: pre;">${result.data.csr}</code></pre>
+                                <pre class="code-block__pre" style="width: 100%; max-width: 100%; margin: 0; padding: 1rem; overflow-x: auto; background-color: var(--color-gray-50);"><code id="generatedCsrCode" class="font-mono text-xs" style="white-space: pre;">${result.data.csr}</code></pre>
                             </div>
                             <div class="code-block w-full" style="width: 100%; max-width: 100%; overflow: hidden;">
                                 <div class="code-block__header">
                                     <span class="code-block__lang text-danger font-bold">
                                         <i class="fa-solid fa-key text-danger mr-2"></i> Private Key
                                     </span>
-                                    <button class="code-block__btn-copy js-copy-code font-bold text-gray-500 hover:text-gray-900" type="button" data-clipboard-target="#generatedPrivateKey">
+                                    <button class="code-block__btn-copy js-copy-code font-bold" type="button" data-clipboard-target="#generatedPrivateKey">
                                         <i class="fa-regular fa-clone mr-2"></i> Copy Private Key
                                     </button>
                                 </div>
-                                <pre class="code-block__pre rounded-b-md" style="width: 100%; max-width: 100%; margin: 0; padding: 1rem; overflow-x: auto; background-color: var(--color-gray-50);"><code id="generatedPrivateKey" class="font-mono text-xs" style="white-space: pre;">${result.data.privateKey}</code></pre>
+                                <pre class="code-block__pre" style="width: 100%; max-width: 100%; margin: 0; padding: 1rem; overflow-x: auto; background-color: var(--color-gray-50);"><code id="generatedPrivateKey" class="font-mono text-xs" style="white-space: pre;">${result.data.privateKey}</code></pre>
                             </div>
                         </div>
                     </div>

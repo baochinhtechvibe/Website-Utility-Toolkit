@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title>Broken Link & Asset Scanner | Website Utility Toolkit</title>
+    <meta name="description" content="Quét và phát hiện liên kết hỏng, redirect chain và lỗi asset trên trang web của bạn. Hỗ trợ đa luồng, lọc theo hostname và xuất kết quả CSV.">
+</head>
+
+<body>
+    <div class="wrapper page--broken-link">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--broken-link py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/broken-link.png"
+                                alt="tools.bctechvibe.com - Broken Link Scanner">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                BROKEN LINK SCANNER
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Broken Link &amp; Asset Scanner
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Trình phân tích cấu trúc HTML, dọn dẹp liên kết chết, rà soát Redirect chain và lỗi Asset.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+
+        <!-- Begin: Main Content -->
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="card">
+                    <!-- Card Header -->
+                    <div class="card__header">
+                        <h2 class="card__title font-bold text-center">
+                            <i class="fa-solid fa-link-slash mr-2"></i>
+                            Trình thu thập &amp; Quét Tình trạng Liên Kết
+                        </h2>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="card__body pt-4">
+                        <form id="bls-form" class="form form--bls" action="" method="post" novalidate>
+
+                            <!-- URL Input -->
+                            <div class="form-inline">
+                                <div class="form-field form-field--wide">
+                                    <label class="form-label" for="bls-url-input">Đường dẫn Website Cần Kiểm Tra</label>
+                                    <input
+                                        type="url"
+                                        id="bls-url-input"
+                                        name="url"
+                                        class="form-input"
+                                        placeholder="https://example.com"
+                                        required
+                                        autocomplete="url"
+                                    >
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="form-field form-field--button">
+                                    <button id="bls-btn-scan" type="submit" class="btn btn-action btn-block">
+                                        <i class="fa-solid fa-magnifying-glass" id="bls-scan-icon"></i>
+                                        Bắt đầu Quét
+                                        <i class="fa-solid fa-spinner fa-spin d-none" id="bls-scan-loading"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Options -->
+                            <div class="form-field mt-4">
+                                <label class="form-label">Cấu hình Nâng cao</label>
+                                <div class="bls-advanced-options mt-2">
+                                    <label class="bls-advanced-option mr-4" for="bls-scope-same-host">
+                                        <input type="checkbox" id="bls-scope-same-host" name="scopeSameHost" class="form-checkbox" checked>
+                                        <span>Cùng Hostname (bỏ qua CDN / domain ngoài)</span>
+                                    </label>
+                                    <label class="bls-advanced-option mr-4" for="bls-ignore-tls">
+                                        <input type="checkbox" id="bls-ignore-tls" name="ignoreTLS" class="form-checkbox">
+                                        <span>Bỏ qua lỗi SSL/TLS</span>
+                                    </label>
+                                    <label class="bls-advanced-option mr-4" for="bls-bypass-cache">
+                                        <input type="checkbox" id="bls-bypass-cache" name="bypassCache" class="form-checkbox">
+                                        <span>Bỏ qua Cache</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Worker Slider -->
+                            <div class="form-field mt-4">
+                                <div class="bls-range-label">
+                                    <label class="form-label" for="bls-workers-input">
+                                        Giới hạn Luồng (Max Workers)
+                                    </label>
+                                    <span id="bls-worker-val" class="form-hint">50</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    id="bls-workers-input"
+                                    name="workers"
+                                    class="bls-range mt-2"
+                                    min="5"
+                                    max="50"
+                                    value="50"
+                                >
+                            </div>
+
+                            <!-- Validation Error -->
+                            <div id="bls-validation-error" class="message-card message-card--error mt-4 d-none">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        Định dạng không hợp lệ
+                                    </h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <p id="bls-validation-message" class="message-card__message">
+                                        Vui lòng nhập đúng định dạng URL (ví dụ: <code>https://example.com</code>).
+                                    </p>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Progress Indicator -->
+                        <div id="bls-progress" class="bls-progress-wrap mt-6 d-none">
+                            <div class="d-flex flex-row justify-between items-center">
+                                <span class="font-bold">
+                                    <i class="fa-solid fa-spinner fa-spin mr-2"></i>
+                                    Đang quét...
+                                </span>
+                                <button id="bls-btn-cancel" type="button" class="btn btn-danger btn-sm">
+                                    <i class="fa-solid fa-stop"></i>
+                                    Dừng
+                                </button>
+                            </div>
+                            <div class="bls-progress-bar-track">
+                                <div id="bls-progress-bar-fill" class="bls-progress-bar-fill"></div>
+                            </div>
+                            <div class="bls-progress-meta">
+                                <span>Đã xử lý: <strong id="bls-progress-done">0</strong> / <strong id="bls-progress-total">?</strong> links</span>
+                                <span id="bls-progress-pct">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- API Error Card -->
+                        <div id="bls-error-card" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Quét thất bại
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="bls-error-message" class="message-card__message">
+                                    Đã xảy ra lỗi. Vui lòng thử lại sau!
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Results Section -->
+                <section id="bls-results-section" class="result-card mt-6 d-none">
+                    
+                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                        <h3 id="bls-results-title" class="result-card__title font-bold">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> Báo cáo Quét Liên kết
+                        </h3>
+                    </div>
+
+                    <!-- CACHE BANNER -->
+                    <div id="cacheNotice" class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center d-none">
+                        <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
+                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-notice__btn-refresh"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                    </div>
+
+                    <div class="result-card__body mt-4">
+                        <!-- Summary Stats -->
+                        <div class="bls-stats mb-6">
+                            <div class="bls-stat bls-stat--total">
+                                <strong id="bls-stat-total" class="bls-stat__value">0</strong>
+                                <span class="bls-stat__label">Tổng Links</span>
+                            </div>
+                        <div class="bls-stat bls-stat--ok">
+                            <strong id="bls-stat-ok" class="bls-stat__value">0</strong>
+                            <span class="bls-stat__label">Hoạt động (2xx)</span>
+                        </div>
+                        <div class="bls-stat bls-stat--redirect">
+                            <strong id="bls-stat-redirect" class="bls-stat__value">0</strong>
+                            <span class="bls-stat__label">Điều hướng (3xx)</span>
+                        </div>
+                        <div class="bls-stat bls-stat--broken">
+                            <strong id="bls-stat-broken" class="bls-stat__value">0</strong>
+                            <span class="bls-stat__label">Lỗi / Hỏng (4xx+)</span>
+                        </div>
+                        <div class="bls-stat bls-stat--blocked">
+                            <strong id="bls-stat-blocked" class="bls-stat__value">0</strong>
+                            <span class="bls-stat__label">Bị chặn (403)</span>
+                        </div>
+                        <div class="bls-stat bls-stat--timeout">
+                            <strong id="bls-stat-timeout" class="bls-stat__value">0</strong>
+                            <span class="bls-stat__label">Timeout</span>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="bls-filter-bar mb-4">
+                        <div class="bls-filter-buttons">
+                            <button class="btn btn-sm btn-filter is-active" data-filter="all">Tất cả</button>
+                            <button class="btn btn-sm btn-filter" data-filter="broken">Lỗi 4xx/5xx</button>
+                            <button class="btn btn-sm btn-filter" data-filter="redirect">Redirect 3xx</button>
+                            <button class="btn btn-sm btn-filter" data-filter="ok">OK 2xx</button>
+                            <button class="btn btn-sm btn-filter" data-filter="timeout">Timeout</button>
+                        </div>
+                        <button id="bls-btn-export-csv" class="btn btn-sm btn-action">
+                            <i class="fa-solid fa-file-csv"></i>
+                            Xuất CSV
+                        </button>
+                    </div>
+
+                    <!-- Results Table -->
+                    <div class="mt-2">
+                        <div class="bls-table-wrapper">
+                            <table class="bls-table" id="bls-results-table">
+                                <thead>
+                                    <tr>
+                                        <th>Trạng thái</th>
+                                        <th>Loại thẻ</th>
+                                        <th>URL Đích</th>
+                                        <th>Độ trễ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bls-results-body">
+                                    <!-- JS inserts rows here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State (shown when table has 0 rows after filter) -->
+                        <div id="bls-empty-state" class="bls-empty d-none">
+                            <i class="fa-solid fa-circle-check bls-empty__icon"></i>
+                            <p class="bls-empty__title">Không tìm thấy kết quả nào theo bộ lọc này.</p>
+                            <p>Thử chọn bộ lọc khác hoặc quét lại trang.</p>
+                        </div>
+
+                        <!-- Pagination Container -->
+                        <div id="bls-pagination-container" class="bls-pagination d-none">
+                            <div class="bls-pagination__info">
+                                Hiển thị <span id="bls-page-start">0</span> - <span id="bls-page-end">0</span> / <span id="bls-page-total-items">0</span> liên kết
+                            </div>
+                            
+                            <div class="bls-pagination__controls">
+                                <ul id="bls-pagination-list" class="bls-pagination__list">
+                                    <!-- Pagination items generated by JS -->
+                                </ul>
+                            </div>
+                            
+                            <div class="bls-pagination__size">
+                                <div class="bls-btn-group">
+                                    <button class="btn btn-sm btn-size is-active" data-size="10" title="Hiển thị 10 kết quả mỗi trang">10</button>
+                                    <button class="btn btn-sm btn-size" data-size="25" title="Hiển thị 25 kết quả mỗi trang">25</button>
+                                    <button class="btn btn-sm btn-size" data-size="100" title="Hiển thị 100 kết quả mỗi trang">100</button>
+                                    <button class="btn btn-sm btn-size" data-size="150" title="Hiển thị 150 kết quả mỗi trang">150</button>
+                                    <button class="btn btn-sm btn-size" data-size="all" title="Hiển thị tất cả kết quả">All</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div><!-- end result-card__body -->
+                </section>
+
+                        <!-- Share Card -->
+                        <div id="shareCard" class="share-card mt-6 d-none">
+                            <div class="share-card__header">
+                                <h4 class="share-card__title font-bold">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                    Chia sẻ kết quả:
+                                </h4>
+                            </div>
+                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                <input type="text" id="shareLink" readonly class="share-card__input" value=""/>
+                                <button type="button" class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                    <i class="fas fa-copy"></i>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
+            </div>
+        </main>
+        <!-- End: Main Content -->
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+    </div>
+
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/broken-link-scanner/broken-link-scanner.js"></script>
+</body>
+
+</html>

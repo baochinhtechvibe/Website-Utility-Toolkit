@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -26,11 +28,14 @@ type Job struct {
 	closeOnce sync.Once
 	isClosed  bool
 
+	LogFile   *os.File // Log file handler
+
+
 	CancelCtx context.Context
 	CancelFn  context.CancelFunc
 }
 
-const maxConcurrentJobs = 3
+const maxConcurrentJobs = 50
 
 var (
 	jobSem   = make(chan struct{}, maxConcurrentJobs)
@@ -39,6 +44,22 @@ var (
 	// jobStore lưu lại job sau khi xong để user có thể fetch status (hỗ trợ reconnect/reload)
 	jobStore sync.Map // map[string]*Job
 )
+
+// GetRunningJobsList returns a snapshot of all currently active jobs
+func GetRunningJobsList() []models.JobSnapshot {
+	var list []models.JobSnapshot
+	jobStore.Range(func(key, value interface{}) bool {
+		job := value.(*Job)
+		job.Mutex.RLock()
+		snapshot := job.Snapshot
+		job.Mutex.RUnlock()
+		if snapshot.Status == "running" {
+			list = append(list, snapshot)
+		}
+		return true
+	})
+	return list
+}
 
 type RateLimitError struct{}
 
@@ -90,6 +111,17 @@ func CreateAndStartJob(req models.StartRequest, clientIP string) (*Job, error) {
 		},
 	}
 	job.Snapshot.JobID = job.ID
+	job.Snapshot.Source = req.Source.Host
+	job.Snapshot.Dest = req.Dest.Host
+
+	// Create log file
+	cwd, _ := os.Getwd()
+	logDir := filepath.Join(cwd, "data", "imap-history", "logs")
+	os.MkdirAll(logDir, 0755)
+	logFile, err := os.OpenFile(filepath.Join(logDir, "job_"+job.ID+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		job.LogFile = logFile
+	}
 
 	ipJobMap.Store(clientIP, job.ID)
 	jobStore.Store(job.ID, job)
@@ -97,11 +129,18 @@ func CreateAndStartJob(req models.StartRequest, clientIP string) (*Job, error) {
 	// Start a single heartbeat routine for this job
 	go job.RunHeartbeat()
 
-	// Cleanup goroutine to release semaphore and IP lock when job is done/cancelled
+	// Cleanup goroutine to release semaphore, IP lock, and files when job is done/cancelled
 	go func() {
 		<-job.CancelCtx.Done()
+		if job.LogFile != nil {
+			job.LogFile.Close()
+		}
 		<-jobSem
-		ipJobMap.Delete(clientIP)
+		if val, ok := ipJobMap.Load(clientIP); ok {
+			if val == job.ID {
+				ipJobMap.Delete(clientIP)
+			}
+		}
 	}()
 
 	return job, nil
@@ -197,8 +236,9 @@ func (j *Job) MarkDone() {
 
 	j.Emit(event)
 	j.closeEvents()
-	j.CancelFn()
 	j.scheduleCleanup()
+	AppendHistory(j)
+	j.CancelFn()
 }
 
 func (j *Job) MarkError(err error) {
@@ -224,8 +264,9 @@ func (j *Job) MarkError(err error) {
 
 	j.Emit(event)
 	j.closeEvents()
-	j.CancelFn()
 	j.scheduleCleanup()
+	AppendHistory(j)
+	j.CancelFn()
 }
 
 func (j *Job) Cancel() {
@@ -247,6 +288,7 @@ func (j *Job) Cancel() {
 		j.Emit(event)
 		j.closeEvents()
 		j.scheduleCleanup()
+		AppendHistory(j)
 		j.CancelFn() // signals context safely after status is set
 	} else {
 		j.Mutex.Unlock()
@@ -290,6 +332,35 @@ func (j *Job) Unsubscribe(ch chan models.SSEEvent) {
 }
 
 func (j *Job) Emit(event models.SSEEvent) {
+	// Write to log file if available
+	if j.LogFile != nil && event.Type != "HEARTBEAT" && event.Type != "PROGRESS" {
+		timestamp := time.Now().Format("15:04:05")
+		logLine := ""
+		switch event.Type {
+		case "FOLDER_START":
+			logLine = fmt.Sprintf("[%s] [START] Thư mục: %s (%d emails)\n", timestamp, event.Folder, event.Total)
+		case "FOLDER_DONE":
+			if event.Errors > 0 && event.Message != "" {
+				logLine = fmt.Sprintf("[%s] [ERROR] Thư mục: %s\n", timestamp, event.Message)
+			} else {
+				logLine = fmt.Sprintf("[%s] [DONE] Thư mục: %s\n", timestamp, event.Folder)
+			}
+		case "EMAIL_ERROR":
+			logLine = fmt.Sprintf("[%s] [ERROR] %s\n", timestamp, event.Message)
+		case "EMAIL_SKIPPED":
+			logLine = fmt.Sprintf("[%s] [SKIPPED] %s\n", timestamp, event.Message)
+		case "INFO":
+			logLine = fmt.Sprintf("[%s] [INFO] %s\n", timestamp, event.Message)
+		case "ERROR":
+			logLine = fmt.Sprintf("[%s] [FATAL] %s\n", timestamp, event.Message)
+		case "COMPLETE":
+			logLine = fmt.Sprintf("[%s] [COMPLETE] Toàn bộ hoàn tất\n", timestamp)
+		}
+		if logLine != "" {
+			j.LogFile.WriteString(logLine)
+		}
+	}
+
 	j.subsMu.Lock()
 	defer j.subsMu.Unlock()
 	if j.isClosed {

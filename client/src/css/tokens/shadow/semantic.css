@@ -5,49 +5,28 @@
 
 :root {
 
+    /* Elevation Mapping */
     --elevation-card: var(--shadow-2);
     --elevation-dropdown: var(--shadow-3);
     --elevation-modal: var(--shadow-4);
     --elevation-tooltip: var(--shadow-3);
     --elevation-popover: var(--shadow-3);
 
-    --shadow-accent-blue:
-        0 8px 24px var(--overlay-blue);
+    /* Legacy Fallback & Alias */
+    --shadow-sm: var(--shadow-1);
+    --shadow-md: var(--shadow-2);
+    --shadow-lg: var(--shadow-3);
+    --shadow-blue: var(--shadow-accent-blue);
+    --elevation-sm: var(--shadow-1);
+    --elevation-flat: none;
+    --elevation-floating: var(--shadow-4);
 
-    --shadow-accent-green:
-        0 8px 24px var(--overlay-green);
+    /* Button specific elevations for system consistency */
+    --elevation-button: var(--shadow-2);
+    --elevation-button-hover: var(--shadow-4);
 
-    --shadow-accent-red:
-        0 8px 24px var(--overlay-red);
-
-    --shadow-accent-yellow:
-        0 8px 24px var(--overlay-yellow);
-
-    --shadow-accent-purple:
-
-
-        --shadow-accent-blue: 0 8px 24px var(--overlay-blue);
-
-    --shadow-accent-green:
-        0 8px 24px var(--overlay-green);
-
-    --shadow-accent-red:
-        0 8px 24px var(--overlay-red);
-
-    --shadow-accent-yellow:
-        0 8px 24px var(--overlay-yellow);
-
-    --shadow-accent-purple:
-        0 8px 24px var(--overlay-purple);
-
-
-
-    --shadow-focus:
-        0 0 0 3px var(--overlay-blue);
-
-    --shadow-focus-error:
-        0 0 0 3px var(--overlay-red);
-
-    --shadow-focus-success:
-        0 0 0 3px var(--overlay-green);
+    /* Focus state shadows */
+    --elevation-focus: var(--shadow-focus);
+    --elevation-focus-error: var(--shadow-focus-error);
+    --elevation-focus-success: var(--shadow-focus-success);
 }

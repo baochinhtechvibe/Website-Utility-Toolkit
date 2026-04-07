@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title>HTTP Security Headers Analyzer | Website Utility Toolkit</title>
+</head>
+
+<body>
+    <div class="wrapper page--security-headers">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--security-headers py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/security-headers.png"
+                                alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                HTTP SECURITY HEADERS
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Analyzer & Fix Generator
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Phân tích bảo mật tầng Network. Chấm điểm rủi ro và tự động sinh mã cấu hình bảo mật cho Nginx/Apache.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="card">
+                    <div class="card__header">
+                        <h2 class="card__title font-bold text-center">
+                            <i class="fa-solid fa-shield-halved mr-2"></i>
+                            Phân tích Website của bạn
+                        </h2>
+                    </div>
+
+                    <div class="card__body pt-4">
+                        <form id="analyzeForm" class="form form--security-headers" action="" method="post" novalidate>
+                            <div class="form-inline">
+                                <div class="form-field form-field--wide">
+                                    <label class="form-label" for="url">Nhập URL Website cần quét</label>
+                                    <input type="url" id="url" name="url" class="form-input"
+                                        placeholder="Ví dụ: https://bctechvibe.com" required autocomplete="url">
+                                </div>
+                                <div class="form-field form-field--button">
+                                    <button id="btnAnalyze" type="submit" class="btn btn-action btn-block">
+                                        <i class="fa-solid fa-shield-halved" id="btnIcon"></i>
+                                        Quét bảo mật
+                                        <i class="fa-solid fa-spinner fa-spin d-none" id="btnLoading"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="urlError" class="message-card message-card--error mt-4 d-none">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <p id="urlErrorMessage" class="message-card__message">Vui lòng nhập đúng định dạng URL (ví dụ: <code>https://bctechvibe.com</code>).</p>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> Lỗi phân tích
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message"></p>
+                            </div>
+                        </div>
+
+                        <!-- Result Section -->
+                        <div id="resultSection" class="result-card mt-8 d-none">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 id="resultsTitle" class="result-card__title font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    Kết quả phân tích bảo mật:
+                                </h3>
+                            </div>
+
+                            <!-- Score Display -->
+                            <div class="score-board d-flex flex-col items-center justify-center p-6 mb-6 mt-4">
+                                <div class="score-circle d-flex flex-col items-center justify-center" id="scoreCircle">
+                                    <span class="score-grade font-bold" id="scoreGrade">A+</span>
+                                    <span class="score-number font-normal"><span id="scoreValue">100</span> / 100</span>
+                                </div>
+                                <p class="mt-4 font-bold" id="scoreSummaryText">Hoàn hảo! Server bảo mật rất tốt.</p>
+                            </div>
+
+                            <!-- Tabs for results view -->
+                            <div class="tabs mt-6">
+                                <div class="tabs-header d-flex flex-row border-b">
+                                    <button class="tab-btn active px-4 py-2 font-bold" data-tab="headersTab">HTTP Headers</button>
+                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="cookiesTab">Cookie Security (<span id="cookieCount">0</span>)</button>
+                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="leaksTab">Info Leaks</button>
+                                </div>
+                                
+                                <div class="tabs-content p-4">
+                                    <!-- HTTP Headers Tab -->
+                                    <div id="headersTab" class="tab-pane active">
+                                        <div class="table-wrapper w-full overflow-x-auto">
+                                            <table class="results-table w-full text-left">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Trạng thái</th>
+                                                        <th>Header</th>
+                                                        <th>Rủi ro (Risk)</th>
+                                                        <th>Giải pháp (Fix / Detail)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="headersTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cookies Tab -->
+                                    <div id="cookiesTab" class="tab-pane d-none">
+                                        <div id="noCookieMsg" class="text-center p-4 d-none">
+                                            <p><i class="fa-solid fa-cookie-bite mr-2"></i> Website không thiết lập Cookie (Không có Set-Cookie trong Response).</p>
+                                        </div>
+                                        <div id="cookieWrapper" class="table-wrapper w-full overflow-x-auto d-none">
+                                             <table class="results-table w-full text-left">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Cookie Name</th>
+                                                        <th>HttpOnly</th>
+                                                        <th>Secure</th>
+                                                        <th>SameSite</th>
+                                                        <th>Mức độ an toàn</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="cookiesTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Information Leaks Tab -->
+                                    <div id="leaksTab" class="tab-pane d-none">
+                                        <div id="noLeakMsg" class="text-center p-4 d-none">
+                                            <p class="text-success"><i class="fa-solid fa-check-circle mr-2"></i> An toàn! Không phát hiện rò rỉ thông tin Server Stack.</p>
+                                        </div>
+                                        <div id="leakWrapper" class="table-wrapper w-full overflow-x-auto d-none">
+                                             <table class="results-table w-full text-left">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Header</th>
+                                                        <th>Giá trị bị rò rỉ</th>
+                                                        <th>Nguy cơ</th>
+                                                        <th>Cách ẩn đi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="leaksTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Generated Server Config -->
+                            <div class="config-generator mt-8 p-6">
+                                <h3 class="font-bold mb-4">
+                                    <i class="fa-solid fa-code"></i> Mã cấu hình tự động
+                                </h3>
+                                <p class="mb-4 text-secondary font-medium">Copy toàn bộ block dưới đây dán vào file cấu hình Server của bạn để fix khắc phục lỗi bảo mật.</p>
+                                
+                                <div class="config-tabs d-flex flex-row gap-2 mb-4">
+                                    <button class="btn btn-sm btn-action config-tab-btn active" data-target="nginxCodeBlock">Nginx</button>
+                                    <button class="btn btn-sm btn-outline config-tab-btn" data-target="apacheCodeBlock">Apache</button>
+                                </div>
+                                
+                                <div id="nginxCodeBlock" class="code-block mb-4 config-box d-block">
+                                    <div class="code-block__header">
+                                        <span class="code-block__lang">
+                                            <i class="fa-solid fa-file-code"></i> Nginx
+                                        </span>
+                                        <button class="code-block__btn-copy copy-config-btn" data-copy-target="nginxConfigBox">
+                                            <i class="fa-regular fa-clone"></i>
+                                        </button>
+                                    </div>
+                                    <div class="code-block__body">
+                                        <code id="nginxConfigBox" class="code-block__text d-block"></code>
+                                    </div>
+                                </div>
+                                
+                                <div id="apacheCodeBlock" class="code-block mb-4 config-box d-none">
+                                    <div class="code-block__header">
+                                        <span class="code-block__lang">
+                                            <i class="fa-solid fa-file-code"></i> Apache
+                                        </span>
+                                        <button class="code-block__btn-copy copy-config-btn" data-copy-target="apacheConfigBox">
+                                            <i class="fa-regular fa-clone"></i>
+                                        </button>
+                                    </div>
+                                    <div class="code-block__body">
+                                        <code id="apacheConfigBox" class="code-block__text d-block"></code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Share Card -->
+                        <div id="shareCard" class="share-card mt-6 d-none">
+                            <div class="share-card__header">
+                                <h4 class="share-card__title font-bold">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                    Chia sẻ kết quả:
+                                </h4>
+                            </div>
+                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                <input type="text" id="shareLink" readonly class="share-card__input" value=""/>
+                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                    <i class="fas fa-copy"></i>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/security-headers/analyzer.js"></script>
+</body>
+</html>

@@ -216,7 +216,9 @@ func enrichIPInfo(record *models.DNSRecord, ip net.IP) {
 		}
 	}
 
-	if record.Country != "" || record.ISP != "" {
+	// Task 1: Skip external API if local DB is available, even if it failed for this specific IP.
+	// This avoids 3s latency per record in the trace path.
+	if GeoIPDB != nil || GeoASNDB != nil {
 		return
 	}
 

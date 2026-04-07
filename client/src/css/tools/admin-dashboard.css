@@ -1,0 +1,388 @@
+/* ===================================================
+   admin-dashboard.css — IMAP Migrator Admin Styles
+   Strict adherence to Design System Tokens
+=================================================== */
+
+.page--admin-dashboard {
+  --admin-log-bg: var(--gray-900);
+  --admin-log-text: var(--gray-100);
+}
+
+[data-theme="dark"] .page--admin-dashboard {
+  --admin-log-bg: var(--black);
+  --admin-log-text: var(--gray-300);
+}
+
+/* ─── Admin Page Wrapper ───────────────────────────────────────────── */
+.page--admin-dashboard .main {
+  padding: 0; /* Xóa khoảng trống gây tràn Layout */
+  height: 100vh;
+}
+
+/* ─── SPA Layout (Sidebar & Main) ────────────────────────────────────────────── */
+.admin-layout {
+  display: flex;
+  height: 100%; /* Kế thừa 100vh từ main */
+  width: 100%;
+  background-color: var(--color-bg);
+}
+
+.admin-sidebar {
+  width: 250px;
+  background-color: var(--color-surface);
+  border-right: var(--border-subtle);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-sidebar__header {
+  height: 60px;
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-subtle);
+}
+
+.admin-sidebar__nav {
+  padding: var(--space-4) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.admin-menu-item:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.admin-menu-item.active {
+  background-color: var(--color-brand);
+  color: var(--white);
+}
+
+.admin-menu-item.active i {
+  color: var(--white);
+}
+
+.admin-menu-item i {
+  width: 20px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.admin-page-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ─── Modal Backdrop & Container ────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal__header {
+  border-bottom: var(--border-subtle);
+}
+
+/* ─── Login Form  ───────────────────────────────────────────── */
+.card--login {
+  max-width: 400px;
+  margin: 15vh auto;
+}
+
+.card--login .card__title {
+  justify-content: center;
+}
+
+.card--login .message-card__message {
+  white-space: normal;
+}
+
+/* ─── Password Field Wrapper ─────────────────────────────────────── */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper .form-input {
+  padding-right: 40px; /* Space for the eye icon */
+}
+
+.password-toggle-icon {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color var(--transition-base);
+}
+
+.password-toggle-icon:hover {
+  color: var(--color-text-primary);
+}
+
+/* ─── Table Adjustments ───────────────────────────────────────────── */
+.admin-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: var(--border-subtle);
+  background-color: var(--color-surface);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-sm);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: var(--border-subtle);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-subtle);
+  font-size: var(--text-sm);
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:hover {
+  background-color: var(--color-surface-muted);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Helper cho text dài */
+.cell-truncate {
+  max-width: 15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Log Viewer Container ────────────────────────────────────────── */
+.log-panel {
+  scroll-margin-top: 100px;
+}
+
+.log-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 500px; /* Fixed height for log scrolling */
+  border-radius: var(--radius-lg);
+  border: var(--border-subtle);
+  background-color: var(--admin-log-bg);
+  overflow: hidden;
+  font-family: var(--font-family-mono);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.log-panel .log-viewer {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border: none;
+}
+
+.log-viewer__header {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--gray-800);
+  border-bottom: var(--border-width-1) solid var(--gray-700);
+  color: var(--gray-100);
+  font-size: var(--text-sm);
+}
+
+.log-viewer__indicator {
+  font-size: 8px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.log-viewer__body {
+  flex: 1 1 auto;
+  padding: var(--space-4);
+  overflow-y: auto;
+  font-size: var(--text-sm);
+  line-height: var(--line-height-tight);
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--admin-log-text);
+}
+
+.log-viewer__body::-webkit-scrollbar {
+  width: var(--space-2);
+}
+
+.log-viewer__body::-webkit-scrollbar-track {
+  background: var(--gray-800);
+}
+
+.log-viewer__body::-webkit-scrollbar-thumb {
+  background: var(--gray-600);
+  border-radius: var(--radius-full);
+}
+
+.log-line {
+	display: block;
+	margin-bottom: 2px;
+}
+.log-level-error { color: var(--red-400); font-weight: bold; }
+.log-level-info { color: var(--blue-300); }
+.log-level-done { color: var(--green-400); }
+.log-level-start { color: var(--yellow-400); }
+
+/* Buttons inside table */
+.btn-log {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  min-height: 0;
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.btn-admin-action {
+  min-height: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* ─── SPA Layout Helpers ────────────────────────────────────────────── */
+.admin-sidebar__brand-sub {
+  font-size: 0.8em;
+  opacity: 0.6;
+  font-weight: normal;
+}
+
+.admin-sidebar__footer {
+  padding: var(--space-4);
+}
+
+.admin-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.admin-tab-pane {
+  width: 100%;
+}
+
+.admin-stat-value {
+  font-size: 2rem;
+}
+
+.admin-table-wrapper--borderless {
+  border: none;
+  border-radius: 0;
+}
+
+/* ─── Button Helpers ───────────────────────────────────────────── */
+.btn-icon-ghost {
+  min-height: 0;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+}
+
+.btn-close-modal {
+  min-height: 0;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+}
+
+.btn-close-modal i {
+  font-size: 1.25rem;
+}
+
+/* ─── Modal Helpers ───────────────────────────────────────────── */
+.modal--large {
+  max-width: 900px;
+  width: 90%;
+  height: 80vh;
+}
+
+.log-viewer--modal {
+  border: none;
+  border-radius: 0;
+  height: 100%;
+}
+
+.log-viewer__body--flex {
+  flex: 1;
+}
+
+.log-line--block {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.log-viewer__format-text {
+  white-space: pre-wrap;
+  word-break: break-all;
+}

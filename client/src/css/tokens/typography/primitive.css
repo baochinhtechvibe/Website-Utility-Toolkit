@@ -12,6 +12,8 @@
   /* 2. FONT SIZES (Kích thước chữ)
       --------------------------------------------
   /* Base scale */
+  --font-size-50: clamp(0.625rem, 0.5866rem + 0.1702vw, 0.75rem);
+  /* Base scale */
   --font-size-100: clamp(0.75rem, 0.7117rem + 0.1701vw, 0.875rem);
   /* 12-14 */
   --font-size-200: clamp(0.875rem, 0.8367rem + 0.1701vw, 1rem);

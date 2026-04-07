@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -27,8 +26,8 @@ func HandleMyIP(c *gin.Context) {
 	clientIP := c.ClientIP()
 
 	// Fallback cho môi trường phát triển (Localhost)
-	// Chỉ bật fallback khi có biến môi trường APP_ENV=development
-	if isLocalIP(clientIP) && os.Getenv("APP_ENV") == "development" {
+	// Luôn tự động tìm IP Public nếu Client đang truy cập từ nội bộ để có dữ liệu test mượt mà
+	if isLocalIP(clientIP) {
 		publicIP := fetchPublicIPFallback()
 		if publicIP != "" {
 			clientIP = publicIP
@@ -74,28 +73,36 @@ var fallbackProviders = []string{
 }
 
 func fetchPublicIPFallback() string {
-	publicIPOnce.Do(func() {
-		client := &http.Client{Timeout: 2 * time.Second}
-		for _, urlStr := range fallbackProviders {
-			resp, err := client.Get(urlStr)
-			if err != nil {
-				continue
-			}
+	// Task 15: Thêm mutex để tránh nhiều luồng gọi cùng lúc
+	// Nhưng không dùng sync.Once để có thể thử lại nếu hụt
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
 
-			body, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				continue
-			}
+	if cachedPublicIP != "" {
+		return cachedPublicIP
+	}
 
-			ip := strings.TrimSpace(string(body))
-			if net.ParseIP(ip) != nil {
-				cachedPublicIP = ip
-				return
-			}
+	client := &http.Client{Timeout: 3 * time.Second}
+	for _, urlStr := range fallbackProviders {
+		resp, err := client.Get(urlStr)
+		if err != nil {
+			continue
 		}
-	})
-	return cachedPublicIP
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			continue
+		}
+
+		ip := strings.TrimSpace(string(body))
+		if net.ParseIP(ip) != nil {
+			cachedPublicIP = ip
+			return cachedPublicIP
+		}
+	}
+	return ""
 }
 
 

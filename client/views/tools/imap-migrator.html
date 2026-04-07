@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Công cụ sao chép, di chuyển toàn bộ hộp thư điện tử giữa các hệ thống máy chủ IMAP an toàn và bảo mật.">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title>IMAP Mail Migrator | Website Utility Toolkit</title>
+</head>
+
+<body>
+    <div class="wrapper page--imap-migrator">
+        <!-- Begin: Header -->
+        <header id="header" class="header header--imap-migrator py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/mail-transfer.png" alt="IMAP MIGRATOR">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">IMAP MIGRATOR</h1>
+                            <p class="header__subtitle uppercase font-bold">Safe Email Transfer</p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Công cụ di chuyển toàn bộ hộp thư email từ máy chủ cũ sang máy chủ mới thông qua giao thức IMAP an toàn, không lưu trữ thông tin đăng nhập.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header -->
+
+        <main id="main" class="main pt-2 pb-6">
+            <div class="container">
+                
+                <!-- Active Job Warning -->
+                <div id="activeJobWarning" class="message-card message-card--warning mb-4 d-none">
+                    <div class="message-card__header">
+                        <h4 class="message-card__title">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Có một tiến trình đang chạy!
+                        </h4>
+                    </div>
+                    <div class="message-card__body">
+                        <p>Hệ thống chỉ cho phép mỗi địa chỉ mạng (IP) chạy 1 tiến trình sao chép tại cùng 1 thời điểm. Vui lòng kết nối vào tiến trình đang chạy hoặc chờ nó hoàn tất.</p>
+                        <button id="btnRestoreJob" class="btn btn-action mt-4">Đến màn hình tiến trình</button>
+                    </div>
+                </div>
+
+                <!-- Step 1: Connection Form -->
+                <div id="step1-connection" class="card mb-6">
+                    <div class="card__header">
+                        <h2 class="card__title font-bold text-center">
+                            <i class="fa-solid fa-plug mr-2"></i>
+                            1. Thông tin kết nối máy chủ
+                        </h2>
+                    </div>
+                    <div class="card__body">
+                        <form id="imapForm" class="form">
+                            <div class="imap-form-grid">
+                                
+                                <!-- Nguồn -->
+                                <div class="imap-server-card">
+                                    <h3 class="imap-server-card__title">
+                                        <i class="fa-solid fa-upload"></i> MÁY CHỦ NGUỒN
+                                    </h3>
+                                    
+                                    <div class="form-field mb-2">
+                                        <label class="form-label" for="srcHost">Địa chỉ IMAP Host *</label>
+                                        <input type="text" id="srcHost" name="srcHost" class="form-input" placeholder="imap.gmail.com" required>
+                                    </div>
+                                    <div class="form-field mb-2 d-flex flex-row gap-2">
+                                        <div class="flex-1">
+                                            <label class="form-label" for="srcPort">Port *</label>
+                                            <input type="number" id="srcPort" name="srcPort" class="form-input" value="993" required>
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="form-label" for="srcSecurity">Bảo mật *</label>
+                                            <select id="srcSecurity" name="srcSecurity" class="form-input form-select" required>
+                                                <option value="SSL" selected>SSL/TLS</option>
+                                                <option value="STARTTLS">STARTTLS</option>
+                                                <option value="NONE">Không có (NONE)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-field mb-2">
+                                        <label class="form-label" for="srcUser">Tên đăng nhập (Email) *</label>
+                                        <input type="email" id="srcUser" name="srcUser" class="form-input" placeholder="you@domain.com" required>
+                                    </div>
+                                    <div class="form-field mb-2">
+                                        <label class="form-label" for="srcPass">Mật khẩu *</label>
+                                        <div class="relative w-full">
+                                            <input type="password" id="srcPass" name="srcPass" class="form-input w-full" placeholder="Mật khẩu hoặc App Password" required>
+                                            <button type="button" class="btn-toggle-pass absolute" data-target="srcPass">
+                                                <i class="fa-solid fa-eye-slash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Đích -->
+                                <div class="imap-server-card">
+                                    <h3 class="imap-server-card__title">
+                                        <i class="fa-solid fa-download"></i> MÁY CHỦ ĐÍCH
+                                    </h3>
+                                    
+                                    <div class="form-field mb-2">
+                                        <label class="form-label" for="dstHost">Địa chỉ IMAP Host *</label>
+                                        <input type="text" id="dstHost" name="dstHost" class="form-input" placeholder="imap.mail.yahoo.com" required>
+                                    </div>
+                                    <div class="form-field mb-2 d-flex flex-row gap-2">
+                                        <div class="flex-1">
+                                            <label class="form-label" for="dstPort">Port *</label>
+                                            <input type="number" id="dstPort" name="dstPort" class="form-input" value="993" required>
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="form-label" for="dstSecurity">Bảo mật *</label>
+                                            <select id="dstSecurity" name="dstSecurity" class="form-input form-select" required>
+                                                <option value="SSL" selected>SSL/TLS</option>
+                                                <option value="STARTTLS">STARTTLS</option>
+                                                <option value="NONE">Không có (NONE)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-field mb-2">
+                                        <label class="form-label" for="dstUser">Tên đăng nhập (Email) *</label>
+                                        <input type="email" id="dstUser" name="dstUser" class="form-input" placeholder="you@newdomain.com" required>
+                                    </div>
+                                    <div class="form-field mb-2">
+                                        <label class="form-label" for="dstPass">Mật khẩu *</label>
+                                        <div class="relative w-full">
+                                            <input type="password" id="dstPass" name="dstPass" class="form-input w-full"  placeholder="Mật khẩu hoặc App Password" required>
+                                            <button type="button" class="btn-toggle-pass absolute" data-target="dstPass">
+                                                <i class="fa-solid fa-eye-slash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                            <div class="form-field mt-6 text-center">
+                                <button id="btnConnect" type="submit" class="btn btn-action w-auto px-10">
+                                    <i class="fa-solid fa-link" id="connectIcon"></i>
+                                    Kiểm tra kết nối & Lấy danh sách thư mục
+                                    <i class="fa-solid fa-spinner fa-spin d-none" id="connectLoading"></i>
+                                </button>
+                            </div>
+                            
+                            <div id="connError" class="message-card message-card--error mt-4 d-none">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        Kết nối thất bại
+                                    </h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <p id="connErrorMsg" class="message-card__message">Sai tên đăng nhập hoặc mật khẩu...</p>
+                                </div>
+                            </div>
+
+                            <div class="message-card message-card--suggestion mt-6">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title font-bold">
+                                    <i class="fa-solid fa-lightbulb"></i>
+                                    Gợi ý
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <ul class="message-card__message">
+                                    <li>Xem hướng dẫn lấy App Password cho <strong>Gmail</strong>: <a href="#" style="text-decoration: underline;"><strong><i>Link hướng dẫn.</i></strong></a></li>
+                                    <li>Xem hướng dẫn lấy App Password cho <strong>Outlook</strong>: <a href="#" style="text-decoration: underline;"><strong><i>Link hướng dẫn.</i></strong></a></li>
+                                </ul>
+                            </div>
+                        </div>
+                            
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Step 2: Select Folders -->
+                <div id="step2-folders" class="card mb-6 d-none">
+                    <div class="card__header">
+                        <h2 class="card__title font-bold text-center">
+                            <i class="fa-solid fa-folder-tree mr-2"></i>
+                            2. Chọn thư mục cần di chuyển
+                        </h2>
+                    </div>
+                    <div class="card__body">
+                        <div class="form-field mb-4">
+                            <label class="form-label">Chọn chế độ di chuyển</label>
+                            <div class="d-flex flex-row gap-4">
+                                <label class="form-radio-label">
+                                    <input type="radio" name="migrateMode" value="all" id="modeAll" class="form-radio" checked>
+                                    <span>Tất cả thư mục (kể cả thư mục con)</span>
+                                </label>
+                                <label class="form-radio-label">
+                                    <input type="radio" name="migrateMode" value="selected" id="modeSelected" class="form-radio">
+                                    <span>Chỉ chọn các thư mục nhất định</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="folderPickerContainer" class="imap-tree-container d-none mb-4">
+                            <ul id="folderTree" class="imap-tree">
+                                <!-- Tree items will be injected here via JS -->
+                            </ul>
+                        </div>
+                        
+                        <div id="startError" class="message-card message-card--error mb-4 d-none">
+                            <div class="message-card__body">
+                                <p id="startErrorMsg" class="message-card__message"></p>
+                            </div>
+                        </div>
+
+                        <div class="form-field text-center">
+                            <button id="btnStart" type="button" class="btn btn-action w-auto px-10 font-bold">
+                                <i class="fa-solid fa-rocket" id="startIcon"></i>
+                                BẮT ĐẦU DI CHUYỂN
+                                <i class="fa-solid fa-spinner fa-spin d-none" id="startLoading"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Progress & Logs -->
+                <div id="step3-progress" class="card mb-6 d-none">
+                    <div class="card__header d-flex flex-row justify-between items-center flex-wrap gap-4">
+                        <h2 class="card__title font-bold">
+                            <i class="fa-solid fa-server"></i>
+                            3. Tiến trình di chuyển
+                        </h2>
+                        <div id="jobStatusBadge" class="badge badge-default">Đang kết nối...</div>
+                    </div>
+                    <div class="card__body">
+                        
+                        <!-- Stats Grid -->
+                        <div class="imap-stats-grid">
+                            <div class="imap-stat-card">
+                                <div id="statFolders" class="imap-stat-card__value">0 / 0</div>
+                                <div class="imap-stat-card__label">Thư mục</div>
+                            </div>
+                            <div class="imap-stat-card">
+                                <div id="statCopied" class="imap-stat-card__value text-success">0</div>
+                                <div class="imap-stat-card__label">Hoàn thành</div>
+                            </div>
+                            <div class="imap-stat-card">
+                                <div id="statSkipped" class="imap-stat-card__value text-warning">0</div>
+                                <div class="imap-stat-card__label">Bỏ qua (>50MB)</div>
+                            </div>
+                            <div class="imap-stat-card">
+                                <div id="statErrors" class="imap-stat-card__value text-error">0</div>
+                                <div class="imap-stat-card__label">Lỗi</div>
+                            </div>
+                        </div>
+
+                        <!-- Current Item Progress -->
+                        <div class="mb-4">
+                            <div class="d-flex flex-row justify-between font-bold mb-1">
+                                <span>Thư mục hiện tại: <span id="currentFolderLbl" class="text-info">--</span></span>
+                                <span id="currentProgressLbl">0%</span>
+                            </div>
+                            <div class="progress-bar-wrap">
+                                <div id="currentProgressBar" class="progress-bar-fill"></div>
+                            </div>
+                        </div>
+
+                        <!-- Logs Console -->
+                        <h4 class="font-bold mb-2"><i class="fa-solid fa-terminal"></i> Nhật ký hệ thống</h4>
+                        <div id="logsConsole" class="imap-logs-container mb-4">
+                            <div class="imap-log-entry">Đang chờ sự kiện...</div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="text-center">
+                            <button id="btnCancel" type="button" class="btn btn-danger w-auto px-6">
+                                <i class="fa-solid fa-stop"></i>
+                                HỦY BỎ
+                            </button>
+                            <button id="btnNew" type="button" class="btn btn-outline w-auto px-6 d-none">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                TẠO TIẾN TRÌNH MỚI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Begin: Footer -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer -->
+    </div>
+
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/imap-migrator/imap-migrator.js"></script>
+</body>
+
+</html>

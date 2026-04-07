@@ -4,12 +4,23 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"tools.bctechvibe.com/server/internal/modules/imap-migrator/models"
 	"tools.bctechvibe.com/server/internal/modules/imap-migrator/service"
 	"tools.bctechvibe.com/server/internal/response"
 )
+
+// uuidRegex dùng để validate UUID format tránh path traversal
+var uuidRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+func isValidUUID(s string) bool {
+	return uuidRegex.MatchString(strings.ToLower(s))
+}
 
 // HandleTestConnection tests the connection to a single IMAP endpoint
 func HandleTestConnection(c *gin.Context) {
@@ -24,7 +35,11 @@ func HandleTestConnection(c *gin.Context) {
 		return
 	}
 
-	response.SuccessWithMessage(c, nil, "Kết nối thành công tới máy chủ IMAP")
+	if strings.ToUpper(req.Endpoint.Security) == "NONE" {
+		response.SuccessWithMessage(c, nil, "Thành công (CẢNH BÁO: Kết nối chưa mã hoá TLS)")
+	} else {
+		response.SuccessWithMessage(c, nil, "Kết nối thành công tới máy chủ IMAP")
+	}
 }
 
 // HandleListFolders retrieves the folder structure from a single endpoint
@@ -130,6 +145,7 @@ func HandleStream(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
 	c.Writer.WriteHeaderNow()
 
 	clientGone := c.Request.Context().Done()
@@ -181,3 +197,34 @@ func (r sseEventRender) Render(w http.ResponseWriter) error {
 
 // WriteContentType is intentionally a no-op: Content-Type is set in HandleStream before streaming begins.
 func (r sseEventRender) WriteContentType(w http.ResponseWriter) {}
+
+// HandleAdminHistory returns history JSON
+func HandleAdminHistory(c *gin.Context) {
+	response.SuccessNoMeta(c, service.GetHistory())
+}
+
+// HandleAdminRunningJobs returns active jobs
+func HandleAdminRunningJobs(c *gin.Context) {
+	response.SuccessNoMeta(c, service.GetRunningJobsList())
+}
+
+// HandleAdminLogFile streams log file
+func HandleAdminLogFile(c *gin.Context) {
+	id := c.Query("id")
+	if id == "" {
+		response.Error(c, http.StatusBadRequest, "Thiếu tham số ID")
+		return
+	}
+	// Validate UUID format để tránh path traversal
+	if !isValidUUID(id) {
+		response.Error(c, http.StatusBadRequest, "ID không hợp lệ (phải là UUID)")
+		return
+	}
+	cwd, _ := os.Getwd()
+	logPath := filepath.Join(cwd, "data", "imap-history", "logs", "job_"+id+".log")
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		response.Error(c, http.StatusNotFound, "Không tìm thấy file log (hoặc đã bị dọn dẹp)")
+		return
+	}
+	c.File(logPath)
+}

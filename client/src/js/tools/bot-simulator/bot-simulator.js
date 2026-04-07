@@ -200,8 +200,11 @@ function updateURL(url, bot) {
         const params = new URLSearchParams(window.location.search);
         params.set('url', url);
         params.set('bot', bot);
-        const newURL = `${window.location.pathname}?${params.toString()}`;
-        window.history.pushState({ url, bot }, '', newURL);
+        const newSearch = `?${params.toString()}`;
+        const newURL = `${window.location.pathname}${newSearch}`;
+        if (window.location.search !== newSearch) {
+            window.history.pushState({ url, bot }, '', newURL);
+        }
     } catch (err) {
         console.warn("Lỗi cập nhật URL lên address bar (thường do chạy local file/iframe):", err);
     }
@@ -524,19 +527,31 @@ window.addEventListener('DOMContentLoaded', () => {
     // Kích hoạt realtime validator
     createRealtimeURLValidator(urlInput, urlError, btnAnalyze);
 
-    const params = new URLSearchParams(window.location.search);
-    const pUrl = params.get('url');
-    const pBot = params.get('bot');
+    const handleParams = () => {
+        const params = new URLSearchParams(window.location.search);
+        const pUrl = params.get('url');
+        const pBot = params.get('bot');
 
-    if (pUrl && urlInput) {
-        urlInput.value = decodeURIComponent(pUrl);
-        if (pBot) {
-            const opt = botSelect?.querySelector(`option[value="${pBot}"]`);
-            if (opt) botSelect.value = pBot;
+        if (pUrl && urlInput) {
+            urlInput.value = decodeURIComponent(pUrl);
+            if (pBot && botSelect) {
+                const opt = botSelect.querySelector(`option[value="${pBot}"]`);
+                if (opt) botSelect.value = pBot;
+            }
+            // Force submit nếu có URL hợp lệ
+            form?.dispatchEvent(new Event('submit'));
+        } else {
+            urlInput.value = "";
+            hideResult();
+            hideError();
         }
-        // Force submit nếu có URL hợp lệ
-        form?.dispatchEvent(new Event('submit'));
-    }
+    };
+
+    handleParams();
+
+    window.addEventListener("popstate", () => {
+        handleParams();
+    });
 });
 
 // Share link copy

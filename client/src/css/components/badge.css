@@ -15,7 +15,7 @@
 
     /* Render */
     background: var(--badge-bg);
-    border: 1px solid var(--badge-border);
+    border: var(--border-width-1) solid var(--badge-border);
     color: var(--badge-text);
 
     /* Shape */
@@ -28,7 +28,7 @@
 
     font-size: var(--text-base);
     font-weight: var(--font-weight-semibold);
-    line-height: 1;
+    line-height: var(--line-height-none);
 
     white-space: nowrap;
 }

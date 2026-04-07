@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title>Web Latency Inspector | Phân tích Tốc độ Web & Máy Chủ</title>
+</head>
+
+<body>
+    <div class="wrapper page--web-latency">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--web-latency py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/settings.png" alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                WEB LATENCY
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Comprehensive Web Latency Inspector
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Phân tích chi tiết thời gian phản hồi (TTFB), DNS, TLS và trạng thái nén Compression của máy chủ bằng phương thức HTTP Trace.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="card">
+                    <!-- Header Card -->
+                    <div class="card__header">
+                        <h2 class="card__title font-bold text-center">
+                            <i class="fa-solid fa-stopwatch mr-2"></i>Web Latency Inspector
+                        </h2>
+                    </div>
+
+                    <div class="card__body pt-4">
+                        <form id="latencyForm" action="" method="post" class="form">
+                            <!-- Sử dụng form-inline để nằm cùng hàng trên desktop -->
+                            <div class="form-inline">
+                                <!-- URL Input -->
+                                <div class="form-field form-field--wide">
+                                    <label class="form-label" for="url">Website URL</label>
+                                    <input type="url" id="url" name="url" class="form-input"
+                                        placeholder="Ví dụ: https://bctechvibe.com">
+                                </div>
+
+                                <!-- Button -->
+                                <div class="form-field form-field--button">
+                                    <button id="btnAnalyze" type="submit" class="btn btn-action btn-block" disabled>
+                                        <i class="fas fa-search" id="analyzeIcon"></i>
+                                        Analyze
+                                        <i class="fa-solid fa-spinner fa-spin d-none" id="analyzeLoading"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Deep Test Checkbox -->
+                            <div class="form-field mt-4">
+                                <label class="form-checkbox-label trace-root-label" for="deepTest">
+                                    <input type="checkbox" id="deepTest" name="deepTest" class="form-checkbox trace-root-checkbox">
+                                    <span class="trace-root-text">Deep Test (Chạy 3 lần để lấy kết quả thời gian phản hồi trung bình/Median)</span>
+                                </label>
+                            </div>
+
+                            <div id="urlValidationError" class="message-card message-card--error mt-4 d-none">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <p class="message-card__message">Vui lòng nhập đúng định dạng URL tĩnh (ví dụ: <code>https://google.com</code>).</p>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Result Card -->
+                        <div id="resultCard" class="result-card mt-6 d-none">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 id="resultsTitle" class="result-card__title font-bold">
+                                    <i class="fa-solid fa-stopwatch"></i> Báo cáo Tốc độ Máy chủ
+                                </h3>
+                            </div>
+
+                            <!-- CACHE BANNER -->
+                            <div id="cacheNotice" class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center d-none">
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
+                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-notice__btn-refresh"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                            </div>
+                            
+                            <div id="resultBody" class="result-card__body mt-4">
+                                <!-- Scoring Alerts -->
+                                <div id="scoringAlerts" class="d-flex flex-col gap-2 mb-4"></div>
+
+                                <!-- Timeline Section -->
+                                <div class="card card--flat mb-4">
+                                    <div class="card__header">
+                                        
+                                        <h4 class="card__title font-bold"><i class="fa-solid fa-reply mr-2"></i>Server Response Timeline</h4>
+                                    </div>
+                                    <div class="card__body timeline-wrapper">
+                                        <!-- Render via JS -->
+                                        <div id="timelineBars"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Deep Test Results -->
+                                <div id="deepTestResults" class="card mb-4 d-none">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold"><i class="fa-solid fa-vial mr-2"></i> Kết quả Deep Test (3 vòng)</h4>
+                                    </div>
+                                    <div class="card__body d-flex flex-row gap-4 flex-wrap">
+                                        <div class="card card--flat latency-stat-box">
+                                            <div class="card__body p-2 d-flex flex-col gap-1">
+                                                <span class="font-bold text-secondary">MIN TTFB</span>
+                                                <span id="dtMin" class="font-bold"></span>
+                                            </div>
+                                        </div>
+                                        <div class="card card--flat latency-stat-box">
+                                            <div class="card__body p-2 d-flex flex-col gap-1">
+                                                <span class="font-bold text-secondary">MEDIAN TTFB</span>
+                                                <span id="dtMedian" class="font-bold"></span>
+                                            </div>
+                                        </div>
+                                        <div class="card card--flat latency-stat-box">
+                                            <div class="card__body p-2 d-flex flex-col gap-1">
+                                                <span class="font-bold text-secondary">MAX TTFB</span>
+                                                <span id="dtMax" class="font-bold"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Headers & Compression Info -->
+                                <div class="latency-grid">
+                                    <!-- Compression Specs -->
+                                    <div class="card">
+                                        <div class="card__header">
+                                            <h4 class="card__title font-bold"><i class="fa-solid fa-server mr-2"></i> Server Headers</h4>
+                                        </div>
+                                        <div class="card__body">
+                                            <ul class="list-none d-flex flex-col gap-2" id="serverInfoList"></ul>
+                                        </div>
+                                    </div>
+
+                                    <!-- Redirect Hops -->
+                                    <div class="card">
+                                        <div class="card__header">
+                                            <h4 class="card__title font-bold"><i class="fa-solid fa-route mr-2"></i> Redirect Chain</h4>
+                                        </div>
+                                        <div class="card__body">
+                                            <ul class="list-none d-flex flex-col gap-2" id="redirectHopsList"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error Card -->
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Phân tích lỗi
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message">
+                                    Phân tích tốc độ web thất bại. Vui lòng thử lại sau!
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Share Card -->
+                        <div id="shareCard" class="share-card mt-6 d-none">
+                            <div class="share-card__header">
+                                <h4 class="share-card__title font-bold">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                    Chia sẻ kết quả:
+                                </h4>
+                            </div>
+                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                <input type="text" id="shareLink" readonly class="share-card__input" value="https"/>
+                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                    <i class="fas fa-copy"></i>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- End: Main content -->
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+    </div>
+
+    <!-- Script Import -->
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/web-latency/web-latency.js"></script>
+</body>
+
+</html>

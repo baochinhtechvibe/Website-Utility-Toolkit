@@ -185,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         inputEl.style.borderColor = "var(--color-error)";
         const errorDiv = document.createElement("div");
-        errorDiv.className = "input-error-msg text-error text-sm mt-1";
+        errorDiv.className = "input-error-msg text-error mt-1";
         errorDiv.textContent = msg;
         inputEl.parentElement.appendChild(errorDiv);
     }
@@ -278,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (errors.chain2) showInlineError(inputChain2, errors.chain2);
             if (errors.password) showInlineError(inputPfxPw, errors.password);
             
-            showError(mainErrorCard, mainErrorCard.querySelector(".error-card__message"), "Có lỗi trong form. Vui lòng kiểm tra lại.");
+            showError(mainErrorCard, mainErrorCard.querySelector(".message-card__message"), "Có lỗi trong form. Vui lòng kiểm tra lại.");
             return;
         }
 
@@ -350,7 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
         } catch (err) {
-            showError(mainErrorCard, mainErrorCard.querySelector(".error-card__message"), err.message || "Không thể kết nối đến máy chủ.");
+            showError(mainErrorCard, mainErrorCard.querySelector(".message-card__message"), err.message || "Không thể kết nối đến máy chủ.");
         } finally {
             toggleLoading(btnSubmit, iconNormal, iconLoading, false);
             // Re-enable bằng State Flow

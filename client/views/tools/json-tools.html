@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <title><i class="fa-solid fa-file-code mr-2"></i>JSON Data Tools | Website Utility Toolkit</title>
+</head>
+
+<body>
+    <div class="wrapper page--json-tools">
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--json-tools py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/settings.png" alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                <i class="fa-solid fa-file-code mr-2"></i>JSON Data Tools
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Format · Validate · Diff · Convert
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Bộ công cụ xử lý JSON toàn diện: Format, Validate, So sánh Diff, Chuyển đổi sang Go Struct & YAML.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="card">
+                    <!-- Card Header -->
+                    <div class="card__header">
+                        <h2 class="card__title font-bold text-center">
+                            <i class="fa-solid fa-file-code mr-2"></i>JSON Data Tools
+                        </h2>
+                    </div>
+
+                    <div class="card__body pt-4">
+                        <!-- Tab Navigation -->
+                        <nav class="json-tools__tabs" role="tablist">
+                            <button class="json-tools__tab json-tools__tab--active" data-tab="formatter" role="tab" aria-selected="true">
+                                <i class="fa-solid fa-code"></i> Formatter / Minify
+                            </button>
+                            <button class="json-tools__tab" data-tab="validator" role="tab" aria-selected="false">
+                                <i class="fa-solid fa-circle-check"></i> Validator
+                            </button>
+                            <button class="json-tools__tab" data-tab="diff" role="tab" aria-selected="false">
+                                <i class="fa-solid fa-code-compare"></i> Diff Compare
+                            </button>
+                            <button class="json-tools__tab" data-tab="to-go" role="tab" aria-selected="false">
+                                <i class="fa-brands fa-golang"></i> To Go Struct
+                            </button>
+                            <button class="json-tools__tab" data-tab="to-yaml" role="tab" aria-selected="false">
+                                <i class="fa-solid fa-file-code"></i> To YAML
+                            </button>
+                        </nav>
+
+                        <!-- ====================== -->
+                        <!-- TAB: Formatter / Minify -->
+                        <!-- ====================== -->
+                        <div id="panel-formatter" class="json-tools__panel json-tools__panel--active" role="tabpanel">
+                            <div class="json-tools__pane">
+                                <!-- Input Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-keyboard"></i> JSON Input
+                                    </label>
+                                    <textarea id="formatterInput" class="json-tools__input" placeholder='Dán JSON vào đây... Ví dụ: {"name": "BaoChinhTechVibe", "year": 2026}'></textarea>
+                                </div>
+                                <!-- Output Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-display"></i> Output
+                                    </label>
+                                    <div id="formatterOutput" class="json-tools__output json-tools__output--empty">
+                                        Kết quả sẽ hiển thị tại đây...
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="json-tools__actions">
+                                <button id="btnFormat" class="btn btn-action">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Format (2 spaces)
+                                </button>
+                                <button id="btnFormat4" class="btn btn-action">
+                                    <i class="fa-solid fa-indent"></i> Format (4 spaces)
+                                </button>
+                                <button id="btnMinify" class="btn btn-warning">
+                                    <i class="fa-solid fa-compress"></i> Minify
+                                </button>
+                                <button id="btnCopyFormatter" class="btn btn-share">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                                <button id="btnClearFormatter" class="btn btn-danger">
+                                    <i class="fa-solid fa-trash-can"></i> Clear
+                                </button>
+                            </div>
+                            <!-- Stats -->
+                            <div id="formatterStats" class="message-card message-card--info mt-2 d-none">
+                                <div class="message-card__body">
+                                    <p class="message-card__message d-flex flex-row flex-wrap gap-6 items-center font-bold">
+                                        <span class="d-flex items-center gap-2">
+                                            <i class="fa-solid fa-weight-hanging"></i>
+                                            <span id="formatterSize">0</span> bytes
+                                        </span>
+                                        <span class="d-flex items-center gap-2">
+                                            <i class="fa-solid fa-layer-group"></i>
+                                            <span id="formatterKeys">0</span> keys
+                                        </span>
+                                        <span class="d-flex items-center gap-2">
+                                            <i class="fa-solid fa-arrow-down-wide-short"></i>
+                                            Depth: <span id="formatterDepth">0</span>
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ====================== -->
+                        <!-- TAB: Validator          -->
+                        <!-- ====================== -->
+                        <div id="panel-validator" class="json-tools__panel" role="tabpanel">
+                            <div class="json-tools__pane">
+                                <!-- Input Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-keyboard"></i> JSON Input
+                                    </label>
+                                    <textarea id="validatorInput" class="json-tools__input" placeholder='Dán JSON vào đây để kiểm tra tính hợp lệ...'></textarea>
+                                </div>
+                                <!-- Output Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-display"></i> Kết quả Validate
+                                    </label>
+                                    <div id="validatorOutput" class="json-tools__validator-box json-tools__validator-box--empty">
+                                        Kết quả validate sẽ hiển thị tại đây...
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="json-tools__actions">
+                                <button id="btnValidate" class="btn btn-action">
+                                    <i class="fa-solid fa-check-double"></i> Validate
+                                </button>
+                                <button id="btnClearValidator" class="btn btn-danger">
+                                    <i class="fa-solid fa-trash-can"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ====================== -->
+                        <!-- TAB: Diff Compare       -->
+                        <!-- ====================== -->
+                        <div id="panel-diff" class="json-tools__panel" role="tabpanel">
+                            <div class="json-tools__diff-inputs">
+                                <!-- Left / Original -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-file-lines"></i> Original JSON
+                                    </label>
+                                    <textarea id="diffInputLeft" class="json-tools__input" placeholder='Dán JSON gốc vào đây...'></textarea>
+                                </div>
+                                <!-- Right / Modified -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-file-pen"></i> Modified JSON
+                                    </label>
+                                    <textarea id="diffInputRight" class="json-tools__input" placeholder='Dán JSON đã chỉnh sửa vào đây...'></textarea>
+                                </div>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="json-tools__actions">
+                                <button id="btnSwapDiff" class="btn btn-action">
+                                    <i class="fa-solid fa-right-left"></i> Swap
+                                </button>
+                                <button id="btnClearDiff" class="btn btn-danger">
+                                    <i class="fa-solid fa-trash-can"></i> Clear
+                                </button>
+                            </div>
+                            <!-- Diff Toggle View -->
+                            <div class="json-tools__diff-toggle">
+                                <span class="json-tools__diff-toggle-label">Chế độ xem:</span>
+                                <button id="btnDiffSplit" class="btn btn-action json-tools__diff-view-btn json-tools__diff-view-btn--active" data-view="split">
+                                    <i class="fa-solid fa-table-columns"></i> Split View
+                                </button>
+                                <button id="btnDiffUnified" class="btn json-tools__diff-view-btn" data-view="unified">
+                                    <i class="fa-solid fa-list"></i> Unified View
+                                </button>
+                            </div>
+                            <!-- Diff Result -->
+                            <div id="diffResult" class="json-tools__diff-result d-none">
+                                <!-- Diff Summary -->
+                                <div id="diffSummary" class="json-tools__stats mb-4">
+                                    <span class="json-tools__stat-item text-success">
+                                        <i class="fa-solid fa-plus"></i>
+                                        <span id="diffAdded">0</span> added
+                                    </span>
+                                    <span class="json-tools__stat-item text-error">
+                                        <i class="fa-solid fa-minus"></i>
+                                        <span id="diffRemoved">0</span> removed
+                                    </span>
+                                    <span class="json-tools__stat-item text-warning">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <span id="diffModified">0</span> modified
+                                    </span>
+                                </div>
+                                <!-- Split View Container -->
+                                <div id="diffSplitView" class="json-tools__diff-split">
+                                    <div id="diffSplitLeft" class="json-tools__diff-split-col"></div>
+                                    <div id="diffSplitRight" class="json-tools__diff-split-col"></div>
+                                </div>
+                                <!-- Unified View Container -->
+                                <div id="diffUnifiedView" class="json-tools__output d-none"></div>
+                            </div>
+                        </div>
+
+                        <!-- ====================== -->
+                        <!-- TAB: To Go Struct       -->
+                        <!-- ====================== -->
+                        <div id="panel-to-go" class="json-tools__panel" role="tabpanel">
+                            <div class="json-tools__pane">
+                                <!-- Input Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-keyboard"></i> JSON Input
+                                    </label>
+                                    <textarea id="toGoInput" class="json-tools__input" placeholder='Dán JSON vào đây để chuyển đổi sang Go Struct...'></textarea>
+                                </div>
+                                <!-- Output Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-brands fa-golang"></i> Go Struct Output
+                                    </label>
+                                    <div id="toGoOutput" class="json-tools__output json-tools__output--empty">
+                                        Go Struct sẽ hiển thị tại đây...
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="json-tools__actions">
+                                <button id="btnConvertGo" class="btn btn-action">
+                                    <i class="fa-solid fa-arrow-right-arrow-left"></i> Convert
+                                    <i class="fa-solid fa-spinner fa-spin d-none" id="toGoLoading"></i>
+                                </button>
+                                <button id="btnCopyGo" class="btn btn-share">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                                <button id="btnClearGo" class="btn btn-danger">
+                                    <i class="fa-solid fa-trash-can"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ====================== -->
+                        <!-- TAB: To YAML            -->
+                        <!-- ====================== -->
+                        <div id="panel-to-yaml" class="json-tools__panel" role="tabpanel">
+                            <div class="json-tools__pane">
+                                <!-- Input Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-keyboard"></i> JSON Input
+                                    </label>
+                                    <textarea id="toYamlInput" class="json-tools__input" placeholder='Dán JSON vào đây để chuyển đổi sang YAML...'></textarea>
+                                </div>
+                                <!-- Output Column -->
+                                <div class="json-tools__pane-col">
+                                    <label class="json-tools__pane-label">
+                                        <i class="fa-solid fa-file-code"></i> YAML Output
+                                    </label>
+                                    <div id="toYamlOutput" class="json-tools__output json-tools__output--empty">
+                                        YAML sẽ hiển thị tại đây...
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="json-tools__actions">
+                                <button id="btnConvertYaml" class="btn btn-action">
+                                    <i class="fa-solid fa-arrow-right-arrow-left"></i> Convert
+                                    <i class="fa-solid fa-spinner fa-spin d-none" id="toYamlLoading"></i>
+                                </button>
+                                <button id="btnCopyYaml" class="btn btn-share">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                                <button id="btnClearYaml" class="btn btn-danger">
+                                    <i class="fa-solid fa-trash-can"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Error Card (shared) -->
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Lỗi xử lý
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message">
+                                    Đã xảy ra lỗi. Vui lòng thử lại!
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+        <!-- End: Main content -->
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+    </div>
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/json-tools/json-tools.js"></script>
+</body>
+
+</html>

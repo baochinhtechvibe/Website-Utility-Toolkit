@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMAP Migrator - Admin Dashboard</title>
+    
+    <!-- CSS Tích hợp -->
+    <link rel="stylesheet" href="../../src/css/main.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+</head>
+<body class="page--admin-dashboard page">
+    
+    <!-- KHÔNG CÓ HEADER TRONG TRANG NÀY -->
+    <main class="main" style="display: flex; flex-direction: column;">
+        
+        <!-- ==============================================
+             LOGIN CONTAINER
+        =============================================== -->
+        <div id="admin-login-container" class="container">
+            <div class="card card--login">
+                <div class="card__header text-center">
+                    <h2 class="card__title font-bold">
+                        <i class="fa-solid fa-lock mr-2"></i>Đăng Nhập Admin ImapSync
+                    </h2>
+                </div>
+                <div class="card__body pt-4">
+                    <form id="adminLoginForm" class="form" novalidate>
+                        <div class="form-field">
+                            <label class="form-label" for="admin-user">Tài khoản</label>
+                            <input type="text" id="admin-user" class="form-input" placeholder="Nhập username" required />
+                        </div>
+                        <div class="form-field mt-4">
+                            <label class="form-label" for="admin-pass">Mật khẩu</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="admin-pass" class="form-input" placeholder="Nhập password" required />
+                                <i class="fa-solid fa-eye password-toggle-icon" id="toggle-password" title="Hiện mật khẩu"></i>
+                            </div>
+                        </div>
+                        <div class="form-field mt-6">
+                            <button type="submit" class="btn btn-action btn-block">Đăng Nhập</button>
+                        </div>
+                        <div id="login-error" class="message-card message-card--error mt-4 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi đăng nhập</h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p class="message-card__message">Sai tài khoản hoặc mật khẩu!</p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================================
+             ADMIN DASHBOARD CONTAINER (SPA LAYOUT)
+        =============================================== -->
+        <div id="admin-dashboard-container" class="admin-layout d-none">
+            
+            <!-- SIDEBAR -->
+            <aside class="admin-sidebar d-flex flex-col">
+                <div class="admin-sidebar__header d-flex items-center">
+                    <div class="header__logo">
+                        <i class="fa-solid fa-screwdriver-wrench text-primary"></i>
+                        <span class="text-white">IMAP Sync <span class="admin-sidebar__brand-sub">Admin Dashboard</span></span>
+                    </div>
+                </div>
+                <nav class="admin-sidebar__nav flex-1">
+                    <button class="admin-menu-item active" data-target="tab-dashboard">
+                        <i class="fa-solid fa-border-all"></i> Dashboard
+                    </button>
+                    <!-- <button class="admin-menu-item text-muted" disabled><i class="fa-solid fa-plus-circle"></i> New Sync (Sắp ra mắt)</button> -->
+                    <button class="admin-menu-item" data-target="tab-running">
+                        <i class="fa-solid fa-server"></i> Running Jobs
+                    </button>
+                    <!-- <button class="admin-menu-item text-muted" disabled><i class="fa-solid fa-address-card"></i> Profiles (Sắp ra mắt)</button> -->
+                    <!-- <button class="admin-menu-item text-muted" disabled><i class="fa-solid fa-clock"></i> Schedules (Sắp ra mắt)</button> -->
+                    <button class="admin-menu-item" data-target="tab-history">
+                        <i class="fa-solid fa-history"></i> History
+                    </button>
+                </nav>
+                <div class="admin-sidebar__footer d-flex justify-between items-center">
+                    <div class="text-sm text-secondary font-mono"><i class="fa-solid fa-user-shield text-success mr-2"></i> admin</div>
+                    <div class="d-flex gap-2">
+                        <button id="btn-theme-toggle-admin" class="btn btn-outline btn-icon-ghost" title="Đổi giao diện">
+                            <i class="fa-solid fa-moon"></i>
+                        </button>
+                        <button id="btn-logout" class="btn btn-outline text-danger btn-icon-ghost" title="Đăng Xuất">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT AREA -->
+            <section class="admin-content">
+                
+                <!-- TAB 1: DASHBOARD -->
+                <div id="tab-dashboard" class="admin-tab-pane active">
+                    <h2 class="admin-page-title mb-6"><i class="fa-solid fa-border-all mr-2"></i> Dashboard</h2>
+                    
+                    <div class="admin-stat-grid mb-6">
+                        <div class="card card--flat">
+                            <div class="card__body p-4">
+                                <div class="text-sm text-muted mb-2">Total Syncs</div>
+                                <div class="font-display font-bold admin-stat-value" id="stat-total-syncs">0</div>
+                            </div>
+                        </div>
+                        <div class="card card--flat">
+                            <div class="card__body p-4">
+                                <div class="text-sm text-muted mb-2">Success Rate</div>
+                                <div class="font-display font-bold text-success admin-stat-value" id="stat-success-rate">0.0%</div>
+                            </div>
+                        </div>
+                        <div class="card card--flat">
+                            <div class="card__body p-4">
+                                <div class="text-sm text-muted mb-2">Messages Transferred</div>
+                                <div class="font-display font-bold admin-stat-value" id="stat-messages">0</div>
+                            </div>
+                        </div>
+                        <div class="card card--flat">
+                            <div class="card__body p-4">
+                                <div class="text-sm text-muted mb-2" title="Ước tính khoảng 50KB mỗi email">Data Transferred (Est. 50KB/mail)</div>
+                                <div class="font-display font-bold text-info admin-stat-value" id="stat-data">0 B</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card--flat">
+                        <div class="card__header">
+                            <h3 class="card__title font-bold">Running Jobs</h3>
+                        </div>
+                        <div class="card__body p-0">
+                            <!-- Minimal running jobs table for dashboard overview -->
+                            <div class="admin-table-wrapper admin-table-wrapper--borderless">
+                                <table class="admin-table border-0" id="table-running-dashboard">
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-center text-secondary py-4">No jobs currently running.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: RUNNING JOBS -->
+                <div id="tab-running" class="admin-tab-pane d-none">
+                    <h2 class="admin-page-title mb-6"><i class="fa-solid fa-server mr-2"></i> Running Jobs</h2>
+                    
+                    <div class="card card--flat">
+                        <div class="card__body p-0">
+                            <div class="admin-table-wrapper admin-table-wrapper--borderless">
+                                <table class="admin-table" id="table-running">
+                                    <thead>
+                                        <tr>
+                                            <th>Job ID</th>
+                                            <th>Trạng Thái</th>
+                                            <th>Nguồn</th>
+                                            <th>Đích</th>
+                                            <th>Thư Mục</th>
+                                            <th>Tiến Độ Email</th>
+                                            <th>Lỗi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="text-center text-secondary py-4">No jobs currently running.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: HISTORY -->
+                <div id="tab-history" class="admin-tab-pane d-none">
+                    <div class="d-flex justify-between items-center mb-6">
+                        <h2 class="admin-page-title m-0"><i class="fa-solid fa-history mr-2"></i> History</h2>
+                        <button id="btn-refresh-history" class="btn btn-outline btn-admin-action">
+                            <i class="fa-solid fa-rotate-right"></i> Làm mới
+                        </button>
+                    </div>
+
+                    <div class="card card--flat">
+                        <div class="card__body p-0">
+                            <div class="admin-table-wrapper admin-table-wrapper--borderless">
+                                <table class="admin-table" id="table-history">
+                                    <thead>
+                                        <tr>
+                                            <th>Job ID</th>
+                                            <th>Status</th>
+                                            <th>Source → Dest</th>
+                                            <th>Started</th>
+                                            <th>Duration</th>
+                                            <th>Messages</th>
+                                            <th>Data (Est.)</th>
+                                            <th>Errors</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="9" class="text-center text-secondary py-4">Đang tải lịch sử...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+
+        <!-- ==============================================
+             MODAL LOG VIEWER
+        =============================================== -->
+        <div id="log-modal" class="modal-backdrop d-none">
+            <div class="modal modal--large d-flex flex-col">
+                <div class="modal__header d-flex justify-between items-center px-4 py-3 border-b border-subtle">
+                    <h3 class="font-bold text-lg m-0"><i class="fa-solid fa-terminal mr-2"></i> Job Log: <span id="current-log-job" class="font-mono text-primary"></span></h3>
+                    <button class="btn btn-outline btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal__body p-0 flex-1 d-flex flex-col overflow-hidden">
+                    <div class="log-viewer log-viewer--modal">
+                        <div class="log-viewer__header border-0 border-b border-subtle bg-surface">
+                            <span class="text-muted text-xs">/server/data/imap-history/logs/ <span id="log-filename" class="text-info font-bold"></span></span>
+                        </div>
+                        <div class="log-viewer__body log-viewer__body--flex" id="log-output-content">Khởi tạo bộ đọc log...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SCIPTS -->
+    <script src="../../src/js/utils/url.js"></script>
+    <!-- Tránh import tracker.js để không track admin -->
+    <script src="../../src/js/tools/admin-imap/admin-dashboard.js"></script>
+</body>
+</html>

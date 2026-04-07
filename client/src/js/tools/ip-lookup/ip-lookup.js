@@ -315,8 +315,8 @@ function setupEventListeners() {
     // Nút Check Blacklist (Hiện tại chỉ là placeholder hoặc redirect)
     $("#btnCheckBlacklist")?.addEventListener("click", () => {
         const ip = $("#detailIPTarget")?.textContent;
-        if (ip && ip !== "N/A") {
-            window.location.href = `/tools/dns?ip=${ip}&type=blacklist`;
+        if (ip && ip !== "N/A" && ip !== "Checking...") {
+            window.location.href = `./dns.html?host=${encodeURIComponent(ip.trim())}&type=BLACKLIST`;
         }
     });
 }

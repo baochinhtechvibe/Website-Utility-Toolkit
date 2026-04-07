@@ -1,0 +1,83 @@
+package service
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/rs/zerolog/log"
+)
+
+const cleanupInterval = 24 * time.Hour
+const retainDays = 90
+
+func init() {
+	go runCronCleanup()
+}
+
+func runCronCleanup() {
+	// Chờ 5p sau khi khởi động server cho ổn định rồi mới chạy lần đầu
+	time.Sleep(5 * time.Minute)
+	
+	for {
+		cleanOldLogsAndHistory()
+		time.Sleep(cleanupInterval)
+	}
+}
+
+func cleanOldLogsAndHistory() {
+	log.Info().Msg("Bắt đầu dọn dẹp log và history cũ (cron)...")
+	
+	cwd, _ := os.Getwd()
+	historyDir := filepath.Join(cwd, "data", "imap-history")
+	logDir := filepath.Join(historyDir, "logs")
+
+	cutoff := time.Now().AddDate(0, 0, -retainDays)
+
+	// Dọn logs files
+	entries, err := os.ReadDir(logDir)
+	var deletedLogs int
+	if err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				info, err := entry.Info()
+				if err == nil && info.ModTime().Before(cutoff) {
+					errDel := os.Remove(filepath.Join(logDir, entry.Name()))
+					if errDel == nil {
+						deletedLogs++
+					}
+				}
+			}
+		}
+	}
+
+	// Dọn history.json — dùng Write lock suốt để tránh TOCTOU race
+	// (AppendHistory có thể chen vào giữa RUnlock và Lock trong pattern cũ)
+	historyMutex.Lock()
+	var newHistory []JobSummary
+	needUpdate := false
+	for _, summary := range historyList {
+		if !summary.EndedAt.Before(cutoff) {
+			newHistory = append(newHistory, summary)
+		} else {
+			needUpdate = true
+		}
+	}
+	var data []byte
+	if needUpdate {
+		historyList = newHistory
+		data, _ = json.MarshalIndent(historyList, "", "  ")
+	}
+	historyMutex.Unlock()
+
+	// Write file bên ngoài lock để tránh giữ lock trong quá trình disk I/O
+	if needUpdate {
+		tmp := historyPath + ".tmp"
+		if errWrite := os.WriteFile(tmp, data, 0644); errWrite == nil {
+			os.Rename(tmp, historyPath)
+		}
+	}
+
+	log.Info().Int("deleted_logs", deletedLogs).Msg("Hoàn tất dọn dẹp dữ liệu cũ định kỳ.")
+}

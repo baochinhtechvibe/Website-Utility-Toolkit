@@ -82,82 +82,21 @@ const btnWhois = document.getElementById("whoisBtn");
 const traceRootCheckbox = document.getElementById("traceRoot");
 const traceLogBox = document.getElementById("traceLogBox");
 
-const BLACKLIST_PROVIDERS = [
-    // High Priority RBLs
-    { host: "b.barracudacentral.org", level: "High" },         // BARRACUDA
-    { host: "zen.spamhaus.org", level: "High" },               // Spamhaus ZEN (gộp SBL/XBL/PBL)
-    { host: "bl.spamcop.net", level: "High" },                 // SPAMCOP
-    { host: "dnsbl-1.uceprotect.net", level: "High" },         // UCEPROTECT Level 1
-    { host: "dnsbl.blocklist.de", level: "High" },             // BLOCKLIST.DE
-    { host: "bl.mailspike.net", level: "High" },               // MAILSPIKE BL
-    { host: "psbl.surriel.com", level: "High" },               // PSBL
-    { host: "db.wpbl.info", level: "High" },                   // WPBL
-    { host: "mail-abuse.blacklist.jippg.org", level: "High" }, // JIPPG
+// Task 11: Removed hardcoded BLACKLIST_PROVIDERS. 
+// Now dynamically loaded from backend via BLACKLIST_INIT event.
 
-    // Medium Priority RBLs
-    { host: "dnsbl.sorbs.net", level: "Medium" },               // SORBS Aggregate
-    { host: "ips.backscatterer.org", level: "Medium" },         // BACKSCATTERER
-    { host: "dnsbl-2.uceprotect.net", level: "Medium" },        // UCEPROTECT Level 2
-    { host: "dnsbl.0spam.org", level: "Medium" },               // 0SPAM
-    { host: "dbl.0spam.org", level: "Medium" },                 // 0SPAM NBL
-    { host: "mail.abusix.zone", level: "Medium" },              // Abusix Mail Intel
-    { host: "rbl.0spam.org", level: "Medium" },                 // 0SPAM RBL
-    { host: "dyna.spamrats.com", level: "Medium" },             // RATS Dyna
-    { host: "noptr.spamrats.com", level: "Medium" },            // RATS NoPtr
-    { host: "spam.spamrats.com", level: "Medium" },             // RATS Spam
-    { host: "z.mailspike.net", level: "Medium" },               // MAILSPIKE Z
-    { host: "sem.blacklist.spamhaus.org", level: "Medium" },    // SEM BLACK
-    { host: "cbl.abuseat.org", level: "Medium" },               // Abuseat CBL
-    { host: "dnsbl.dronebl.org", level: "Medium" },             // DRONE BL
-    { host: "dnsbl.zapbl.net", level: "Medium" },               // ZapBL
-    { host: "hostkarma.junkemailfilter.com", level: "Medium" }, // Hostkarma Black
-    { host: "woodys.smtp.blacklist", level: "Medium" },         // Woodys SMTP (hay timeout)
-    { host: "lashback.uoregon.edu", level: "Medium" },          // LASHBACK
-    { host: "rbl.schulte.org", level: "Medium" },               // Manitu (Schulte)
-    { host: "dnsbl.konstant.no", level: "Medium" },             // Konstant
-    { host: "dnsbl.spfbl.net", level: "Medium" },               // SPFBL DNSBL
-    { host: "rbl.interserver.net", level: "Medium" },           // INTERSERVER
-    { host: "surgate.net", level: "Medium" },                   // Surgate
-    { host: "spamsources.fabel.dk", level: "Medium" },          // FABELSOURCES
-    { host: "dnsbl.anonmails.de", level: "Medium" },            // Anonmails
-    { host: "dnsbl.scientificspam.net", level: "Medium" },      // Scientific Spam
-    { host: "dnsbl.pacifier.net", level: "Medium" },            // Pacifier
-    { host: "spamguard.leadmon.net", level: "Medium" },         // Leadmon
-    { host: "bad.psky.me", level: "Medium" },                   // PSky Bad
-
-    // Low Priority RBLs
-    { host: "dnsbl-3.uceprotect.net", level: "Low" },           // UCEPROTECT Level 3
-    { host: "backscatter.spameatingmonkey.net", level: "Low" }, // SEM BACKSCATTER
-    { host: "tor.dan.me.uk", level: "Low" },                    // DAN TOR
-    { host: "torexit.dan.me.uk", level: "Low" },                // DAN TOREXIT
-    { host: "http.dnsbl.sorbs.net", level: "Low" },             // SORBS HTTP
-    { host: "socks.dnsbl.sorbs.net", level: "Low" },            // SORBS SOCKS
-    { host: "misc.dnsbl.sorbs.net", level: "Low" },             // SORBS Misc
-    { host: "smtp.dnsbl.sorbs.net", level: "Low" },             // SORBS SMTP
-    { host: "web.dnsbl.sorbs.net", level: "Low" },              // SORBS Web
-    { host: "bl.nordspam.com", level: "Low" },                  // Nordspam
-    { host: "all.s5h.net", level: "Low" },                      // s5h.net
-    { host: "korea.services.net", level: "Low" },               // SERVICESNET
-    { host: "dnsbl.cymru.com", level: "Low" },                  // CYMRU BOGONS
-    { host: "calivent.com", level: "Low" },                     // CALIVENT
-    { host: "rbl.redhawk.org", level: "Low" },                  // Redhawk (DRMX)
-    { host: "dnsbl.drbl.gremlin.ru", level: "Low" },            // DRBL Gremlin
-    { host: "dnsbl.kempt.net", level: "Low" },                  // KEMPTBL
-    { host: "dnsbl.swinog.ch", level: "Low" },                  // SWINOG
-    { host: "dnsbl.suomispam.net", level: "Low" },              // Suomispam
-    { host: "relays.nether.net", level: "Low" },                // NETHERRELAYS
-    { host: "unsure.nether.net", level: "Low" },                // NETHERUNSURE
-    { host: "rbl.triumf.ca", level: "Low" },                    // TRIUMF
-    { host: "hil.habeas.com", level: "Low" },                   // HIL
-    { host: "hil2.habeas.com", level: "Low" },                  // HIL2
-];
 
 
 
 // Global flags / state
 
 let blacklistEventSource = null;
+let blacklistTimeout = null; // Task 4: SSE safety timeout
 let isBypassCache = false;
+
+// Shared element refs (Task 6: Cleanup)
+const dLookupIcon = document.getElementById("dnsLookupIcon");
+const dLookupLoading = document.getElementById("dnsLookupLoading");
 
 // =================================//
 //  LOW-LEVEL UTILS
@@ -276,8 +215,11 @@ function updateURL(host, type) {
         type
     });
 
-    const newURL = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newURL);
+    const newSearch = `?${params.toString()}`;
+    const newURL = `${window.location.pathname}${newSearch}`;
+    if (window.location.search !== newSearch) {
+        window.history.pushState({}, '', newURL);
+    }
 }
 
 // =================================//
@@ -328,6 +270,10 @@ async function resolveIPv4(hostname) {
 //  BLACKLIST DOMAIN LOGIC
 //==================================//
 function cleanupBlacklistStream() {
+    if (blacklistTimeout) {
+        clearTimeout(blacklistTimeout);
+        blacklistTimeout = null;
+    }
     if (blacklistEventSource) {
         blacklistEventSource.close();
         blacklistEventSource = null;
@@ -351,31 +297,11 @@ function performBlacklistStream(ip) {
         </tr>
     `;
 
-    // ✅ 1. RENDER SKELETON TABLE TRƯỚC
-    BLACKLIST_PROVIDERS.forEach(rbl => {
-        const tr = document.createElement("tr");
-        tr.dataset.provider = rbl.host;
-
-        tr.innerHTML = `
-            <td class= "results-table__cell results-table__cell--rbl-provider">${rbl.host}</td>
-            <td class= "results-table__cell results-table__cell--rbl-type"><span class="type-badge type-blacklist">RBL</span></td>
-            <td class= "results-table__cell results-table__cell--rbl-level"><span class="level-badge level-${rbl.level.toLowerCase()}">${rbl.level}</span></td>
-            <td class="results-table__cell results-table__cell--rbl-status status-cell">
-                <i class="fas fa-spinner fa-spin"></i>
-                <span>Checking...</span>
-            </td>
-            <td class="results-table__cell results-table__cell--rbl-isp">-</td>
-        `;
-
-        rowMap[rbl.host] = tr;
-        resultsTableBody.appendChild(tr);
-    });
-
     // Title ban đầu
     resultsTitle.innerHTML = `
         <i class="fas fa-shield-alt"></i>
         Blacklist Check: ${escapeHTML(ip)}
-        <span class="ml-2 badge badge-secondary">Checking...</span>
+        <span class="ml-2 badge badge-default">Connecting...</span>
     `;
 
     // ✅ 2. SSE STREAM
@@ -388,13 +314,58 @@ function performBlacklistStream(ip) {
     blacklistEventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
+        // Task 11: Dynamic Skeleton rendering from Backend list
+        if (data.type === "BLACKLIST_INIT") {
+            resultsTableBody.innerHTML = "";
+            (data.providers || []).forEach(rbl => {
+                const tr = document.createElement("tr");
+                tr.dataset.provider = rbl.host;
+                tr.innerHTML = `
+                    <td class= "results-table__cell results-table__cell--rbl-provider">${escapeHTML(rbl.host)}</td>
+                    <td class= "results-table__cell results-table__cell--rbl-type"><span class="type-badge type-blacklist">RBL</span></td>
+                    <td class= "results-table__cell results-table__cell--rbl-level"><span class="level-badge level-${rbl.level.toLowerCase()}">${rbl.level}</span></td>
+                    <td class="results-table__cell results-table__cell--rbl-status status-cell">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Checking...</span>
+                    </td>
+                    <td class="results-table__cell results-table__cell--rbl-isp">-</td>
+                `;
+                rowMap[rbl.host] = tr;
+                resultsTableBody.appendChild(tr);
+            });
+
+            // Update title with total count (0/Total)
+            resultsTitle.innerHTML = `
+                <i class="fas fa-shield-alt"></i>
+                Blacklist Check: ${escapeHTML(data.ip)}
+                <span class="ml-2 badge badge-default">0/${data.total} blacklist</span>
+            `;
+
+            // Start safety timeout (Task 4)
+            if (blacklistTimeout) clearTimeout(blacklistTimeout);
+            blacklistTimeout = setTimeout(() => {
+                if (blacklistEventSource) {
+                    console.warn("SSE Timeout: Closing connection after 30s");
+                    blacklistEventSource.close();
+                    blacklistEventSource = null;
+                    toggleLoading(btnResolve, dLookupIcon, dLookupLoading, false);
+                }
+            }, 30000); // 30s is plenty for parallel RBL checks
+
+            return;
+        }
+
         if (data.type === "BLACKLIST_SUMMARY") {
+            if (blacklistTimeout) {
+                clearTimeout(blacklistTimeout);
+                blacklistTimeout = null;
+            }
             resultsTitle.innerHTML = `
             <i class="fas fa-shield-alt"></i>
             Blacklist Check:
             <div class="results__section-title-rbl-realtime">
                 ${escapeHTML(data.ip)}
-                <span class="ml-1 ${data.listed > 0 ? "badge-danger" : "badge-success"}">
+                <span class="ml-1 ${data.listed > 0 ? "badge-error" : "badge-success"}">
                     ${data.listed}/${data.total} blacklist
                 </span>
             </div>
@@ -412,12 +383,24 @@ function performBlacklistStream(ip) {
     };
 
     blacklistEventSource.onerror = () => {
+        if (blacklistTimeout) {
+            clearTimeout(blacklistTimeout);
+            blacklistTimeout = null;
+        }
         blacklistEventSource.close();
         blacklistEventSource = null;
+        
+        // Task 14: Show error feedback instead of silent fail
+        const msg = (ip === "127.0.0.1" || ip === "localhost") 
+            ? "Địa chỉ IP Local/Loopback không thể kiểm tra Blacklist. Vui lòng dùng IP Public."
+            : "Không thể kết nối với dịch vụ kiểm tra Blacklist hoặc IP không hợp lệ.";
+            
+        showError(errorSection, errorMessage, msg, [shareLinkSection, resultsSection]);
+        
         toggleLoading(
             btnResolve,
-            document.getElementById("dnsLookupIcon"),
-            document.getElementById("dnsLookupLoading"),
+            dLookupIcon,
+            dLookupLoading,
             false
         );
     };
@@ -548,7 +531,7 @@ function createTableRow(record, domain) {
                 ispOrg = `
                     <a href="${getIPInfoLink(record.address)}"
                        target="_blank"
-                       class="isp-link d-inline-flex items-center gap-1">
+                       class="isp-link d-inline-flex items-center gap-1 btn btn-success">
                         <span class="isp-link__text">${displayText}</span>
                         <i class="fas fa-external-link-alt isp-link__icon"></i>
                     </a>
@@ -573,7 +556,7 @@ function createTableRow(record, domain) {
                 ispOrg = `
                     <a href="${getIPInfoLink(record.address)}"
                         target="_blank"
-                        class="isp-link d-inline-flex items-center gap-1">
+                        class="isp-link d-inline-flex items-center gap-1 btn btn-success">
                         <span class="isp-link__text">${displayText}</span>
                         <i class="fas fa-external-link-alt isp-link__icon"></i>
                     </a>
@@ -924,16 +907,8 @@ function displayDNSSECResults(data) {
     });
 
     // ===== UI chung =====
-    // resultsSection.style.display = "block";
     if (!isIPInput && !isSubdomainFlag) {
-        setDisplay(btnWhois, "flex");
-        btnWhois.onclick = () => {
-            if (hostname.endsWith(".vn")) {
-                window.open(`https://tino.vn/whois?domain=${hostname}`, "_blank");
-            } else {
-                window.open(`https://www.whois.com/whois/${hostname}`, "_blank");
-            }
-        };
+        getWhoisDomain(btnWhois, hostname);
     } else {
         setDisplay(btnWhois, "none");
     }
@@ -1009,7 +984,7 @@ function displayDNSSECResults(data) {
                     <i class="fa-solid fa-copy copy-dnssec"
                         title="Copy public key"
                         data-copy-type="public-key"
-                        data-copy-value="${record.publicKey}">
+                        data-copy-value="${escapeHTML(record.publicKey)}">
                     </i>
                 </td>
             `;
@@ -1054,7 +1029,7 @@ function displayDNSSECResults(data) {
                     <i class="fa-solid fa-copy copy-dnssec"
                         title="Copy digest"
                         data-copy-type="digest"
-                        data-copy-value="${record.digest}">
+                        data-copy-value="${escapeHTML(record.digest)}">
                     </i>
                 </td>
             `;
@@ -1146,6 +1121,24 @@ function initApp() {
     );
     handleURLParams();
     hostnameInput.focus();
+
+    // Listen to history changes to re-sync
+    window.addEventListener("popstate", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const host = urlParams.get("host");
+        const type = urlParams.get("type");
+
+        if (host) {
+            hostnameInput.value = host;
+            if (type && recordTypeSelect.querySelector(`option[value="${type}"]`)) {
+                recordTypeSelect.value = type;
+            }
+            form.dispatchEvent(new Event("submit"));
+        } else {
+            hostnameInput.value = "";
+            resetUI();
+        }
+    });
 }
 
 
@@ -1170,13 +1163,11 @@ form.addEventListener("submit", async (e) => {
     if (!hostname) return;
 
     let type = normalizeRecordType(hostname, recordTypeSelect.value);
-
-    updateURL(hostname, type);
-    
-    // 🔄 Use internal icon mapping (search icon & load spinner)
-    const dLookupIcon = document.getElementById("dnsLookupIcon");
-    const dLookupLoading = document.getElementById("dnsLookupLoading");
-    toggleLoading(btnResolve, dLookupIcon, dLookupLoading, true);
+ 
+ 	updateURL(hostname, type);
+ 	
+ 	// 🔄 Use module-level cached refs for toggleLoading
+ 	toggleLoading(btnResolve, dLookupIcon, dLookupLoading, true);
 
     try {
         if (type === "BLACKLIST") {

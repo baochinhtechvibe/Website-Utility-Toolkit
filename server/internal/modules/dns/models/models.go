@@ -68,6 +68,7 @@ type DNSSECInfo struct {
 
 type NameserverInfo struct {
 	Nameserver string `json:"nameserver"`
+	IP         string `json:"ip,omitempty"`
 	TTL        uint32 `json:"ttl"`
 	Domain     string `json:"domain,omitempty"`
 }
@@ -102,13 +103,19 @@ type BlacklistEvent struct {
 }
 
 type BlacklistStreamEvent struct {
-	Type     string `json:"type"`     // BLACKLIST | BLACKLIST_SUMMARY
-	Provider string `json:"provider"` // rbl host
-	Status   string `json:"status"`   // OK | LISTED | TIMEOUT
-	Level    string `json:"level,omitempty"`
-	IP       string `json:"ip,omitempty"`
-	Listed   int    `json:"listed"`
-	Total    int    `json:"total"`
+	Type      string        `json:"type"`      // BLACKLIST | BLACKLIST_SUMMARY | BLACKLIST_INIT
+	Provider  string        `json:"provider"`  // rbl host
+	Status    string        `json:"status"`    // OK | LISTED | TIMEOUT
+	Level     string        `json:"level,omitempty"`
+	IP        string        `json:"ip,omitempty"`
+	Listed    int           `json:"listed"`
+	Total     int           `json:"total"`
+	Providers []RBLProvider `json:"providers,omitempty"` // Task 1: Dùng cho skeleton render ở FE
+}
+
+type RBLProvider struct {
+	Host  string `json:"host"`
+	Level string `json:"level"`
 }
 
 // =======================
@@ -141,11 +148,6 @@ type DNSLookupResponse struct {
 // =======================
 // Misc
 // =======================
-
-type RBLProvider struct {
-	Host  string
-	Level string
-}
 
 type QueryInfo struct {
 	Hostname    string `json:"hostname"`

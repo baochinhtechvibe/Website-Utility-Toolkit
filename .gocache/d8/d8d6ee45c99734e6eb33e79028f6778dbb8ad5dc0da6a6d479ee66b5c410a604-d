@@ -1,0 +1,10 @@
+./blacklist.go
+./config.go
+./dnssec.go
+./dnssec_records.go
+./doh_servers.go
+./query.go
+./query_doh.go
+./query_udp.go
+./resolver.go
+./trace.go

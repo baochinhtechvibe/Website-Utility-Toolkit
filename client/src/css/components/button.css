@@ -11,10 +11,13 @@
     --btn-text: var(--gray-900);
     --btn-hover-bg: var(--overlay-gray); /* Nếu nút có hover đổi màu thì truyền vào đây */
     --btn-hover-text: var(--gray-900);
+    --btn-shadow: var(--elevation-button);
+    --btn-shadow-hover: var(--elevation-button-hover);
+    --btn-hover-transform: translateY(-4px);
 
     /* Áp dụng 4 biến đó vào thuộc tính thật */
     background: var(--btn-bg);
-    box-shadow: var(--elevation-tooltip);
+    box-shadow: var(--btn-shadow);
     border: none;
     color: var(--btn-text);
 
@@ -34,6 +37,8 @@
 .btn:hover {
     background: var(--btn-hover-bg);
     color: var(--btn-hover-text);
+    box-shadow: var(--btn-shadow-hover);
+    transform: var(--btn-hover-transform);
 }
 
 .btn:disabled {
@@ -50,6 +55,7 @@
     --btn-text: var(--white);
     --btn-hover-bg: var(--gray-700); 
     --btn-hover-text: var(--white);
+    --btn-shadow-hover: var(--shadow-accent-brand);
 }
 
 .btn-action:disabled {
@@ -71,6 +77,7 @@
     --btn-text: var(--white);
     --btn-hover-bg: var(--green-700); 
     --btn-hover-text: var(--white);
+    --btn-shadow-hover: var(--shadow-accent-green);
 }
 
 /* Nút Share */
@@ -78,6 +85,8 @@
     --btn-bg: var(--overlay-blue);
     --btn-border: var(--blue-500);
     --btn-text: var(--blue-900);
+    --btn-hover-bg: color-mix(in srgb, var(--blue-400) 60%, transparent);
+    --btn-shadow-hover: var(--shadow-accent-blue);
 }
 
 /* Nút Danger */
@@ -85,6 +94,8 @@
     --btn-bg: var(--overlay-red);
     --btn-border: var(--red-500);
     --btn-text: var(--red-900);
+    --btn-hover-bg: color-mix(in srgb, var(--red-500) 60%, transparent);
+    --btn-shadow-hover: var(--shadow-accent-red);
 }
 
 /* Nút Warning */
@@ -92,6 +103,8 @@
     --btn-bg: var(--overlay-yellow);
     --btn-border: var(--yellow-500);
     --btn-text: var(--yellow-900);
+    --btn-hover-bg: color-mix(in srgb, var(--yellow-500) 60%, transparent);
+    --btn-shadow-hover: var(--shadow-accent-yellow);
 }
 
 
@@ -119,8 +132,9 @@
     --btn-text: var(--color-info);
     --btn-hover-bg: var(--color-info);
     --btn-hover-text: var(--white);
+    --btn-shadow-hover: var(--shadow-accent-blue);
     
-    border: 1px solid var(--btn-border);
+    border: var(--border-width-1) solid var(--btn-border);
     padding: var(--space-1) var(--space-3);
     text-transform: uppercase;
 }
@@ -130,4 +144,43 @@
     --btn-border: var(--sky-400);
     --btn-hover-bg: var(--sky-600);
     --btn-hover-text: var(--white);
+}
+
+/* =======================================
+   3. DARK MODE MODIFIERS
+========================================== */
+[data-theme="dark"] .btn {
+    --btn-text: var(--gray-300);
+    --btn-border: var(--gray-700);
+    --btn-bg: color-mix(in srgb, var(--gray-400) 15%, transparent);
+    --btn-hover-bg: color-mix(in srgb, var(--gray-400) 25%, transparent);
+    --btn-hover-text: var(--white);
+}
+
+[data-theme="dark"] .btn-action {
+    --btn-bg: color-mix(in srgb, var(--slate-700) 80%, transparent);
+    --btn-text: var(--white);
+    --btn-hover-bg: var(--slate-600);
+}
+
+[data-theme="dark"] .btn-success {
+    --btn-bg: var(--green-700);
+    --btn-border: var(--green-700);
+    --btn-text: var(--white);
+    --btn-hover-bg: var(--green-600);
+}
+
+[data-theme="dark"] .btn-share {
+    --btn-text: var(--blue-300);
+    --btn-border: color-mix(in srgb, var(--blue-500) 50%, transparent);
+}
+
+[data-theme="dark"] .btn-danger {
+    --btn-text: var(--red-300);
+    --btn-border: color-mix(in srgb, var(--red-500) 50%, transparent);
+}
+
+[data-theme="dark"] .btn-warning {
+    --btn-text: var(--yellow-300);
+    --btn-border: color-mix(in srgb, var(--yellow-500) 50%, transparent);
 }

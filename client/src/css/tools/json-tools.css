@@ -1,0 +1,366 @@
+/* =======================================
+    src/css/tools/json-tools.css
+    JSON Data Tools – Layout & Components
+========================================== */
+
+/* ===== Tab Navigation ===== */
+.json-tools__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    border-bottom: var(--border-default);
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.json-tools__tab {
+    padding: var(--pad-y-2) var(--pad-x-3);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.json-tools__tab:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-muted);
+}
+
+.json-tools__tab--active {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    border-bottom: 2px solid var(--color-surface);
+    margin-bottom: -3px;
+}
+
+/* ===== Tab Panel ===== */
+.json-tools__panel {
+    display: none;
+}
+
+.json-tools__panel--active {
+    display: block;
+}
+
+/* ===== Split Pane (Input Left / Output Right) ===== */
+.json-tools__pane {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    align-items: stretch;
+}
+
+@media (max-width: 768px) {
+    .json-tools__pane {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Pane Column ===== */
+.json-tools__pane-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.json-tools__pane-label {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* ===== Textarea Input ===== */
+.json-tools__input {
+    width: 100%;
+    min-height: 320px;
+    padding: var(--pad-y-3) var(--pad-x-4);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-relaxed);
+    resize: vertical;
+    box-shadow: var(--elevation-tooltip);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.json-tools__input:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
+}
+
+.json-tools__input.is-invalid {
+    border-color: var(--red-500);
+    box-shadow: 0 4px 10px 3px color-mix(in srgb, var(--red-500) 30%, transparent);
+}
+
+/* ===== Output Area ===== */
+.json-tools__output {
+    min-height: 320px;
+    max-height: 600px;
+    overflow: auto;
+    background-color: var(--code-bg);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--pad-y-3) var(--pad-x-4);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-relaxed);
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--code-text);
+}
+
+.json-tools__output--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-family: var(--font-family-sans);
+}
+
+/* ===== Validator Output Box ===== */
+.json-tools__validator-box {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.json-tools__validator-box--empty {
+    min-height: 320px;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-surface);
+    border: var(--border-width-1) dashed var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+}
+
+/* ===== Action Bar ===== */
+.json-tools__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+}
+
+/* ===== Diff-specific Layout ===== */
+.json-tools__diff-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+    .json-tools__diff-inputs {
+        grid-template-columns: 1fr;
+    }
+}
+
+.json-tools__diff-result {
+    margin-top: var(--space-4);
+}
+
+/* Diff View Toggle */
+.json-tools__diff-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+}
+
+.json-tools__diff-toggle-label {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+}
+
+/* ===== Diff Output Lines ===== */
+.json-tools__diff-line {
+    padding: var(--space-1) var(--space-3);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-relaxed);
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-left: 3px solid transparent;
+}
+
+.json-tools__diff-line--added {
+    background-color: color-mix(in srgb, var(--green-500) 12%, transparent);
+    border-left-color: var(--green-500);
+    color: var(--green-700);
+}
+
+.json-tools__diff-line--removed {
+    background-color: color-mix(in srgb, var(--red-500) 12%, transparent);
+    border-left-color: var(--red-500);
+    color: var(--red-700);
+}
+
+.json-tools__diff-line--modified {
+    background-color: color-mix(in srgb, var(--yellow-500) 12%, transparent);
+    border-left-color: var(--yellow-500);
+    color: var(--yellow-800);
+}
+
+.json-tools__diff-line--unchanged {
+    color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .json-tools__diff-line--added {
+    background-color: color-mix(in srgb, var(--green-500) 10%, transparent);
+    color: var(--green-300);
+}
+
+[data-theme="dark"] .json-tools__diff-line--removed {
+    background-color: color-mix(in srgb, var(--red-500) 10%, transparent);
+    color: var(--red-300);
+}
+
+[data-theme="dark"] .json-tools__diff-line--modified {
+    background-color: color-mix(in srgb, var(--yellow-500) 10%, transparent);
+    color: var(--yellow-300);
+}
+
+/* ===== Diff Split View ===== */
+.json-tools__diff-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.json-tools__diff-split-col {
+    overflow: auto;
+    max-height: 500px;
+}
+
+.json-tools__diff-split-col + .json-tools__diff-split-col {
+    border-left: var(--border-width-1) solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+    .json-tools__diff-split {
+        grid-template-columns: 1fr;
+    }
+
+    .json-tools__diff-split-col + .json-tools__diff-split-col {
+        border-left: none;
+        border-top: var(--border-width-1) solid var(--color-border);
+    }
+}
+
+/* ===== Line Numbers (for output) ===== */
+.json-tools__line-num {
+    display: inline-block;
+    min-width: 2.5em;
+    text-align: right;
+    padding-right: var(--space-3);
+    color: var(--color-text-muted);
+    user-select: none;
+    opacity: 0.5;
+}
+
+/* ===== Syntax Highlighting (dùng code tokens đã có) ===== */
+.json-tools__output .json-key {
+    color: var(--code-keyword);
+}
+
+.json-tools__output .json-string {
+    color: var(--code-string);
+}
+
+.json-tools__output .json-number {
+    color: var(--code-value);
+}
+
+.json-tools__output .json-boolean {
+    color: var(--code-func);
+}
+
+.json-tools__output .json-null {
+    color: var(--code-comment);
+    font-style: italic;
+}
+
+.json-tools__output .json-brace {
+    color: var(--color-text-muted);
+}
+
+/* Go struct highlight */
+.json-tools__output .go-keyword {
+    color: var(--code-keyword);
+    font-weight: var(--font-weight-bold);
+}
+
+.json-tools__output .go-type {
+    color: var(--code-func);
+}
+
+.json-tools__output .go-tag {
+    color: var(--code-string);
+}
+
+.json-tools__output .go-comment {
+    color: var(--code-comment);
+    font-style: italic;
+}
+
+/* YAML highlight */
+.json-tools__output .yaml-key {
+    color: var(--code-keyword);
+}
+
+.json-tools__output .yaml-string {
+    color: var(--code-string);
+}
+
+.json-tools__output .yaml-number {
+    color: var(--code-value);
+}
+
+.json-tools__output .yaml-boolean {
+    color: var(--code-func);
+}
+
+.json-tools__output .yaml-null {
+    color: var(--code-comment);
+    font-style: italic;
+}
+
+.json-tools__output .yaml-comment {
+    color: var(--code-comment);
+    font-style: italic;
+}
+
+/* ===== Stat Counter ===== */
+.json-tools__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    color: var(--color-text-muted);
+}
+
+.json-tools__stat-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}

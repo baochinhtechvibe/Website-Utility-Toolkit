@@ -24,9 +24,9 @@ function initKeyMatcherUI() {
 
     // Card lỗi inline của từng ô input (lỗi ĐỊNH DẠNG real-time)
     const errBox1 = document.getElementById("matcher1ValidationError");
-    const errMsg1 = errBox1 ? errBox1.querySelector(".error-card__message") : null;
+    const errMsg1 = errBox1 ? errBox1.querySelector(".message-card__message") : null;
     const errBox2 = document.getElementById("matcher2ValidationError");
-    const errMsg2 = errBox2 ? errBox2.querySelector(".error-card__message") : null;
+    const errMsg2 = errBox2 ? errBox2.querySelector(".message-card__message") : null;
 
     // Card kết quả khớp/không khớp
     const resultCard = document.getElementById("resultCardMatcher");
@@ -301,11 +301,11 @@ function initKeyMatcherUI() {
                     <div class="ssl-checker__result-group p-4 rounded-lg" style="background-color: var(--color-surface-muted); border: 1px solid var(--color-border-subtle);">
                         <div class="ssl-checker__result-row" style="border-bottom: 1px dashed var(--color-border); padding-bottom: 0.75rem; margin-bottom: 0.75rem; flex-direction: column; gap: 0.25rem;">
                             <h5 class="ssl-checker__result-label" style="min-width: unset; width: unset;">${escapeHTML(label1)}:</h5>
-                            <span class="ssl-checker__result-value font-mono text-xs break-all text-secondary">${escapeHTML(data.hash1)}</span>
+                            <span class="ssl-checker__result-value font-mono text-secondary">${escapeHTML(data.hash1)}</span>
                         </div>
                         <div class="ssl-checker__result-row" style="padding-top: 0.75rem; border: none; margin-bottom: 0; flex-direction: column; gap: 0.25rem;">
                             <h5 class="ssl-checker__result-label" style="min-width: unset; width: unset;">${escapeHTML(label2)}:</h5>
-                            <span class="ssl-checker__result-value font-mono text-xs break-all text-secondary">${escapeHTML(data.hash2)}</span>
+                            <span class="ssl-checker__result-value font-mono text-secondary">${escapeHTML(data.hash2)}</span>
                         </div>
                     </div>
                 </div>
@@ -316,11 +316,11 @@ function initKeyMatcherUI() {
                     <div class="ssl-checker__result-group p-4 rounded-lg" style="background-color: var(--color-surface-muted); border: 1px solid var(--color-border-subtle);">
                         <div class="ssl-checker__result-row" style="border-bottom: 1px dashed var(--color-border); padding-bottom: 0.75rem; margin-bottom: 0.75rem; flex-direction: column; gap: 0.25rem;">
                             <h5 class="ssl-checker__result-label text-error" style="min-width: unset; width: unset;">${escapeHTML(label1)}:</h5>
-                            <span class="ssl-checker__result-value font-mono text-xs break-all text-error">${escapeHTML(data.hash1 || "—")}</span>
+                            <span class="ssl-checker__result-value font-mono text-error">${escapeHTML(data.hash1 || "—")}</span>
                         </div>
                         <div class="ssl-checker__result-row" style="padding-top: 0; border: none; margin-bottom: 0; flex-direction: column; gap: 0.25rem;">
                             <h5 class="ssl-checker__result-label text-error" style="min-width: unset; width: unset;">${escapeHTML(label2)}:</h5>
-                            <span class="ssl-checker__result-value font-mono text-xs break-all text-error">${escapeHTML(data.hash2 || "—")}</span>
+                            <span class="ssl-checker__result-value font-mono text-error">${escapeHTML(data.hash2 || "—")}</span>
                         </div>
                     </div>
                 </div>

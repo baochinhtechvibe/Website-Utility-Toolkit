@@ -6,8 +6,21 @@ export async function trackVisit() {
 
     if (!elTotal || !elToday) return; // If elements don't exist, ignore
 
+    // Extract tool name from path
+    let path = window.location.pathname;
+    let toolName = 'home';
+    if (path !== '/' && path !== '/index.html' && path !== '') {
+        const parts = path.split('/').filter(p => p);
+        const lastPart = parts[parts.length - 1];
+        if (lastPart && lastPart.endsWith('.html')) {
+            toolName = lastPart.replace('.html', '');
+        } else if (lastPart) {
+            toolName = lastPart;
+        }
+    }
+
     try {
-        const res = await fetch(`${API_BASE_URL}/visits`, {
+        const res = await fetch(`${API_BASE_URL}/visits?tool=${encodeURIComponent(toolName)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

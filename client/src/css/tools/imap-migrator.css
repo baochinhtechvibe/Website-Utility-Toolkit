@@ -1,0 +1,161 @@
+/* =======================================
+    src/css/tools/imap-migrator.css
+    IMAP Migrator Tool Specific Styles
+========================================== */
+
+/* Layout & Forms */
+.imap-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+}
+
+@media (min-width: 768px) {
+    .imap-form-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.imap-server-card {
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    background-color: var(--bg-surface);
+}
+
+.imap-server-card__title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Tree View */
+.imap-tree-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    background-color: var(--bg-surface);
+}
+
+.imap-tree {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.imap-tree ul {
+    list-style: none;
+    padding-left: var(--space-5);
+    margin: 0;
+    border-left: var(--border-width-1) dashed var(--color-border);
+    margin-left: var(--space-1);
+}
+
+.imap-tree li {
+    margin: var(--space-2) 0;
+}
+
+.imap-tree-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.imap-tree-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.imap-tree-label {
+    cursor: pointer;
+    user-select: none;
+    font-size: var(--text-sm);
+}
+
+.imap-tree-toggle {
+    cursor: pointer;
+    width: 16px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* Progress Logs */
+.imap-logs-container {
+    height: 250px;
+    overflow-y: auto;
+    background-color: var(--slate-900);
+    color: var(--slate-300);
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-xs);
+    line-height: var(--line-height-tight);
+}
+
+.imap-log-entry {
+    margin-bottom: var(--space-1);
+    word-break: break-all;
+}
+
+.imap-log-entry--info { color: var(--blue-400); }
+.imap-log-entry--success { color: var(--green-400); }
+.imap-log-entry--warning { color: var(--yellow-400); }
+.imap-log-entry--error { color: var(--red-400); }
+
+/* Progress Stats */
+.imap-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.imap-stat-card {
+    background-color: var(--bg-surface-alt);
+    border: var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    text-align: center;
+}
+
+.imap-stat-card__value {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+.imap-stat-card__label {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-top: var(--space-1);
+}
+
+.progress-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background-color: var(--bg-surface-alt);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-top: var(--space-2);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--blue-500);
+    width: 0%;
+    transition: width var(--transition-slow);
+}
+
+.btn-toggle-pass {
+    padding-right: var(--space-2);
+    top: 50%;
+    transform: translateY(-50%);
+    right: var(--space-2);
+}

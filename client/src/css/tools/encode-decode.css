@@ -1,0 +1,204 @@
+/* =======================================
+    src/css/tools/encode-decode.css
+    Encoding / Decoding Tools – Layout & Components
+========================================== */
+
+/* ===== Mode Selector Bar ===== */
+.encode-tools__modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+    border-top: var(--border-default);
+    border-bottom: var(--border-default);
+    margin: var(--space-4) 0;
+}
+
+.encode-tools__mode-btn {
+    padding: var(--pad-y-2) var(--pad-x-3);
+    border-radius: var(--radius-md);
+    border: var(--border-default);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.encode-tools__mode-btn:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-muted);
+    border-color: var(--color-border-strong);
+}
+
+.encode-tools__mode-btn--active {
+    color: var(--white);
+    background-color: var(--color-brand);
+    border-color: var(--color-brand);
+    box-shadow: var(--shadow-1);
+}
+
+[data-theme="dark"] .encode-tools__mode-btn--active {
+    background-color: var(--slate-600);
+    border-color: var(--slate-500);
+    color: var(--white);
+}
+
+/* ===== Textarea Input ===== */
+.encode-tools__input {
+    width: 100%;
+    min-height: 180px;
+    padding: var(--pad-y-3) var(--pad-x-4);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-relaxed);
+    resize: vertical;
+    box-shadow: var(--elevation-tooltip);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.encode-tools__input:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
+}
+
+/* ===== Input Label ===== */
+.encode-tools__label {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+/* ===== Action Bar ===== */
+.encode-tools__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+}
+
+/* ===== Output Section ===== */
+.encode-tools__output-section {
+    margin-top: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.encode-tools__output {
+    min-height: 120px;
+    max-height: 400px;
+    overflow: auto;
+    background-color: var(--code-bg);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--pad-y-3) var(--pad-x-4);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-relaxed);
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--code-text);
+    transition: border-color var(--transition-base);
+}
+
+.encode-tools__output--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-family: var(--font-family-sans);
+    font-style: italic;
+    word-break: normal;
+}
+
+/* ===== JWT Specific: 3 separate boxes ===== */
+.encode-tools__jwt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+    .encode-tools__jwt-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.encode-tools__jwt-box {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.encode-tools__jwt-part {
+    min-height: 140px;
+    max-height: 320px;
+    overflow: auto;
+    background-color: var(--code-bg);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--pad-y-3) var(--pad-x-4);
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-relaxed);
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--code-text);
+}
+
+.encode-tools__jwt-label {
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.encode-tools__jwt-label--header {
+    color: var(--code-keyword);
+}
+
+.encode-tools__jwt-label--payload {
+    color: var(--code-string);
+}
+
+.encode-tools__jwt-label--sig {
+    color: var(--orange-600);
+    grid-column: 1 / -1;
+}
+
+.encode-tools__jwt-sig {
+    grid-column: 1 / -1;
+}
+
+.encode-tools__jwt-part--sig {
+    min-height: 60px;
+    max-height: 100px;
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+/* ===== Mode Badge / Indicator ===== */
+.encode-tools__current-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    padding: var(--space-1) var(--space-3);
+    background-color: var(--color-surface-muted);
+    border-radius: var(--radius-full);
+    border: var(--border-subtle);
+}

@@ -1,18 +1,19 @@
 /*
 	File: server/internal/dns/dnssec_records.go
 	Description: DNSSEC record fetching functions.
+    [x] 2. `service/dnssec_records.go`: Sửa logic `fetchDS` tìm parent zone chuẩn.
 */
 
 package dns
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
 
 	"github.com/miekg/dns"
-	"golang.org/x/net/publicsuffix"
 )
 
 func fetchDNSKEY(server, fqdn string) ([]models.DNSSECRecord, error) {
@@ -45,12 +46,14 @@ func fetchDNSKEY(server, fqdn string) ([]models.DNSSECRecord, error) {
 }
 
 func fetchDS(server, fqdn string) ([]models.DNSSECRecord, error) {
-	parent, err := publicsuffix.EffectiveTLDPlusOne(strings.TrimSuffix(fqdn, "."))
-	if err != nil {
-		return nil, err
+	// Task 2: Correct parent zone lookup for DS records.
+	// DS of "example.com" (2 labels) is at "com." (1 label).
+	// DS of "sub.example.com" (3 labels) is at "example.com." (2 labels).
+	labels := dns.SplitDomainName(fqdn)
+	if len(labels) < 2 {
+		return nil, fmt.Errorf("root domain has no parent DS")
 	}
-
-	zone := dns.Fqdn(parent)
+	zone := dns.Fqdn(strings.Join(labels[1:], "."))
 
 	c := &dns.Client{Timeout: 5 * time.Second}
 	m := new(dns.Msg)
