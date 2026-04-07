@@ -48,6 +48,15 @@ const EncodeDecode = (() => {
             btnLabel: '<i class="fa-solid fa-key"></i> Decode JWT',
             placeholder: 'Nhập JWT Token vào đây (eyJ...)',
             jwtView: true,
+            passView: false,
+        },
+        pass_gen: {
+            inputLabel: '',
+            outputLabel: 'Output – Mật khẩu được tạo',
+            btnLabel: '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Password',
+            placeholder: '',
+            jwtView: false,
+            passView: true,
         },
     };
 
@@ -137,6 +146,43 @@ const EncodeDecode = (() => {
             signature: parts[2],
         };
     }
+    
+    /**
+     * Password Generator – Cryptographically secure
+     */
+    function generatePassword() {
+        const length = parseInt(dom.passLengthNum.value) || 16;
+        const useUpper = dom.passUpper.checked;
+        const useLower = dom.passLower.checked;
+        const useNumbers = dom.passNumbers.checked;
+        const useSpecial = dom.passSpecial.checked;
+        const excludeAmbiguous = dom.passExcludeAmbiguous.checked;
+
+        const upperChars = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Exclude I, O by default for ambiguous if needed
+        const lowerChars = "abcdefghijkmnopqrstuvwxyz"; // Exclude l, o
+        const numberChars = "23456789"; // Exclude 1, 0
+        const specialChars = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+
+        let charset = "";
+        if (useUpper) charset += excludeAmbiguous ? upperChars : "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        if (useLower) charset += excludeAmbiguous ? lowerChars : "abcdefghijklmnopqrstuvwxyz";
+        if (useNumbers) charset += excludeAmbiguous ? numberChars : "0123456789";
+        if (useSpecial) charset += specialChars;
+
+        if (charset === "") {
+            throw new Error('Vui lòng chọn ít nhất một loại ký tự để tạo mật khẩu.');
+        }
+
+        let password = "";
+        const array = new Uint32Array(length);
+        window.crypto.getRandomValues(array);
+
+        for (let i = 0; i < length; i++) {
+            password += charset[array[i] % charset.length];
+        }
+
+        return password;
+    }
 
     /**
      * JSON Syntax Highlight – áp dụng code tokens của hệ thống
@@ -222,11 +268,13 @@ const EncodeDecode = (() => {
 
     function updateButtonStates() {
         const hasInput = dom.encodeInput.value.trim().length > 0;
-        dom.btnConvert.disabled = !hasInput;
+        dom.btnConvert.disabled = (currentMode !== 'pass_gen' && !hasInput);
         dom.btnCopyOutput.disabled = !lastOutput;
 
         // Ẩn/hiện Swap & Clear theo có nội dung hay không
-        dom.btnSwap.classList.toggle('d-none', !lastOutput);
+        // Nút Swap vô dụng với PassGen và JWT Decode nên sẽ ẩn luôn
+        const isSwapUseless = currentMode === 'pass_gen' || currentMode === 'jwt_dec';
+        dom.btnSwap.classList.toggle('d-none', !lastOutput || isSwapUseless);
         dom.btnClear.classList.toggle('d-none', !hasInput);
     }
 
@@ -244,13 +292,22 @@ const EncodeDecode = (() => {
         dom.btnConvertLabel.innerHTML = config.btnLabel;
         dom.encodeInput.placeholder = config.placeholder;
 
-        // Toggle JWT view vs default view
+        // Toggle JWT view / PassGen view vs default view
         if (config.jwtView) {
             dom.outputSection.classList.add('d-none');
             dom.jwtSection.classList.remove('d-none');
+            dom.inputSection.classList.remove('d-none');
+            dom.passGenConfig.classList.add('d-none');
+        } else if (config.passView) {
+            dom.outputSection.classList.remove('d-none');
+            dom.jwtSection.classList.add('d-none');
+            dom.inputSection.classList.add('d-none'); // Hide text input for PassGen
+            dom.passGenConfig.classList.remove('d-none');
         } else {
             dom.outputSection.classList.remove('d-none');
             dom.jwtSection.classList.add('d-none');
+            dom.inputSection.classList.remove('d-none');
+            dom.passGenConfig.classList.add('d-none');
         }
 
         // Reset outputs
@@ -265,14 +322,23 @@ const EncodeDecode = (() => {
      * Thực hiện chuyển đổi theo mode hiện tại
      */
     function doConvert() {
+        if (currentMode === 'pass_gen') {
+            runTask();
+            return;
+        }
+
         const input = dom.encodeInput.value;
         if (!input.trim()) return;
+        runTask();
+    }
 
+    function runTask() {
         hideError();
         lastOutput = '';
 
         try {
             let result;
+            const input = dom.encodeInput.value;
 
             switch (currentMode) {
                 case 'base64_enc':
@@ -305,6 +371,12 @@ const EncodeDecode = (() => {
                     lastOutput = JSON.stringify(jwtResult, null, 2);
                     break;
                 }
+
+                case 'pass_gen':
+                    result = generatePassword();
+                    setOutput(escapeHtml(result));
+                    lastOutput = result;
+                    break;
 
                 default:
                     break;
@@ -371,13 +443,28 @@ const EncodeDecode = (() => {
         dom.btnConvertLabel = document.getElementById('btnConvertLabel');
         dom.inputLabel     = document.getElementById('inputLabel');
         dom.outputLabel    = document.getElementById('outputLabel');
-        dom.modeBtns       = document.querySelectorAll('.encode-tools__mode-btn');
+        dom.modeBtns       = document.querySelectorAll('.encode-tools__modes .btn');
+
+        // PassGen elements
+        dom.passGenConfig = document.getElementById('passGenConfig');
+        dom.inputSection  = document.getElementById('inputSection');
+        dom.passUpper     = document.getElementById('passUpper');
+        dom.passLower     = document.getElementById('passLower');
+        dom.passNumbers   = document.getElementById('passNumbers');
+        dom.passSpecial   = document.getElementById('passSpecial');
+        dom.passLengthNum = document.getElementById('passLengthNum');
+        dom.passLengthRange = document.getElementById('passLengthRange');
+        dom.passExcludeAmbiguous = document.getElementById('passExcludeAmbiguous');
 
         // Mode button click
         dom.modeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                dom.modeBtns.forEach(b => b.classList.remove('encode-tools__mode-btn--active'));
-                btn.classList.add('encode-tools__mode-btn--active');
+                dom.modeBtns.forEach(b => {
+                    b.classList.remove('btn-action');
+                    b.classList.add('btn-outline');
+                });
+                btn.classList.add('btn-action');
+                btn.classList.remove('btn-outline');
                 applyMode(btn.dataset.mode);
             });
         });
@@ -427,6 +514,14 @@ const EncodeDecode = (() => {
             hideError();
             lastOutput = '';
             updateButtonStates();
+        });
+
+        // Sync length number and range
+        dom.passLengthNum?.addEventListener('input', (e) => {
+            dom.passLengthRange.value = e.target.value;
+        });
+        dom.passLengthRange?.addEventListener('input', (e) => {
+            dom.passLengthNum.value = e.target.value;
         });
 
         // Initial state

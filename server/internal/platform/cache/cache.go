@@ -35,13 +35,17 @@ func (c *MemoryCache) Get(key string) (interface{}, time.Time, bool) {
 }
 
 func (c *MemoryCache) Set(key string, value interface{}) {
+	c.SetWithTTL(key, value, c.ttl)
+}
+
+func (c *MemoryCache) SetWithTTL(key string, value interface{}, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := time.Now()
 	c.items[key] = item{
 		value:     value,
 		createdAt: now,
-		expiresAt: now.Add(c.ttl),
+		expiresAt: now.Add(ttl),
 	}
 }
 

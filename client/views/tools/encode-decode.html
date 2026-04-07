@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
 
-    <title><i class="fa-solid fa-code mr-2"></i>Encoding / Decoding Tools | Website Utility Toolkit</title>
+    <title>Encoding / Decoding Tools | Website Utility Toolkit</title>
 </head>
 
 <body>
@@ -63,25 +63,68 @@
 
                         <!-- ===== Mode Selector ===== -->
                         <div class="encode-tools__modes" role="group" aria-label="Chọn chế độ chuyển đổi">
-                            <button id="modeBase64Enc" class="encode-tools__mode-btn encode-tools__mode-btn--active" data-mode="base64_enc">
+                            <button id="modeBase64Enc" class="btn btn-action" data-mode="base64_enc">
                                 <i class="fa-solid fa-lock"></i> Base64 Encode
                             </button>
-                            <button id="modeBase64Dec" class="encode-tools__mode-btn" data-mode="base64_dec">
+                            <button id="modeBase64Dec" class="btn btn-outline" data-mode="base64_dec">
                                 <i class="fa-solid fa-lock-open"></i> Base64 Decode
                             </button>
-                            <button id="modeUrlEnc" class="encode-tools__mode-btn" data-mode="url_enc">
+                            <button id="modeUrlEnc" class="btn btn-outline" data-mode="url_enc">
                                 <i class="fa-solid fa-link"></i> URL Encode
                             </button>
-                            <button id="modeUrlDec" class="encode-tools__mode-btn" data-mode="url_dec">
+                            <button id="modeUrlDec" class="btn btn-outline" data-mode="url_dec">
                                 <i class="fa-solid fa-link-slash"></i> URL Decode
                             </button>
-                            <button id="modeJwtDec" class="encode-tools__mode-btn" data-mode="jwt_dec">
+                            <button id="modeJwtDec" class="btn btn-outline" data-mode="jwt_dec">
                                 <i class="fa-solid fa-key"></i> JWT Decode
+                            </button>
+                            <button id="modePassGen" class="btn btn-outline" data-mode="pass_gen">
+                                <i class="fa-solid fa-shield-halved"></i> Password Gen
                             </button>
                         </div>
 
+                        <!-- ===== Password Generator Config (Hidden by default) ===== -->
+                        <div id="passGenConfig" class="encode-tools__passgen-config d-none">
+                            <label class="encode-tools__label">
+                                <i class="fa-solid fa-gear"></i> Password Generator Settings
+                            </label>
+                            <div class="encode-tools__passgen-grid mb-4">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="passUpper" checked>
+                                    <span>Uppercases (A-Z)</span>
+                                </label>
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="passLower" checked>
+                                    <span>Lowercases (a-z)</span>
+                                </label>
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="passNumbers" checked role="switch">
+                                    <span>Numbers (0-9)</span>
+                                </label>
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="passSpecial" checked>
+                                    <span>Special Symbols (!@#...)</span>
+                                </label>
+                            </div>
+                            
+                            <div class="encode-tools__length-row mb-4">
+                                <div class="form-group flex-1">
+                                    <div class="d-flex justify-between items-center mb-1">
+                                        <label class="form-label mb-0" for="passLengthRange">Password Length</label>
+                                        <input type="number" id="passLengthNum" class="form-input text-center encode-tools__length-input" value="16" min="4" max="64">
+                                    </div>
+                                    <input type="range" id="passLengthRange" class="form-range" min="4" max="64" value="16">
+                                </div>
+                            </div>
+
+                            <label class="form-checkbox-label mb-4 encode-tools__ambiguous-label">
+                                <input type="checkbox" id="passExcludeAmbiguous" class="form-checkbox">
+                                <span class="text-secondary text-sm">Exclude Ambiguous Characters (I, l, 1, 0, o, O)</span>
+                            </label>
+                        </div>
+
                         <!-- ===== Input Area ===== -->
-                        <div>
+                        <div id="inputSection">
                             <label class="encode-tools__label" for="encodeInput">
                                 <i class="fa-solid fa-keyboard"></i>
                                 <span id="inputLabel">Input – Nhập văn bản cần mã hóa</span>

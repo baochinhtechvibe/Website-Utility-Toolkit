@@ -4,6 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline' https://unpkg.com; 
+                   style-src 'self' 'unsafe-inline' https://unpkg.com; 
+                   img-src 'self' https://flagcdn.com https://*.tile.openstreetmap.org data:; 
+                   connect-src 'self' http://127.0.0.1:3101 https://api.ipify.org https://api4.my-ip.io https://ipapi.co;">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../src/css/tools/ip-lookup.css">
@@ -65,8 +72,8 @@
                                 <span class="ip-info__label">IPv4:</span>
                                 <span class="ip-info__value loading-text" id="my-ip-v4">Checking...</span>
                             </div>
-                            <button id="btnCopyIpv4" class="btn btn-action btn-copy" data-target="#my-ip-v4" title="Copy IPv4">
-                                <i class="fa-solid fa-copy"></i> Copy IP
+                            <button id="btnCopyIpv4" class="btn btn-action btn-copy" data-target="#my-ip-v4" title="Copy IPv4" aria-label="Copy địa chỉ IPv4">
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> Copy IP
                             </button>
                         </div>
 
@@ -75,8 +82,8 @@
                                 <span class="ip-info__label">IPv6:</span>
                                 <span class="ip-info__value ip-info__value--na" id="my-ip-v6">N/A</span>
                             </div>
-                            <button id="btnCopyIpv6" class="btn btn-action btn-copy" data-target="#my-ip-v6" title="Copy IPv6" disabled>
-                                <i class="fa-solid fa-copy"></i> Copy IP
+                            <button id="btnCopyIpv6" class="btn btn-action btn-copy" data-target="#my-ip-v6" title="Copy IPv6" disabled aria-label="Copy địa chỉ IPv6">
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> Copy IP
                             </button>
                         </div>
                     </div>
@@ -86,9 +93,9 @@
                 <div class="ip-details-section mt-8">
                     <h3 id="detailIPTitle" class="ip-details-title font-bold">IP Details For <span id="detailIPTarget" class="ip-detail-target loading-text">Checking...</span></h3>
                     <div id="cacheNotice" class="result-card__cache-notice mt-4 mb-4 p-2 d-flex flex-row justify-between items-center d-none">
-                            <span><i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime"></b>.</span>
-                            <button type="button" id="btnRefreshIP" class="btn btn-sm btn-outline cache-notice__btn-refresh"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
-                        </div>
+                             <span><i class="fa-solid fa-bolt" aria-hidden="true"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime"></b>.</span>
+                             <button type="button" id="btnRefreshIP" class="btn btn-sm btn-outline cache-notice__btn-refresh" aria-label="Làm mới thông tin IP"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới</button>
+                         </div>
 
                         <div class="ip-details-grid">
                         <!-- Trái: Dữ liệu -->
@@ -194,8 +201,8 @@
         <!-- End: Footer Content -->
     </div>
     <script type="module" src="../../src/js/main.js"></script>
-    <!-- Leaflet JS for Map -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet JS for Map (Deferred) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
     <!-- Connect to the new JS file for myip logic. -->
     <script type="module" src="../../src/js/tools/ip-lookup/ip-lookup.js"></script>
 </body>

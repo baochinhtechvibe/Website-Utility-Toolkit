@@ -5,19 +5,13 @@
 
 import { API_BASE_URL } from "../../config.js";
 
-import { 
-    $, 
-    $$,
-    show, 
-    hide, 
-    toggleLoading,
-    escapeHTML,
-} from "../../utils/index.js";
+import { $, $$, escapeHTML } from "../../utils/index.js";
 
 
 // Khởi tạo bản đồ (biến toàn cục để cập nhật)
 let ipMap = null;
 let mapMarker = null;
+let isRefreshing = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     initMyIP();
@@ -26,7 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupRefreshLogic() {
-    $("#btnRefreshIP")?.addEventListener("click", () => {
+    $("#btnRefreshIP")?.addEventListener("click", async () => {
+        if (isRefreshing) return;
+        isRefreshing = true;
+
         const btn = $("#btnRefreshIP");
         const icon = btn.querySelector("i");
         
@@ -38,12 +35,15 @@ function setupRefreshLogic() {
         resetIPDisplayToLoading();
         
         // 3. Truyền true để báo hiệu force refresh (bypass cache)
-        initMyIP(true).finally(() => {
+        try {
+            await initMyIP(true);
+        } finally {
             setTimeout(() => {
                 icon?.classList.remove("fa-spin");
                 btn.disabled = false;
+                isRefreshing = false;
             }, 500);
-        });
+        }
     });
 }
 
@@ -64,6 +64,10 @@ function resetIPDisplayToLoading() {
     const targetEl = $("#detailIPTarget");
     if (targetEl) targetEl.innerHTML = loadingHtml;
 
+    // Disable nút Check Blacklist khi đang load
+    const btnBlacklist = $("#btnCheckBlacklist");
+    if (btnBlacklist) btnBlacklist.disabled = true;
+
     // Grid details
     const detailIds = [
         "decimal", "hostname", "asn", "timezone", "isp", 
@@ -80,7 +84,9 @@ function resetIPDisplayToLoading() {
 /**
  * Khởi tạo dữ liệu IP khi load trang
  */
-async function initMyIP(forceRefresh = false) {
+async function initMyIP(forceRefresh = false, retryCount = 0) {
+    const MAX_RETRIES = 2;
+
     try {
         // Fetch dữ liệu từ backend, thêm query refresh nếu cần
         const url = forceRefresh 
@@ -88,18 +94,31 @@ async function initMyIP(forceRefresh = false) {
             : `${API_BASE_URL}/ip-lookup/my-ip`;
 
         const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+        }
+
         const result = await response.json();
 
         if (result.success && result.data) {
             renderIPData(result.data, result.meta);
             initMap(result.data.latitude, result.data.longitude, result.data.ip);
         } else {
-            console.error("Failed to fetch IP data:", result.message || result.error);
-            showFetchError("Không thể lấy thông tin IP. Vui lòng thử lại.");
+            throw new Error(result.message || result.error || "Unknown error");
         }
     } catch (error) {
         console.error("Error initializing IP tool:", error);
-        showFetchError("Không kết nối được với máy chủ.");
+        
+        // Retry logic
+        if (retryCount < MAX_RETRIES) {
+            const delay = 1000 * (retryCount + 1);
+            console.log(`Retrying in ${delay}ms... (${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return initMyIP(forceRefresh, retryCount + 1);
+        }
+
+        showFetchError(`Không thể lấy thông tin IP: ${error.message}`);
     }
 }
 
@@ -125,6 +144,10 @@ function showFetchError(msg) {
         const el = $(`#ip-detail-${id}`);
         if (el) el.innerHTML = `<span class="text-na">N/A</span>`;
     });
+
+    // Re-enable nút Check Blacklist khi có lỗi để user có thể tương tác lại
+    const btnBlacklist = $("#btnCheckBlacklist");
+    if (btnBlacklist) btnBlacklist.disabled = false;
 }
 
 /**
@@ -161,8 +184,13 @@ function renderIPData(data, meta = null) {
     const servicesEl = document.getElementById("ip-detail-services");
     if (servicesEl) {
         servicesEl.classList.remove("loading-text");
-        if (data.services === "VPN Server") {
-            servicesEl.innerHTML = `<span style="color: var(--green-400); font-weight: bold;">VPN Server</span>`;
+        let tags = [];
+        if (data.is_proxy) tags.push(`<span class="badge badge-warning">Proxy/VPN</span>`);
+        if (data.is_hosting) tags.push(`<span class="badge badge-info">Hosting/DC</span>`);
+        if (data.is_mobile) tags.push(`<span class="badge badge-success">Mobile</span>`);
+
+        if (tags.length > 0) {
+            servicesEl.innerHTML = tags.join(" ");
         } else if (!data.services || data.services === "N/A") {
             servicesEl.innerHTML = `<span class="text-na">N/A</span>`;
         } else {
@@ -208,6 +236,10 @@ function renderIPData(data, meta = null) {
     updateDetailField("ip-detail-os", data.os);
     updateDetailField("ip-detail-browser", data.browser);
     updateDetailField("ip-detail-ua", data.user_agent);
+
+    // Kích hoạt lại nút Check Blacklist sau khi có IP
+    const btnBlacklist = $("#btnCheckBlacklist");
+    if (btnBlacklist) btnBlacklist.disabled = false;
 
     // Cập nhật timestamp tra cứu và thông báo cache
     const cacheNotice = $("#cacheNotice");
@@ -269,9 +301,16 @@ function updateDetailField(id, value) {
 /**
  * Khởi tạo hoặc cập nhật bản đồ Leaflet
  */
-function initMap(lat, lon, ip) {
+function initMap(lat, lon, ip, retryCount = 0) {
     if (!lat || !lon) return;
-    if (typeof L === 'undefined') return;
+    
+    // Đợi Leaflet (L) sẵn sàng nếu dùng defer
+    if (typeof L === 'undefined') {
+        if (retryCount < 10) { // Thử lại trong 2 giây (mỗi lần 200ms)
+            setTimeout(() => initMap(lat, lon, ip, retryCount + 1), 200);
+        }
+        return;
+    }
 
     const mapEl = document.getElementById("ipMap");
     if (!mapEl) return;
@@ -289,12 +328,13 @@ function initMap(lat, lon, ip) {
 
     // Cập nhật marker
     if (mapMarker) {
-        mapMarker.setLatLng([lat, lon]).setPopupContent(`IP: ${ip}`).openPopup();
-    } else {
-        mapMarker = L.marker([lat, lon]).addTo(ipMap)
-            .bindPopup(`IP: ${ip}`)
-            .openPopup();
+        mapMarker.remove();
+        mapMarker = null;
     }
+    
+    mapMarker = L.marker([lat, lon]).addTo(ipMap)
+        .bindPopup(`IP: ${ip}`)
+        .openPopup();
 }
 
 /**
@@ -322,7 +362,7 @@ function setupEventListeners() {
 }
 
 /**
- * Helper copy vào clipboard
+ * Helper copy vào clipboard có feedback UI
  */
 async function copyToClipboard(text, btn) {
     try {
@@ -330,12 +370,14 @@ async function copyToClipboard(text, btn) {
         
         // Hiệu ứng feedback nhẹ
         const originalHtml = btn.innerHTML;
+        const originalClass = btn.className;
+        
         btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied`;
         btn.classList.add("btn-success");
         
         setTimeout(() => {
             btn.innerHTML = originalHtml;
-            btn.classList.remove("btn-success");
+            btn.className = originalClass;
         }, 2000);
     } catch (err) {
         console.error("Could not copy text: ", err);

@@ -14,39 +14,6 @@
     margin: var(--space-4) 0;
 }
 
-.encode-tools__mode-btn {
-    padding: var(--pad-y-2) var(--pad-x-3);
-    border-radius: var(--radius-md);
-    border: var(--border-default);
-    background: transparent;
-    color: var(--color-text-muted);
-    font-weight: var(--font-weight-semibold);
-    cursor: pointer;
-    transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    white-space: nowrap;
-}
-
-.encode-tools__mode-btn:hover {
-    color: var(--color-text-primary);
-    background-color: var(--color-surface-muted);
-    border-color: var(--color-border-strong);
-}
-
-.encode-tools__mode-btn--active {
-    color: var(--white);
-    background-color: var(--color-brand);
-    border-color: var(--color-brand);
-    box-shadow: var(--shadow-1);
-}
-
-[data-theme="dark"] .encode-tools__mode-btn--active {
-    background-color: var(--slate-600);
-    border-color: var(--slate-500);
-    color: var(--white);
-}
 
 /* ===== Textarea Input ===== */
 .encode-tools__input {
@@ -201,4 +168,58 @@
     background-color: var(--color-surface-muted);
     border-radius: var(--radius-full);
     border: var(--border-subtle);
+}
+/* ===== Password Generator Config ===== */
+.encode-tools__passgen-config {
+    padding: var(--space-4);
+    background-color: var(--color-surface-muted);
+    border: var(--border-default);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+    transition: all var(--transition-base);
+}
+
+.encode-tools__passgen-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+    background-color: var(--color-surface);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    border: var(--border-subtle);
+}
+
+@media (max-width: 480px) {
+    .encode-tools__passgen-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.encode-tools__length-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: var(--border-subtle);
+}
+
+/* Custom Range Color to match system */
+.form-range {
+    accent-color: var(--color-brand);
+}
+
+.encode-tools__length-input {
+    width: 60px;
+    height: 32px;
+    padding: 0;
+}
+
+.encode-tools__ambiguous-label {
+    padding-left: var(--space-4); /* Dịch chuyển cả label thụt vào 16px */
+}
+
+.encode-tools__ambiguous-label .form-checkbox {
+    margin-right: var(--space-2); /* Khoảnh cách giữa tick và text là 8px */
 }

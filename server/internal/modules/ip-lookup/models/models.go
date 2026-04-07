@@ -10,7 +10,7 @@ type IPInfo struct {
 	ISP         string    `json:"isp"`
 	Services    string    `json:"services"`
 	Country     string    `json:"country"`
-	CountryCode string    `json:"country_code"`
+	CountryCode string    `json:"country_code"` // Luôn là lowercase (vi, en,...)
 	Region      string    `json:"region"`
 	City        string    `json:"city"`
 	Latitude    float64   `json:"latitude"`
@@ -19,5 +19,8 @@ type IPInfo struct {
 	Browser     string    `json:"browser"`
 	OS          string    `json:"os"`
 	UserAgent   string    `json:"user_agent"`
+	IsProxy     bool      `json:"is_proxy"`
+	IsHosting   bool      `json:"is_hosting"`
+	IsMobile    bool      `json:"is_mobile"`
 }
 

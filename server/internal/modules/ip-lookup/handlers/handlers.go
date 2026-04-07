@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"tools.bctechvibe.com/server/internal/modules/ip-lookup/models"
 	"tools.bctechvibe.com/server/internal/response"
 	"tools.bctechvibe.com/server/internal/platform/cache"
@@ -61,11 +61,6 @@ func isLocalIP(ipStr string) bool {
 	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsPrivate()
 }
 
-var (
-	cachedPublicIP string
-	publicIPOnce   sync.Once
-)
-
 var fallbackProviders = []string{
 	"https://api.ipify.org",
 	"https://api4.my-ip.io/ip",
@@ -73,14 +68,13 @@ var fallbackProviders = []string{
 }
 
 func fetchPublicIPFallback() string {
-	// Task 15: Thêm mutex để tránh nhiều luồng gọi cùng lúc
-	// Nhưng không dùng sync.Once để có thể thử lại nếu hụt
-	var mu sync.Mutex
-	mu.Lock()
-	defer mu.Unlock()
+	const fallbackCacheKey = "public_ip_fallback"
 
-	if cachedPublicIP != "" {
-		return cachedPublicIP
+	// Check cache first (MemoryCache đã có sẵn mutex rlock/lock nội bộ nên cực kỳ an toàn)
+	if data, _, found := ipCache.Get(fallbackCacheKey); found {
+		if ip, ok := data.(string); ok {
+			return ip
+		}
 	}
 
 	client := &http.Client{Timeout: 3 * time.Second}
@@ -98,10 +92,13 @@ func fetchPublicIPFallback() string {
 
 		ip := strings.TrimSpace(string(body))
 		if net.ParseIP(ip) != nil {
-			cachedPublicIP = ip
-			return cachedPublicIP
+			// Cache IP fallback trong 24h để đảm bảo stale data được cập nhật lại
+			ipCache.SetWithTTL(fallbackCacheKey, ip, 24*time.Hour)
+			return ip
 		}
 	}
+
+	log.Warn().Msg("All public IP fallback providers failed")
 	return ""
 }
 
@@ -169,28 +166,35 @@ func parseUserAgent(ua string) (browser, os string) {
 		os = "Unknown"
 	}
 
-	// Browser detection
-	if strings.Contains(ua, "edg/") {
+	// Browser detection - Thứ tự quan trọng
+	// Edge UA thường chứa cả "chrome" và "safari", nên phải check Edge (edg/) trước Chrome.
+	switch {
+	case strings.Contains(ua, "edg/"):
 		browser = "Edge"
-	} else if strings.Contains(ua, "opr/") || strings.Contains(ua, "opera") {
+	case strings.Contains(ua, "opr/") || strings.Contains(ua, "opera"):
 		browser = "Opera"
-	} else if strings.Contains(ua, "chrome") {
-		browser = "Chrome"
-	} else if strings.Contains(ua, "firefox") {
+	case strings.Contains(ua, "firefox"):
 		browser = "Firefox"
-	} else if strings.Contains(ua, "safari") {
+	case strings.Contains(ua, "chrome"):
+		browser = "Chrome"
+	case strings.Contains(ua, "safari"):
+		// Chrome trên iOS/macOS thường chứa "Safari", nên check Chrome ở trên trước
 		browser = "Safari"
-	} else {
+	default:
 		browser = "Unknown"
 	}
 
 	return
 }
 
+var geoClient = &http.Client{
+	Timeout: 5 * time.Second,
+}
+
 func fillGeoInfo(ctx context.Context, info *models.IPInfo, ipStr string) {
-	// ip-api.com free plan chỉ hỗ trợ HTTP. Upgrade lên pro để dùng HTTPS.
+	// ip-api.com (HTTP) là lựa chọn tốt nhất để lấy dữ liệu chi tiết (ISP, AS, Proxy,...) miễn phí từ Backend
 	reqURL := fmt.Sprintf(
-		"http://ip-api.com/json/%s?fields=status,country,countryCode,regionName,city,lat,lon,timezone,isp,as,org,proxy,hosting,mobile",
+		"http://ip-api.com/json/%s?fields=status,message,country,countryCode,regionName,city,lat,lon,timezone,isp,as,org,proxy,hosting,mobile",
 		url.PathEscape(ipStr),
 	)
 
@@ -199,8 +203,8 @@ func fillGeoInfo(ctx context.Context, info *models.IPInfo, ipStr string) {
 		return
 	}
 
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
+	// Tận dụng geoClient với timeout xác định để tránh treo request
+	resp, err := geoClient.Do(req)
 	if err != nil {
 		return
 	}
@@ -208,6 +212,7 @@ func fillGeoInfo(ctx context.Context, info *models.IPInfo, ipStr string) {
 
 	var data struct {
 		Status      string  `json:"status"`
+		Message     string  `json:"message"`
 		Country     string  `json:"country"`
 		CountryCode string  `json:"countryCode"`
 		RegionName  string  `json:"regionName"`
@@ -238,11 +243,27 @@ func fillGeoInfo(ctx context.Context, info *models.IPInfo, ipStr string) {
 		info.ISP = data.ISP
 		info.ASN = data.AS
 
-		// Detection logic for VPN/Hosting
-		if data.Proxy || data.Hosting {
-			info.Services = "VPN Server"
+		// Metadata xịn xò từ ip-api
+		info.IsProxy = data.Proxy
+		info.IsHosting = data.Hosting
+		info.IsMobile = data.Mobile
+
+		// Dịch vụ mapping thông minh
+		var services []string
+		if data.Proxy {
+			services = append(services, "VPN/Proxy")
+		}
+		if data.Hosting {
+			services = append(services, "Hosting/Datacenter")
+		}
+		if data.Mobile {
+			services = append(services, "Mobile Network")
+		}
+
+		if len(services) > 0 {
+			info.Services = strings.Join(services, ", ")
 		} else {
-			info.Services = "N/A"
+			info.Services = "Residential/Global"
 		}
 	}
 }
