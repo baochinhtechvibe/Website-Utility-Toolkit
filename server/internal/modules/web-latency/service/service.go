@@ -16,6 +16,20 @@ import (
 	"tools.bctechvibe.com/server/internal/modules/web-latency/models"
 )
 
+var webLatencyHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+	Transport: &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+	},
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
 func AnalyzeLatency(ctx context.Context, rawURL string, deepTest bool) (*models.WebLatencyResult, error) {
 	// 1. Chuẩn hoá URL
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
@@ -49,7 +63,6 @@ func AnalyzeLatency(ctx context.Context, rawURL string, deepTest bool) (*models.
 			URL:        currentURL,
 			StatusCode: resp.StatusCode,
 			Metrics:    *hopResult,
-			Total:      hopResult.Total,
 		}
 		hops = append(hops, hop)
 		
@@ -72,7 +85,7 @@ func AnalyzeLatency(ctx context.Context, rawURL string, deepTest bool) (*models.
 			currentURL = locURL.String()
 			
 			// Close previous body to reuse connection
-			io.Copy(io.Discard, resp.Body)
+			io.CopyN(io.Discard, resp.Body, 64*1024) // Drain up to 64KB
 			resp.Body.Close()
 		} else {
 			break
@@ -91,7 +104,8 @@ func AnalyzeLatency(ctx context.Context, rawURL string, deepTest bool) (*models.
 	// Parse Compression Info on final response
 	if finalResp != nil {
 		result.Compression = parseCompression(finalResp)
-		io.Copy(io.Discard, finalResp.Body) // Ensure read to end before close
+		// Drain tối đa 5MB để bảo vệ bộ nhớ và connection reuse
+		io.CopyN(io.Discard, finalResp.Body, 5*1024*1024)
 		finalResp.Body.Close()
 	}
 
@@ -99,6 +113,8 @@ func AnalyzeLatency(ctx context.Context, rawURL string, deepTest bool) (*models.
 	if deepTest && result.IsUp {
 		ttfbList := []time.Duration{finalMetrics.TTFB}
 
+		// Sử dụng Kết quả cuối cùng (FinalURL) để Deep Test chính xác
+		// Lưu ý: metrics đầu tiên có thể đến từ một connection "ấm" (Keep-Alive) sau khi trace redirects.
 		for r := 0; r < 2; r++ {
 			// Delay 1.5s as requested by user
 			select {
@@ -107,10 +123,11 @@ func AnalyzeLatency(ctx context.Context, rawURL string, deepTest bool) (*models.
 				return nil, ctx.Err()
 			}
 
-			hopMetrics, resp, err := measureSingleHop(ctx, currentURL)
+			hopMetrics, resp, err := measureSingleHop(ctx, result.FinalURL)
 			if err == nil && resp != nil {
 				ttfbList = append(ttfbList, hopMetrics.TTFB)
-				io.Copy(io.Discard, resp.Body)
+				// Drain tối đa 5MB cho mỗi round deep test để bảo vệ goroutine và connection pool
+				io.CopyN(io.Discard, resp.Body, 5*1024*1024)
 				resp.Body.Close()
 			}
 		}
@@ -170,26 +187,25 @@ func measureSingleHop(ctx context.Context, targetURL string) (*models.TimingMetr
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
-
-	// Tránh auto follow redirect
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
 	
 	totalStart := time.Now()
-	resp, err := client.Do(req)
+	resp, err := webLatencyHTTPClient.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Đọc body để tính ContentDownload time
 	// Giới hạn đọc tối đa 5MB để không tốn băng thông/RAM server
+	bodyReadStart := time.Now()
 	const maxReadSize = 5 * 1024 * 1024
 	io.CopyN(io.Discard, resp.Body, maxReadSize)
 	doneTime = time.Now()
+
+	// Task 1: Guard cho firstByte nếu hook httptrace không fire (HTTP/2 hoặc fast response)
+	if firstByte.IsZero() {
+		// Fallback đúng: dùng thời điểm bắt đầu đọc body để ContentDownload = duration thực tế hơn
+		firstByte = bodyReadStart
+	}
 
 	metrics := &models.TimingMetrics{}
 	
@@ -203,12 +219,13 @@ func measureSingleHop(ctx context.Context, targetURL string) (*models.TimingMetr
 	if !tlsStart.IsZero() && !tlsDone.IsZero() {
 		metrics.TLSHandshake = tlsDone.Sub(tlsStart)
 	}
-	if !requestWritten.IsZero() && !firstByte.IsZero() {
+	if !requestWritten.IsZero() {
 		metrics.TTFB = firstByte.Sub(requestWritten)
+	} else if !totalStart.IsZero() {
+		// Fallback: Nếu Keep-Alive reuse connection, WroteRequest có thể không fire
+		metrics.TTFB = firstByte.Sub(totalStart)
 	}
-	if !firstByte.IsZero() {
-		metrics.ContentDownload = doneTime.Sub(firstByte)
-	}	
+	metrics.ContentDownload = doneTime.Sub(firstByte)
 	metrics.Total = doneTime.Sub(totalStart)
 
 	return metrics, resp, nil

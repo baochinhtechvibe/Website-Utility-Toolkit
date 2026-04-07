@@ -6,6 +6,17 @@
 import { $, createRealtimeURLValidator } from '../../utils/index.js';
 import { API_BASE_URL } from '../../config.js';
 
+class AbortedError extends Error {
+    constructor() {
+        super('aborted');
+        this.name = 'AbortedError';
+        this.aborted = true;
+    }
+}
+
+let currentController = null;
+let currentRequestId = 0;
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Web Latency Inspector Initialized");
     initWebLatency();
@@ -18,13 +29,17 @@ function initWebLatency() {
     window.addEventListener("popstate", () => {
         const params = new URLSearchParams(window.location.search);
         const url = params.get('url');
+        const isDeepTest = params.get('deep') === 'true';
         const input = $('#url');
+        const deepTestCheckbox = $('#deepTest');
         
         if (url) {
             if (input) input.value = url;
+            if (deepTestCheckbox) deepTestCheckbox.checked = isDeepTest;
             handleAnalyze();
         } else {
             if (input) input.value = '';
+            if (deepTestCheckbox) deepTestCheckbox.checked = false;
             hideResults();
             hideError();
         }
@@ -93,6 +108,7 @@ async function handleAnalyze(bypassCache = false) {
     }
 
     const deepTest = $('#deepTest')?.checked ?? false;
+    const requestId = ++currentRequestId;
 
     setLoading(true);
     hideResults();
@@ -124,33 +140,50 @@ async function handleAnalyze(bypassCache = false) {
         updateShareLink(url, deepTest);
         updateURL(url, deepTest);
     } catch (err) {
+        if (err instanceof AbortedError) return; // Silent for user intent-based aborts
         showError(err.message || 'Không thể kết nối. Vui lòng thử lại!');
     } finally {
-        setLoading(false);
+        // Chỉ tắt loading nếu đây là request cuối cùng
+        if (requestId === currentRequestId) {
+            setLoading(false);
+        }
     }
 }
 
 async function fetchLatency(url, deepTest, bypassCache) {
-    const response = await fetch(`${API_BASE_URL}/web-latency`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, deepTest, bypassCache })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Lỗi HTTP: ${response.status}`);
+    if (currentController) {
+        currentController.abort();
     }
+    currentController = new AbortController();
 
-    const jsonData = await response.json();
+    try {
+        const response = await fetch(`${API_BASE_URL}/web-latency`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, deepTest, bypassCache }),
+            signal: currentController.signal
+        });
 
-    if (!jsonData.success) {
-        throw new Error(jsonData.message || `Lỗi từ server`);
+        if (!response.ok) {
+            throw new Error(`Lỗi HTTP: ${response.status}`);
+        }
+
+        const jsonData = await response.json();
+
+        if (!jsonData.success) {
+            throw new Error(jsonData.message || `Lỗi từ server`);
+        }
+        return jsonData;
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            throw new AbortedError();
+        }
+        throw err;
     }
-    return jsonData;
 }
 
 // Format duration
-function formatNs(ns) {
+function formatDuration(ns) {
     if (ns == null || ns === 0) return "0ms";
     const ms = ns / 1_000_000;
     if (ms < 1 && ms > 0) return "< 1ms";
@@ -167,6 +200,11 @@ function escHtml(str) {
 }
 
 function renderResults(data) {
+    if (!data?.primaryMetrics) {
+        showError('Dữ liệu kết quả không hợp lệ hoặc bị thiếu. Vui lòng thử lại!');
+        return;
+    }
+
     const primary = data.primaryMetrics;
     const totalRaw = primary.total || 0;
     
@@ -178,9 +216,9 @@ function renderResults(data) {
     const deepTestBox = $('#deepTestResults');
     if (data.deepTestResults) {
         deepTestBox?.classList.remove('d-none');
-        $('#dtMin').textContent = formatNs(data.deepTestResults.minTtfb);
-        $('#dtMedian').textContent = formatNs(data.deepTestResults.medianTtfb);
-        $('#dtMax').textContent = formatNs(data.deepTestResults.maxTtfb);
+        $('#dtMin').textContent = formatDuration(data.deepTestResults.minTtfb);
+        $('#dtMedian').textContent = formatDuration(data.deepTestResults.medianTtfb);
+        $('#dtMax').textContent = formatDuration(data.deepTestResults.maxTtfb);
     } else {
         deepTestBox?.classList.add('d-none');
     }
@@ -200,7 +238,7 @@ function renderAlerts(metrics, data) {
         <div class="message-card message-card--error">
             <div class="message-card__header"><h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo: TTFB quá chậm</h4></div>
             <div class="message-card__body">
-                <p class="message-card__message">Thời gian phản hồi byte đầu tiên (TTFB) là ${formatNs(metrics.ttfb)}, vượt mức 600ms. Máy chủ xử lý quá chậm hoặc đường truyền gặp sự cố lớn.</p>
+                <p class="message-card__message">Thời gian phản hồi byte đầu tiên (TTFB) là ${formatDuration(metrics.ttfb)}, vượt mức 600ms. Máy chủ xử lý quá chậm hoặc đường truyền gặp sự cố lớn.</p>
                 <div class="mt-2 text-muted">
                     <strong>Cách khắc phục:</strong> Kiểm tra tải tài nguyên (CPU/RAM) của máy chủ, tối ưu truy vấn Database, phân tích code backend, hoặc thiết lập Full Page Cache thông qua WP-Rocket, Cloudflare, v.v.
                 </div>
@@ -211,7 +249,7 @@ function renderAlerts(metrics, data) {
         <div class="message-card message-card--warning">
             <div class="message-card__header"><h4 class="message-card__title"><i class="fa-solid fa-circle-exclamation"></i> Cảnh báo: TTFB chưa tối ưu</h4></div>
             <div class="message-card__body">
-                <p class="message-card__message">Thời gian phản hồi byte đầu tiên (TTFB) là ${formatNs(metrics.ttfb)}. Tốc độ này xấp xỉ mức trung bình nhưng vẫn có thể làm chậm trải nghiệm.</p>
+                <p class="message-card__message">Thời gian phản hồi byte đầu tiên (TTFB) là ${formatDuration(metrics.ttfb)}. Tốc độ này xấp xỉ mức trung bình nhưng vẫn có thể làm chậm trải nghiệm.</p>
                 <div class="mt-2 text-muted">
                     <strong>Cách khắc phục:</strong> Nên xem xét kích hoạt các lớp bộ nhớ đệm (Object Cache) như Redis/Memcached hoặc tinh chỉnh các plugin Cache Page để phản hồi HTML tức thì.
                 </div>
@@ -221,7 +259,7 @@ function renderAlerts(metrics, data) {
         alertsHTML += `
         <div class="message-card message-card--info">
             <div class="message-card__header"><h4 class="message-card__title"><i class="fa-solid fa-circle-check"></i> Tuyệt vời: Tối ưu TTFB tốt</h4></div>
-            <div class="message-card__body"><p class="message-card__message">Mức TTFB máy chủ đạt ${formatNs(metrics.ttfb)}, phản hồi RẤT nhanh.</p></div>
+            <div class="message-card__body"><p class="message-card__message">Mức TTFB máy chủ đạt ${formatDuration(metrics.ttfb)}, phản hồi RẤT nhanh.</p></div>
         </div>`;
     }
 
@@ -272,7 +310,7 @@ function renderTimelineChart(metrics, totalNs) {
             <div class="timeline-bar-container">
                 <div class="timeline-bar ${p.class}" style="left: ${leftPct}%; width: ${Math.max(widthPct, 2)}%;"></div>
             </div>
-            <div class="timeline-value">${formatNs(durationNs)}</div>
+            <div class="timeline-value">${formatDuration(durationNs)}</div>
         </div>
         `;
         currentOffsetNs += durationNs;
@@ -285,7 +323,7 @@ function renderTimelineChart(metrics, totalNs) {
         <div class="timeline-bar-container" style="background: transparent;">
             <div class="timeline-bar timeline-bar--total"></div>
         </div>
-        <div class="timeline-value text-success"><strong>${formatNs(metrics.total)}</strong></div>
+        <div class="timeline-value text-success"><strong>${formatDuration(metrics.total)}</strong></div>
     </div>
     `;
 
@@ -338,7 +376,7 @@ function renderRedirectHops(hops) {
                 <span class="font-bold text-truncate" title="${escHtml(h.url)}" style="max-width: 75%;">${escHtml(h.url)}</span>
                 <span class="badge" style="background-color: ${color}; color: white;">${h.statusCode}</span>
             </div>
-            <div class="text-secondary ml-2"><i class="fa-solid fa-clock"></i> Took ${formatNs(h.total)}</div>
+            <div class="text-secondary ml-2"><i class="fa-solid fa-clock"></i> Took ${formatDuration(h.metrics.total)}</div>
         </li>
         `;
     }).join('');

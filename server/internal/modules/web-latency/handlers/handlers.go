@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -26,21 +27,16 @@ func HandleWebLatency(c *gin.Context) {
 		return
 	}
 
-	req.URL = strings.TrimSpace(req.URL)
+	req.URL = normalizeURL(req.URL)
 	if req.URL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "URL không được để trống",
+			"message": "URL không hợp lệ",
 		})
 		return
 	}
 
-	// Validate basic url
-	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
-		req.URL = "https://" + req.URL
-	}
-
-	cacheKey := fmt.Sprintf("%s:%v", req.URL, req.DeepTest)
+	cacheKey := fmt.Sprintf("%s:deep=%v", req.URL, req.DeepTest)
 	if !req.BypassCache {
 		if data, fetchedAt, found := webLatencyCache.Get(cacheKey); found {
 			responseAPI.Success(c, data, true, fetchedAt)
@@ -52,7 +48,7 @@ func HandleWebLatency(c *gin.Context) {
 
 	result, err := service.AnalyzeLatency(c.Request.Context(), req.URL, req.DeepTest)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
 			"message": "Lỗi khi kiểm tra tốc độ: " + err.Error(),
 		})
@@ -61,4 +57,38 @@ func HandleWebLatency(c *gin.Context) {
 
 	webLatencyCache.Set(cacheKey, result)
 	responseAPI.Success(c, result, false, time.Now())
+}
+
+func normalizeURL(u string) string {
+	u = strings.TrimSpace(u)
+	if u == "" {
+		return ""
+	}
+
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		u = "https://" + u
+	}
+
+	parsed, err := url.Parse(u)
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+
+	// Chặn các scheme nguy hiểm như ftp://, javascript://, file://...
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return ""
+	}
+
+	// RFC 3986: Scheme và Host là case-insensitive
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	parsed.Host = strings.ToLower(parsed.Host)
+	
+	// Normalize Path: Chỉ xóa trailing slash của root domain (/)
+	// VD: https://example.com/ -> https://example.com
+	// Nhưng https://example.com/blog/ -> https://example.com/blog/ (Giữ nguyên slash của path)
+	if parsed.Path == "/" {
+		parsed.Path = ""
+	}
+	
+	return parsed.String()
 }

@@ -32,7 +32,6 @@ type Hop struct {
 	URL        string        `json:"url"`
 	StatusCode int           `json:"statusCode"`
 	Metrics    TimingMetrics `json:"metrics"`
-	Total      time.Duration `json:"total"`
 }
 
 type WebLatencyResult struct {
