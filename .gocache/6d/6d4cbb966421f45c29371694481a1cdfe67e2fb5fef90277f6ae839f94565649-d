@@ -1,4 +1,0 @@
-./cors.go
-./logger.go
-./ratelimit.go
-./recovery.go

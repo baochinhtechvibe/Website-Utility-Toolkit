@@ -1,8 +1,0 @@
-./cache.go
-./catalog.go
-./client.go
-./compare.go
-./indexability.go
-./meta.go
-./robots.go
-./sitemap.go

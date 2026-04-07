@@ -1,6 +1,0 @@
-./cleanup.go
-./connect.go
-./copy.go
-./error.go
-./folders.go
-./job_manager.go
