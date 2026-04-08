@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -14,7 +15,7 @@ import (
 )
 
 // ProcessScan kicks off the complete scanning phase
-func ProcessScan(req models.ScanRequest) (models.ScanData, error) {
+func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, error) {
 	data, validLinks, err := ExtractLinks(req)
 	if err != nil {
 		return models.ScanData{}, err
@@ -46,7 +47,12 @@ func ProcessScan(req models.ScanRequest) (models.ScanData, error) {
 		go func(workerID int) {
 			defer wg.Done()
 			for idx := range jobs {
-				results[idx] = checkURL(validLinks[idx], client, hostSemaphores, req.IgnoreTlsErrors, req.BypassCache)
+				select {
+				case <-ctx.Done():
+					return 
+				default:
+					results[idx] = checkURL(validLinks[idx], client, hostSemaphores, req.IgnoreTlsErrors, req.BypassCache)
+				}
 			}
 		}(w)
 	}
@@ -105,13 +111,9 @@ func checkURL(asset models.ScanResultRow, client *http.Client, hostSems *sync.Ma
 	}
 
 	// Throttle per-host.
-	// We extract host from the asset's FinalURL
 	host := ""
-	for i, c := range asset.FinalURL { // crude but fast lookup for host boundary
-		if (c == '/' || c == '?') && i > 8 { // after https://
-			host = asset.FinalURL[8:i]
-			break
-		}
+	if u, err := url.Parse(asset.FinalURL); err == nil {
+		host = u.Host
 	}
 	if host == "" {
 		host = asset.FinalURL

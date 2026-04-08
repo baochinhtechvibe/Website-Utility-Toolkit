@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '../../config.js';
-import { $, createRealtimeURLValidator } from '../../utils/index.js';
+import { $, createRealtimeURLValidator, escapeHTML } from '../../utils/index.js';
 
 // Dynamic API Resolver
 // Fallbacks to standard relative domain path for Prod envs.
@@ -109,11 +109,21 @@ document.addEventListener('DOMContentLoaded', () => {
         updateURL(rawUrl);
 
         // Reset UI state
-        if (errorCard) errorCard.classList.add("d-none");
         if (resultsSection) resultsSection.classList.add("d-none");
         if (shareCard) shareCard.classList.add("d-none");
-        if (progressBlock) progressBlock.classList.remove("d-none");
         
+        if (progressBlock) {
+            progressBlock.classList.remove("d-none");
+            // UI Progress Hardening: Ẩn thanh bar tĩnh và meta 0/? 
+            const barTrack = progressBlock.querySelector(".bls-progress-bar-track");
+            const barMeta = progressBlock.querySelector(".bls-progress-meta");
+            if (barTrack) barTrack.classList.add("d-none");
+            if (barMeta) barMeta.classList.add("d-none");
+            
+            const progressLabel = progressBlock.querySelector("span.font-bold");
+            if (progressLabel) progressLabel.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang thu thập và phân tích liên kết...';
+        }
+
         btnScan.disabled = true;
         if (scanIcon) scanIcon.classList.add("d-none");
         if (scanLoadingState) scanLoadingState.classList.remove("d-none");
@@ -481,19 +491,6 @@ function renderPaginationControls(totalItems) {
     
     // Next
     paginationList.appendChild(createLi('Next <i class="fas fa-chevron-right ml-1"></i>', currentPage + 1, currentPage === totalPages, false, 'bls-page-link--next'));
-}
-
-function escapeHTML(str) {
-    if (!str) return "";
-    return str.replace(/[&<>'"]/g, 
-        tag => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
-        }[tag] || tag)
-    );
 }
 
 /**

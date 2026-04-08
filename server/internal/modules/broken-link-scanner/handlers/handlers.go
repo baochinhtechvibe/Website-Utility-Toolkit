@@ -41,7 +41,7 @@ func HandleScan(c *gin.Context) {
 	errChan := make(chan error, 1)
 
 	go func() {
-		data, err := service.ProcessScan(req) // We don't propagate explicit ctx across worker loop to keep pure structure, but we cap it outwardly.
+		data, err := service.ProcessScan(ctx, req) 
 		if err != nil {
 			errChan <- err
 			return

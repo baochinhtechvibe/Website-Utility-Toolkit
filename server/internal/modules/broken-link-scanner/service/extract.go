@@ -162,7 +162,7 @@ func dedupeAndNormalize(links []unverifiedLink, base *url.URL, scope string) ([]
 
 		// Check scope: same-host means strictly equal Host
 		if scope == "same-host" {
-			if strings.ToLower(absoluteContext.Host) != strings.ToLower(base.Host) {
+			if !strings.EqualFold(absoluteContext.Host, base.Host) {
 				// Valid URL, but omitted voluntarily. We skip recording it. 
 				continue
 			}
