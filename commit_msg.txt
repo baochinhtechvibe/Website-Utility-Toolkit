@@ -1,0 +1,27 @@
+refactor(json-tools): production hardening and UI/UX optimization for JSON Data Tools
+
+This commit completes a comprehensive hardening phase for the JSON Data Tools suite, 
+addressing performance, security, accessibility, and logic robustness.
+
+Frontend (client):
+- Accessibility: Implemented ARIA attributes (role, controls, labelledby) for tabbed navigation.
+- Performance: Added 500KB client-side input size guard to prevent main-thread freezing.
+- UX & States: 
+    - Synchronized action button (Copy/Clear) states with output content status.
+    - Resolved memory leak in Diff sync-scrolling by optimizing event listener registration.
+    - Enhanced YAML syntax highlighting to support trailing comments (e.g., boolean/null/number values).
+- API Resilience: Added robust fetch guards to handle non-200/422 HTTP statuses and server-side errors.
+- General: Fixed whitespace trimming logic in Encode-Decode tools and updated security in Password Generator (rejection sampling).
+
+Backend (server/go):
+- Logging: Standardized error logging using 'zerolog' (github.com/rs/zerolog/log) for consistency.
+- Middleware: Refactored request body limiting (1MB) into a reusable Gin middleware.
+- JSON to Go Struct Logic:
+    - Implemented type consistency scanning for arrays (fallback to []interface{} for mixed types).
+    - Enhanced acronym detection supporting middle-word and suffix matches (e.g., UserIdName -> UserIDName).
+    - Mitigated struct name collisions by prepending parent field names to nested types.
+- YAML Serialization:
+    - Precision indentation fixes for nested objects within arrays.
+    - Implemented comprehensive string escaping (\n, \t, \r, \\, \").
+    - Rebalanced numeric detection logic using strconv for stricter parsing.
+- Cleanup: Removed deprecated Diff handlers and models, migrating logic entirely to client-side.

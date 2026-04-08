@@ -9,8 +9,9 @@ import (
 func RegisterRoutes(api *gin.RouterGroup) {
 	jsonGroup := api.Group("/json")
 	{
+		jsonGroup.Use(handlers.MaxBodySizeMiddleware(1 << 20)) // 1MB Limit
+
 		jsonGroup.POST("/to-go", handlers.HandleJSONToGoStruct)
 		jsonGroup.POST("/to-yaml", handlers.HandleJSONToYAML)
-		jsonGroup.POST("/diff", handlers.HandleJSONDiff)
 	}
 }

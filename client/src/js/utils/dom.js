@@ -309,3 +309,47 @@ export function renderSuccessHeader(el, msg) {
         ${msg}
     `
 }
+
+/**
+ * Copy văn bản vào clipboard với fallback cho môi trường không bảo mật / bị block API
+ * 
+ * @param {string} text - Văn bản cần copy
+ * @returns {Promise<boolean>} - Trả về true nếu thành công
+ */
+export async function copyToClipboard(text) {
+    if (!text) return false;
+
+    // 1. Ưu tiên navigator.clipboard (HTTPS / Secure Context)
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (err) {
+            console.error("Clipboard API failed, falling back...", err);
+        }
+    }
+
+    // 2. Fallback: create textarea (Dùng cho HTTP hoặc khi API bị block)
+    try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        
+        // Đảm bảo textarea không gây scroll trang
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "0";
+        textarea.style.opacity = "0";
+        
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        const successful = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        
+        return successful;
+    } catch (err) {
+        console.error("Fallback copy failed:", err);
+        return false;
+    }
+}

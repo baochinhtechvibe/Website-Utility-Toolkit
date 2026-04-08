@@ -3,10 +3,10 @@
 //==================================//
 import {
     setDisplay,
-    showElements,
     hide,
     show,
     escapeHTML,
+    copyToClipboard,
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
@@ -75,16 +75,18 @@ function init() {
     let currentDiffView = "split";
     let diffDebounceTimer = null;
 
+    const MAX_INPUT_SIZE = 500 * 1024; // 500KB
+
     // =================================//
     //  BUTTON STATE MANAGEMENT
     //==================================//
     function updateButtonStates() {
+        // Logic dựa trên Input
         const formatterEmpty = formatterInput.value.trim() === '';
         btnFormat.disabled = formatterEmpty;
         btnFormat4.disabled = formatterEmpty;
         btnMinify.disabled = formatterEmpty;
         btnClearFormatter.disabled = formatterEmpty;
-        btnCopyFormatter.disabled = formatterEmpty;
 
         const validatorEmpty = validatorInput.value.trim() === '';
         btnValidate.disabled = validatorEmpty;
@@ -97,16 +99,22 @@ function init() {
         const toGoEmpty = toGoInput.value.trim() === '';
         btnConvertGo.disabled = toGoEmpty;
         btnClearGo.disabled = toGoEmpty;
-        btnCopyGo.disabled = toGoEmpty;
 
         const toYamlEmpty = toYamlInput.value.trim() === '';
         btnConvertYaml.disabled = toYamlEmpty;
         btnClearYaml.disabled = toYamlEmpty;
-        btnCopyYaml.disabled = toYamlEmpty;
+        
+        // Logic dựa trên Output (Copy buttons)
+        btnCopyFormatter.disabled = formatterOutput.classList.contains("json-tools__output--empty");
+        btnCopyGo.disabled = toGoOutput.classList.contains("json-tools__output--empty");
+        btnCopyYaml.disabled = toYamlOutput.classList.contains("json-tools__output--empty");
     }
 
     // Call on load
     updateButtonStates();
+
+    // Đăng ký cuộn đồng bộ (Sau khi đã update state lần đầu để DOM ổn định)
+    syncScroll(diffSplitLeft, diffSplitRight);
 
     // =================================//
     //  TAB SWITCHING
@@ -171,9 +179,13 @@ function init() {
     //  SYNTAX HIGHLIGHTING (JSON)
     //==================================//
     function highlightJSON(json) {
+        // Bước 1: Escape HTML trước để an toàn
         const escaped = escapeHTML(json);
+        
+        // Bước 2: Highlight dựa trên chuỗi đã được escape
+        // Tối ưu regex để tránh bọc span vào các entity đã escape
         return escaped.replace(
-            /("(?:\\.|[^"\\])*")\s*(:)?|(\b(?:true|false)\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+            /("(?:\\.|[^"\\])*?")\s*(:)?|(\b(?:true|false)\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
             (match, str, colon, bool, nil, num) => {
                 if (str) {
                     if (colon) {
@@ -203,16 +215,16 @@ function init() {
     function highlightYAML(code) {
         const escaped = escapeHTML(code);
         return escaped
-            // YAML keys (word followed by colon)
-            .replace(/^(\s*)([\w.-]+)(\s*:)/gm, '$1<span class="yaml-key">$2</span>$3')
+            // YAML keys (word followed by colon). Tránh match nhầm dấu "-" dẫn đầu của array
+            .replace(/^(\s*(?:-\s+)?)([\w.-]+)(\s*:)/gm, '$1<span class="yaml-key">$2</span>$3')
             // Strings in quotes
             .replace(/("[^"]*"|'[^']*')/g, '<span class="yaml-string">$1</span>')
-            // Booleans
-            .replace(/:\s+(true|false)\s*$/gm, ': <span class="yaml-boolean">$1</span>')
-            // Null
-            .replace(/:\s+(null|~)\s*$/gm, ': <span class="yaml-null">$1</span>')
-            // Numbers
-            .replace(/:\s+(-?\d+(?:\.\d+)?)\s*$/gm, ': <span class="yaml-number">$1</span>')
+            // Booleans với hỗ trợ trailing comment
+            .replace(/:\s+(true|false)((?:\s*(?:#.*)?))$/gm, ': <span class="yaml-boolean">$1</span>$2')
+            // Null với hỗ trợ trailing comment
+            .replace(/:\s+(null|~)((?:\s*(?:#.*)?))$/gm, ': <span class="yaml-null">$1</span>$2')
+            // Numbers với hỗ trợ trailing comment
+            .replace(/:\s+(-?\d+(?:\.\d+)?)((?:\s*(?:#.*)?))$/gm, ': <span class="yaml-number">$1</span>$2')
             // Comments
             .replace(/(#.*)/g, '<span class="yaml-comment">$1</span>');
     }
@@ -228,6 +240,12 @@ function init() {
 
     function hideError() {
         hide(errorCard);
+    }
+
+    function getLineCol(str, pos) {
+        if (!str) return { line: 1, col: 1 };
+        const lines = str.substring(0, pos).split("\n");
+        return { line: lines.length, col: lines[lines.length - 1].length + 1 };
     }
 
     // =================================//
@@ -276,6 +294,13 @@ function init() {
             formatterOutput.innerHTML = "Kết quả sẽ hiển thị tại đây...";
             formatterOutput.classList.add("json-tools__output--empty");
             hide(formatterStats);
+            updateButtonStates();
+            return;
+        }
+
+        // Kiểm tra dung lượng
+        if (raw.length > MAX_INPUT_SIZE) {
+            showToolError(`Dữ liệu quá lớn (${(raw.length / 1024).toFixed(1)}KB). Vui lòng giới hạn dưới 500KB để đảm bảo hiệu suất trình duyệt.`);
             return;
         }
 
@@ -284,6 +309,7 @@ function init() {
             const formatted = JSON.stringify(parsed, null, spaces);
             formatterOutput.innerHTML = highlightJSON(formatted);
             formatterOutput.classList.remove("json-tools__output--empty");
+            updateButtonStates();
 
             // Stats
             const byteSize = new Blob([formatted]).size;
@@ -303,11 +329,18 @@ function init() {
         const raw = formatterInput.value.trim();
         if (!raw) return;
 
+        // Kiểm tra dung lượng
+        if (raw.length > MAX_INPUT_SIZE) {
+            showToolError(`Dữ liệu quá lớn (${(raw.length / 1024).toFixed(1)}KB). Vui lòng giới hạn dưới 500KB.`);
+            return;
+        }
+
         try {
             const parsed = JSON.parse(raw);
             const minified = JSON.stringify(parsed);
             formatterOutput.textContent = minified;
             formatterOutput.classList.remove("json-tools__output--empty");
+            updateButtonStates();
 
             const byteSize = new Blob([minified]).size;
             formatterSize.textContent = byteSize.toLocaleString();
@@ -323,10 +356,22 @@ function init() {
     btnFormat4.addEventListener("click", () => formatJSON(4));
     btnMinify.addEventListener("click", minifyJSON);
 
-    btnCopyFormatter.addEventListener("click", () => {
+    btnCopyFormatter.addEventListener("click", async () => {
         const text = formatterOutput.textContent;
         if (!text || formatterOutput.classList.contains("json-tools__output--empty")) return;
-        copyToClipboard(text, btnCopyFormatter);
+        
+        const success = await copyToClipboard(text);
+        if (success) {
+            const icon = btnCopyFormatter.querySelector("i");
+            const originalClass = icon.className;
+            icon.className = "fa-solid fa-check";
+            btnCopyFormatter.classList.add("btn-success");
+
+            setTimeout(() => {
+                icon.className = originalClass;
+                btnCopyFormatter.classList.remove("btn-success");
+            }, 1500);
+        }
     });
 
     btnClearFormatter.addEventListener("click", () => {
@@ -335,6 +380,7 @@ function init() {
         formatterOutput.classList.add("json-tools__output--empty");
         hide(formatterStats);
         hideError();
+        updateButtonStates();
     });
 
     // =================================//
@@ -346,6 +392,13 @@ function init() {
         if (!raw) {
             validatorOutput.innerHTML = "Kết quả validate sẽ hiển thị tại đây...";
             validatorOutput.classList.add("json-tools__validator-box--empty");
+            updateButtonStates();
+            return;
+        }
+
+        // Kiểm tra dung lượng
+        if (raw.length > MAX_INPUT_SIZE) {
+            showToolError(`Dữ liệu quá lớn (${(raw.length / 1024).toFixed(1)}KB). Vui lòng giới hạn dưới 500KB.`);
             return;
         }
 
@@ -433,12 +486,9 @@ function init() {
         validatorOutput.innerHTML = "Kết quả validate sẽ hiển thị tại đây...";
         validatorOutput.classList.add("json-tools__validator-box--empty");
         hideError();
+        updateButtonStates();
     });
 
-    function getLineCol(str, pos) {
-        const lines = str.substring(0, pos).split("\n");
-        return { line: lines.length, col: lines[lines.length - 1].length + 1 };
-    }
 
     // =================================//
     //  DIFF COMPARE LOGIC
@@ -518,6 +568,14 @@ function init() {
         const rightRaw = diffInputRight.value.trim();
 
         if (!leftRaw || !rightRaw) {
+            hide(diffResult);
+            updateButtonStates();
+            return;
+        }
+
+        // Kiểm tra dung lượng
+        if (leftRaw.length > MAX_INPUT_SIZE || rightRaw.length > MAX_INPUT_SIZE) {
+            showToolError(`Dữ liệu quá lớn. Vui lòng giới hạn từng phần JSON dưới 500KB.`);
             hide(diffResult);
             return;
         }
@@ -599,9 +657,6 @@ function init() {
         diffSplitLeft.innerHTML = leftHtml;
         diffSplitRight.innerHTML = rightHtml;
         diffUnifiedView.innerHTML = unifiedHtml;
-
-        // Sync scroll (Split View)
-        syncScroll(diffSplitLeft, diffSplitRight);
     }
 
     function syncScroll(el1, el2) {
@@ -634,6 +689,7 @@ function init() {
         diffInputLeft.value = diffInputRight.value;
         diffInputRight.value = temp;
         renderDiff();
+        updateButtonStates();
     });
 
     btnClearDiff.addEventListener("click", () => {
@@ -641,6 +697,7 @@ function init() {
         diffInputRight.value = "";
         hide(diffResult);
         hideError();
+        updateButtonStates();
     });
 
     // Diff view toggle
@@ -668,6 +725,12 @@ function init() {
         const raw = toGoInput.value.trim();
         if (!raw) return;
 
+        // Kiểm tra dung lượng
+        if (raw.length > MAX_INPUT_SIZE) {
+            showToolError(`Dữ liệu quá lớn (${(raw.length / 1024).toFixed(1)}KB). Vui lòng giới hạn dưới 500KB.`);
+            return;
+        }
+
         // Validate locally first
         try {
             JSON.parse(raw);
@@ -685,6 +748,13 @@ function init() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ json: raw }),
             });
+
+            // Guard cho lỗi server hoặc giới hạn dung lượng (Status 400, 413, 500...)
+            if (!response.ok && response.status !== 422) {
+                showToolError(`Lỗi máy chủ (${response.status}). Vui lòng thử lại sau hoặc rút ngắn dữ liệu.`);
+                return;
+            }
+
             const data = await response.json();
 
             if (!data.success) {
@@ -694,6 +764,7 @@ function init() {
 
             toGoOutput.innerHTML = highlightGo(data.data.result);
             toGoOutput.classList.remove("json-tools__output--empty");
+            updateButtonStates();
         } catch (e) {
             showToolError("Lỗi kết nối server. Vui lòng thử lại!");
         } finally {
@@ -702,10 +773,22 @@ function init() {
         }
     });
 
-    btnCopyGo.addEventListener("click", () => {
+    btnCopyGo.addEventListener("click", async () => {
         const text = toGoOutput.textContent;
         if (!text || toGoOutput.classList.contains("json-tools__output--empty")) return;
-        copyToClipboard(text, btnCopyGo);
+        
+        const success = await copyToClipboard(text);
+        if (success) {
+            const icon = btnCopyGo.querySelector("i");
+            const originalClass = icon.className;
+            icon.className = "fa-solid fa-check";
+            btnCopyGo.classList.add("btn-success");
+
+            setTimeout(() => {
+                icon.className = originalClass;
+                btnCopyGo.classList.remove("btn-success");
+            }, 1500);
+        }
     });
 
     btnClearGo.addEventListener("click", () => {
@@ -713,6 +796,7 @@ function init() {
         toGoOutput.innerHTML = "Go Struct sẽ hiển thị tại đây...";
         toGoOutput.classList.add("json-tools__output--empty");
         hideError();
+        updateButtonStates();
     });
 
     // =================================//
@@ -722,6 +806,12 @@ function init() {
         hideError();
         const raw = toYamlInput.value.trim();
         if (!raw) return;
+
+        // Kiểm tra dung lượng
+        if (raw.length > MAX_INPUT_SIZE) {
+            showToolError(`Dữ liệu quá lớn (${(raw.length / 1024).toFixed(1)}KB). Vui lòng giới hạn dưới 500KB.`);
+            return;
+        }
 
         try {
             JSON.parse(raw);
@@ -748,6 +838,7 @@ function init() {
 
             toYamlOutput.innerHTML = highlightYAML(data.data.result);
             toYamlOutput.classList.remove("json-tools__output--empty");
+            updateButtonStates();
         } catch (e) {
             showToolError("Lỗi kết nối server. Vui lòng thử lại!");
         } finally {
@@ -756,10 +847,22 @@ function init() {
         }
     });
 
-    btnCopyYaml.addEventListener("click", () => {
+    btnCopyYaml.addEventListener("click", async () => {
         const text = toYamlOutput.textContent;
         if (!text || toYamlOutput.classList.contains("json-tools__output--empty")) return;
-        copyToClipboard(text, btnCopyYaml);
+        
+        const success = await copyToClipboard(text);
+        if (success) {
+            const icon = btnCopyYaml.querySelector("i");
+            const originalClass = icon.className;
+            icon.className = "fa-solid fa-check";
+            btnCopyYaml.classList.add("btn-success");
+
+            setTimeout(() => {
+                icon.className = originalClass;
+                btnCopyYaml.classList.remove("btn-success");
+            }, 1500);
+        }
     });
 
     btnClearYaml.addEventListener("click", () => {
@@ -767,34 +870,12 @@ function init() {
         toYamlOutput.innerHTML = "YAML sẽ hiển thị tại đây...";
         toYamlOutput.classList.add("json-tools__output--empty");
         hideError();
+        updateButtonStates();
     });
 
     // =================================//
     //  CLIPBOARD HELPER
     //==================================//
-    function copyToClipboard(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const icon = btn.querySelector("i");
-            const originalClass = icon.className;
-            icon.className = "fa-solid fa-check";
-            btn.classList.add("btn-success");
-
-            setTimeout(() => {
-                icon.className = originalClass;
-                btn.classList.remove("btn-success");
-            }, 1500);
-        }).catch(() => {
-            // Fallback
-            const textarea = document.createElement("textarea");
-            textarea.value = text;
-            textarea.style.position = "fixed";
-            textarea.style.opacity = "0";
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textarea);
-        });
-    }
 }
 
 document.addEventListener("DOMContentLoaded", init);

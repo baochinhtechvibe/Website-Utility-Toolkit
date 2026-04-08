@@ -5,7 +5,7 @@
 
 import { API_BASE_URL } from "../../config.js";
 
-import { $, $$, escapeHTML } from "../../utils/index.js";
+import { $, $$, escapeHTML, copyToClipboard } from "../../utils/index.js";
 
 
 // Khởi tạo bản đồ (biến toàn cục để cập nhật)
@@ -343,11 +343,23 @@ function initMap(lat, lon, ip, retryCount = 0) {
 function setupEventListeners() {
     // Nút copy
     $$(".btn-copy").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", async () => {
             const targetId = btn.getAttribute("data-target");
             const text = $(targetId)?.textContent;
             if (text && text !== "N/A") {
-                copyToClipboard(text, btn);
+                const success = await copyToClipboard(text);
+                if (success) {
+                    const originalHtml = btn.innerHTML;
+                    const originalClass = btn.className;
+                    
+                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied`;
+                    btn.classList.add("btn-success");
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.className = originalClass;
+                    }, 2000);
+                }
             }
         });
     });
@@ -361,25 +373,3 @@ function setupEventListeners() {
     });
 }
 
-/**
- * Helper copy vào clipboard có feedback UI
- */
-async function copyToClipboard(text, btn) {
-    try {
-        await navigator.clipboard.writeText(text);
-        
-        // Hiệu ứng feedback nhẹ
-        const originalHtml = btn.innerHTML;
-        const originalClass = btn.className;
-        
-        btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied`;
-        btn.classList.add("btn-success");
-        
-        setTimeout(() => {
-            btn.innerHTML = originalHtml;
-            btn.className = originalClass;
-        }, 2000);
-    } catch (err) {
-        console.error("Could not copy text: ", err);
-    }
-}

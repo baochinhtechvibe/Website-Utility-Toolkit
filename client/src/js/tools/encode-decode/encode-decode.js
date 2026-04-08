@@ -1,13 +1,18 @@
-/**
- * encode-decode.js
- * Encoding / Decoding Tools – Base64, URL, JWT
- * Module pattern với init() entry point.
- */
+import { 
+    $, 
+    $$, 
+    escapeHTML,
+    copyToClipboard
+} from "../../utils/index.js";
 
 const EncodeDecode = (() => {
     // ===== STATE =====
     let currentMode = 'base64_enc';
     let lastOutput = '';
+
+    // Cache cho random values dùng batching
+    let rndBatch = new Uint32Array(0);
+    let rndIdx = 0;
 
     // ===== DOM REFS =====
     const dom = {};
@@ -47,8 +52,7 @@ const EncodeDecode = (() => {
             outputLabel: '',
             btnLabel: '<i class="fa-solid fa-key"></i> Decode JWT',
             placeholder: 'Nhập JWT Token vào đây (eyJ...)',
-            jwtView: true,
-            passView: false,
+            jwtView: true
         },
         pass_gen: {
             inputLabel: '',
@@ -84,6 +88,7 @@ const EncodeDecode = (() => {
         try {
             // Chuẩn hóa Base64Url sang Base64 chuẩn
             const std = str.replace(/-/g, '+').replace(/_/g, '/');
+            // Tính toán số lượng padding cần thiết để chia hết cho 4
             const padded = std + '=='.slice(0, (4 - std.length % 4) % 4);
             const binary = atob(padded);
             const bytes = new Uint8Array(binary.length);
@@ -146,55 +151,107 @@ const EncodeDecode = (() => {
             signature: parts[2],
         };
     }
+
+    /**
+     * Lấy số nguyên ngẫu nhiên trong khoảng [0, max - 1] 
+     * Sử dụng rejection sampling để loại bỏ hoàn toàn modulo bias.
+     */
+    function getSecureRandomInt(max) {
+        if (max <= 1) return 0;
+        const maxRange = Math.floor(4294967296 / max) * max;
+        let randomVal;
+        
+        do {
+            if (rndIdx >= rndBatch.length) {
+                // Tự động refill batch nếu hết (hoặc lần đầu gọi)
+                // Lấy 256 phần tử một lần cho bốc
+                rndBatch = window.crypto.getRandomValues(new Uint32Array(256));
+                rndIdx = 0;
+            }
+            randomVal = rndBatch[rndIdx++];
+        } while (randomVal >= maxRange);
+        
+        return randomVal % max;
+    }
+
+    /**
+     * Fisher-Yates Shuffle – Trộn mảng không bias dùng crypto
+     */
+    function secureShuffle(arr) {
+        if (!arr.length) return arr;
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = getSecureRandomInt(i + 1);
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
     
     /**
      * Password Generator – Cryptographically secure
      */
-    function generatePassword() {
-        const length = parseInt(dom.passLengthNum.value) || 16;
-        const useUpper = dom.passUpper.checked;
-        const useLower = dom.passLower.checked;
-        const useNumbers = dom.passNumbers.checked;
-        const useSpecial = dom.passSpecial.checked;
-        const excludeAmbiguous = dom.passExcludeAmbiguous.checked;
+    function generatePassword(length, options) {
+        const charSets = {
+            uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            lowercase: "abcdefghijklmnopqrstuvwxyz",
+            numbers: "0123456789",
+            symbols: "!@#$%^&*()_+~`|}{[]:;?><,./-="
+        };
 
-        const upperChars = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Exclude I, O by default for ambiguous if needed
-        const lowerChars = "abcdefghijkmnopqrstuvwxyz"; // Exclude l, o
-        const numberChars = "23456789"; // Exclude 1, 0
-        const specialChars = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+        const AMBIGUOUS = /[Il1O0o]/g;
+        let allChars = "";
+        const guaranteedChars = [];
 
-        let charset = "";
-        if (useUpper) charset += excludeAmbiguous ? upperChars : "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        if (useLower) charset += excludeAmbiguous ? lowerChars : "abcdefghijklmnopqrstuvwxyz";
-        if (useNumbers) charset += excludeAmbiguous ? numberChars : "0123456789";
-        if (useSpecial) charset += specialChars;
+        // Lọc charset và đảm bảo mỗi loại có ít nhất 1 ký tự
+        Object.keys(options).forEach(key => {
+            if (options[key] && charSets[key]) {
+                const set = options.excludeAmbiguous 
+                    ? charSets[key].replace(AMBIGUOUS, '') 
+                    : charSets[key];
 
-        if (charset === "") {
+                if (set.length === 0) return;
+
+                allChars += set;
+                // Lấy 1 ký tự ngẫu nhiên bảo đảm an toàn tuyệt đối (no bias)
+                guaranteedChars.push(set[getSecureRandomInt(set.length)]);
+            }
+        });
+
+        if (allChars === "") {
             throw new Error('Vui lòng chọn ít nhất một loại ký tự để tạo mật khẩu.');
         }
 
-        let password = "";
-        const array = new Uint32Array(length);
-        window.crypto.getRandomValues(array);
-
-        for (let i = 0; i < length; i++) {
-            password += charset[array[i] % charset.length];
+        if (length < guaranteedChars.length) {
+            throw new Error(`Độ dài mật khẩu tối thiểu cho các tùy chọn đã chọn là ${guaranteedChars.length}.`);
         }
 
-        return password;
+        // Tạo các ký tự còn lại
+        const remainingLength = length - guaranteedChars.length;
+        let passwordArray = [...guaranteedChars];
+
+        if (remainingLength > 0) {
+            for (let i = 0; i < remainingLength; i++) {
+                passwordArray.push(allChars[getSecureRandomInt(allChars.length)]);
+            }
+        }
+
+        // Trộn mảng mật khẩu bằng Fisher-Yates (không bias)
+        return secureShuffle(passwordArray).join("");
     }
 
     /**
      * JSON Syntax Highlight – áp dụng code tokens của hệ thống
      */
     function highlightJson(obj) {
-        const json = JSON.stringify(obj, null, 2);
-        return json
+        // Bước 1: Stringify và Escape HTML các ký tự đặc biệt trước
+        const escapedJson = JSON.stringify(obj, null, 2)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(
-                /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+            .replace(/>/g, '&gt;');
+
+        // Bước 2: Highlight dựa trên chuỗi đã được escape
+        // Tối ưu regex để tránh bọc span vào các entity HTML (như &amp;) trong string
+        return escapedJson.replace(
+            /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*?"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
                 (match) => {
                     let cls = 'code-value'; // number default
                     if (/^"/.test(match)) {
@@ -338,30 +395,33 @@ const EncodeDecode = (() => {
 
         try {
             let result;
-            const input = dom.encodeInput.value;
+            // Chỉ trim cho decode và JWT, không trim cho encode để giữ nguyên khoảng trắng nếu user cần
+            const input = ['base64_dec', 'url_dec', 'jwt_dec'].includes(currentMode)
+                ? dom.encodeInput.value.trim()
+                : dom.encodeInput.value;
 
             switch (currentMode) {
                 case 'base64_enc':
                     result = base64Encode(input);
-                    setOutput(escapeHtml(result));
+                    setOutput(escapeHTML(result));
                     lastOutput = result;
                     break;
 
                 case 'base64_dec':
                     result = base64Decode(input);
-                    setOutput(escapeHtml(result));
+                    setOutput(escapeHTML(result));
                     lastOutput = result;
                     break;
 
                 case 'url_enc':
                     result = urlEncode(input);
-                    setOutput(escapeHtml(result));
+                    setOutput(escapeHTML(result));
                     lastOutput = result;
                     break;
 
                 case 'url_dec':
                     result = urlDecode(input);
-                    setOutput(escapeHtml(result));
+                    setOutput(escapeHTML(result));
                     lastOutput = result;
                     break;
 
@@ -372,11 +432,24 @@ const EncodeDecode = (() => {
                     break;
                 }
 
-                case 'pass_gen':
-                    result = generatePassword();
-                    setOutput(escapeHtml(result));
+                case 'pass_gen': {
+                    // Clamp độ dài từ 4 đến 64 và đồng bộ ngược lại UI
+                    const clamped = Math.min(64, Math.max(4, parseInt(dom.passLengthNum.value) || 16));
+                    dom.passLengthNum.value = clamped;
+                    dom.passLengthRange.value = clamped;
+                    
+                    const options = {
+                        uppercase: dom.passUpper.checked,
+                        lowercase: dom.passLower.checked,
+                        numbers: dom.passNumbers.checked,
+                        symbols: dom.passSpecial.checked,
+                        excludeAmbiguous: dom.passExcludeAmbiguous.checked
+                    };
+                    result = generatePassword(clamped, options);
+                    setOutput(escapeHTML(result));
                     lastOutput = result;
                     break;
+                }
 
                 default:
                     break;
@@ -392,7 +465,7 @@ const EncodeDecode = (() => {
      * Swap output -> input
      */
     function doSwap() {
-        if (!lastOutput) return;
+        if (!lastOutput || currentMode === 'jwt_dec') return;
         dom.encodeInput.value = lastOutput;
         setOutput('Kết quả sẽ hiển thị tại đây...', true);
         resetJwtOutput();
@@ -401,28 +474,7 @@ const EncodeDecode = (() => {
         updateButtonStates();
     }
 
-    function escapeHtml(str) {
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    async function copyToClipboard(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-        } catch (e) {
-            // fallback
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-        }
-    }
+    // Các hàm utility local đã được thay thế bằng hàng Utils xịn xò
 
     // ===== INIT =====
     function init() {
@@ -518,8 +570,20 @@ const EncodeDecode = (() => {
 
         // Sync length number and range
         dom.passLengthNum?.addEventListener('input', (e) => {
-            dom.passLengthRange.value = e.target.value;
+            // Update range nhưng chưa clamp number ngay để mượt mà khi gõ
+            const val = parseInt(e.target.value);
+            if (!isNaN(val)) {
+                dom.passLengthRange.value = val;
+            }
         });
+
+        dom.passLengthNum?.addEventListener('blur', (e) => {
+            // Clamp giá trị chuẩn khi kết thúc nhập liệu
+            const val = Math.min(64, Math.max(4, parseInt(e.target.value) || 16));
+            e.target.value = val;
+            dom.passLengthRange.value = val;
+        });
+
         dom.passLengthRange?.addEventListener('input', (e) => {
             dom.passLengthNum.value = e.target.value;
         });
