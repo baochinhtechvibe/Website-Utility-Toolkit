@@ -30,9 +30,13 @@ var dnsCache = cache.NewMemoryCache(30 * time.Minute)
 func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSLookupResponse) {
 	if res.Success {
 		cacheKey := req.Hostname + ":" + req.Type
-		if !req.TraceRoot {
+		
+		// 🚨 KHÔNG cache nếu kết quả trả về là trắng thông tin (tự động bypass lần tới)
+		hasRecords := len(res.Data.Records) > 0 || len(res.Data.Nameservers) > 0 || (res.Data.DNSSEC != nil && res.Data.DNSSEC.Status != "")
+		if !req.TraceRoot && hasRecords {
 			dnsCache.Set(cacheKey, res.Data)
 		}
+		
 		if res.Message != "" {
 			responseAPI.SuccessWithMessage(c, res.Data, res.Message)
 		} else {
@@ -274,6 +278,7 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 
 	// Map to track unique records and avoid duplicates
 	seenRecords := make(map[string]bool)
+	seenLogs := make(map[string]bool)
 
 	// Seed seenRecords with existing Nameservers to avoid trace duplicates showing up in Records
 	for _, ns := range response.Data.Nameservers {
@@ -294,10 +299,14 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 			mu.Lock()
 			defer mu.Unlock()
 
-			// Task 8: Take the most detailed logs (longest trace)
-			if len(logs) > len(finalLogs) {
-				finalLogs = logs
+			// Merge and deduplicate trace logs dynamically
+			for _, step := range logs {
+				if !seenLogs[step.Message] {
+					seenLogs[step.Message] = true
+					finalLogs = append(finalLogs, step)
+				}
 			}
+
 			if err != nil && finalErr == nil {
 				finalErr = err
 			}
@@ -361,16 +370,23 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 
 	response.Success = true
 	response.Data.Records = apiRecords
-	response.Data.TraceLogs = finalLogs
-
+	
 	if req.Type == "ALL" && len(finalLogs) > 0 {
-		for j := len(finalLogs) - 1; j >= 0; j-- {
-			if strings.Contains(finalLogs[j].Message, "record(s) found") {
-				finalLogs[j].Message = fmt.Sprintf("\n%d record(s) found across all types.", len(apiRecords))
-				break
+		var cleanedLogs []models.TraceStep
+		for _, step := range finalLogs {
+			// Strip the individual trace completion metrics
+			if !strings.Contains(step.Message, "Trace complete:") && !strings.Contains(step.Message, "record(s) found") {
+				cleanedLogs = append(cleanedLogs, step)
 			}
 		}
+		finalLogs = cleanedLogs
+		// Append a single consolidated master message at the very end
+		finalLogs = append(finalLogs, models.TraceStep{
+			Message: fmt.Sprintf("\n%d record(s) found across all types.", len(apiRecords)),
+		})
 	}
+	response.Data.TraceLogs = finalLogs
+
 
 	if len(apiRecords) == 0 && finalErr == nil {
 		if len(finalLogs) > 0 {
@@ -544,89 +560,135 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 
 	}
 
-	// 3. Query A records (on canonical name if CNAME exists)
-	aRecords, srv := dns.QueryDNS(canonicalName, dnslib.TypeA)
-	if srv != "none" {
-		response.Data.Query.Server = srv
+	// 3-7. Query A, AAAA, MX, TXT, DNSSEC in parallel
+	// After CNAME resolution (sequential), these queries are independent
+	type parallelResult struct {
+		records []interface{}
+		server  string
 	}
-	if len(aRecords) > 0 {
-		for _, record := range aRecords {
-			if aRec, ok := record.(models.DNSRecord); ok && aRec.Type == "A" {
-				key := fmt.Sprintf("A:%s", aRec.Address)
-				if !seenRecords[key] {
-					// Thêm domain vào record để frontend biết hiển thị tên nào
-					aRec.Domain = strings.TrimSuffix(canonicalName, ".")
-					// ✅ Bổ sung Metadata (Flag, ISP)
-					dns.EnrichIPInfoByString(&aRec, aRec.Address)
-					allRecords = append(allRecords, aRec)
-					seenRecords[key] = true
-				}
+
+	var (
+		wgAll     sync.WaitGroup
+		muAll     sync.Mutex
+		aResult   parallelResult
+		aaaaResult parallelResult
+		mxResult  parallelResult
+		txtResult parallelResult
+	)
+
+	// A records (on canonical name)
+	wgAll.Add(1)
+	go func() {
+		defer wgAll.Done()
+		recs, srv := dns.QueryDNS(canonicalName, dnslib.TypeA)
+		muAll.Lock()
+		aResult = parallelResult{records: recs, server: srv}
+		muAll.Unlock()
+	}()
+
+	// AAAA records (on canonical name)
+	wgAll.Add(1)
+	go func() {
+		defer wgAll.Done()
+		recs, srv := dns.QueryDNS(canonicalName, dnslib.TypeAAAA)
+		muAll.Lock()
+		aaaaResult = parallelResult{records: recs, server: srv}
+		muAll.Unlock()
+	}()
+
+	// MX records (on original domain)
+	wgAll.Add(1)
+	go func() {
+		defer wgAll.Done()
+		recs, _ := dns.QueryDNS(fqdn, dnslib.TypeMX)
+		muAll.Lock()
+		mxResult = parallelResult{records: recs}
+		muAll.Unlock()
+	}()
+
+	// TXT records (on original domain)
+	wgAll.Add(1)
+	go func() {
+		defer wgAll.Done()
+		recs, _ := dns.QueryDNS(fqdn, dnslib.TypeTXT)
+		muAll.Lock()
+		txtResult = parallelResult{records: recs}
+		muAll.Unlock()
+	}()
+
+	// DNSSEC check
+	var dnssecInfo models.DNSSECInfo
+	wgAll.Add(1)
+	go func() {
+		defer wgAll.Done()
+		info := dns.ValidateDNSSEC(serverKey, fqdn)
+		muAll.Lock()
+		dnssecInfo = info
+		muAll.Unlock()
+	}()
+
+	wgAll.Wait()
+
+	// Process A records
+	if aResult.server != "none" {
+		response.Data.Query.Server = aResult.server
+	}
+	for _, record := range aResult.records {
+		if aRec, ok := record.(models.DNSRecord); ok && aRec.Type == "A" {
+			key := fmt.Sprintf("A:%s", aRec.Address)
+			if !seenRecords[key] {
+				aRec.Domain = strings.TrimSuffix(canonicalName, ".")
+				dns.EnrichIPInfoByString(&aRec, aRec.Address)
+				allRecords = append(allRecords, aRec)
+				seenRecords[key] = true
 			}
 		}
-
 	}
 
-	// 4. Query AAAA records (on canonical name if CNAME exists)
-	aaaaRecords, srv := dns.QueryDNS(canonicalName, dnslib.TypeAAAA)
-	if srv != "none" {
-		response.Data.Query.Server = srv
+	// Process AAAA records
+	if aaaaResult.server != "none" && aaaaResult.server != "" {
+		response.Data.Query.Server = aaaaResult.server
 	}
-	if len(aaaaRecords) > 0 {
-		for _, record := range aaaaRecords {
-			if aaaaRec, ok := record.(models.DNSRecord); ok && aaaaRec.Type == "AAAA" {
-				key := fmt.Sprintf("AAAA:%s", aaaaRec.Address)
-				if !seenRecords[key] {
-					// Thêm domain vào record
-					aaaaRec.Domain = strings.TrimSuffix(canonicalName, ".")
-					// ✅ Bổ sung Metadata (Flag, ISP)
-					dns.EnrichIPInfoByString(&aaaaRec, aaaaRec.Address)
-					allRecords = append(allRecords, aaaaRec)
-					seenRecords[key] = true
-				}
+	for _, record := range aaaaResult.records {
+		if aaaaRec, ok := record.(models.DNSRecord); ok && aaaaRec.Type == "AAAA" {
+			key := fmt.Sprintf("AAAA:%s", aaaaRec.Address)
+			if !seenRecords[key] {
+				aaaaRec.Domain = strings.TrimSuffix(canonicalName, ".")
+				dns.EnrichIPInfoByString(&aaaaRec, aaaaRec.Address)
+				allRecords = append(allRecords, aaaaRec)
+				seenRecords[key] = true
 			}
 		}
-
 	}
 
-	// 5. Query MX records (always on original domain)
-	mxRecords, _ := dns.QueryDNS(fqdn, dnslib.TypeMX)
-	if len(mxRecords) > 0 {
-		for _, record := range mxRecords {
-			if mxRec, ok := record.(models.DNSRecord); ok && mxRec.Type == "MX" {
-				key := fmt.Sprintf("MX:%s:%d", mxRec.Exchange, mxRec.Priority)
-				if !seenRecords[key] {
-					allRecords = append(allRecords, record)
-					seenRecords[key] = true
-				}
+	// Process MX records
+	for _, record := range mxResult.records {
+		if mxRec, ok := record.(models.DNSRecord); ok && mxRec.Type == "MX" {
+			key := fmt.Sprintf("MX:%s:%d", mxRec.Exchange, mxRec.Priority)
+			if !seenRecords[key] {
+				allRecords = append(allRecords, record)
+				seenRecords[key] = true
 			}
 		}
-
 	}
 
-	// 6. Query TXT records (always on original domain)
-	txtRecords, _ := dns.QueryDNS(fqdn, dnslib.TypeTXT)
-	if len(txtRecords) > 0 {
-		for _, record := range txtRecords {
-			if txtRec, ok := record.(models.DNSRecord); ok && txtRec.Type == "TXT" {
-				// Use substring for dedup (TXT can be very long)
-				keyValue := txtRec.Value
-				if len(keyValue) > 100 {
-					keyValue = keyValue[:100]
-				}
-				key := fmt.Sprintf("TXT:%s", keyValue)
-				if !seenRecords[key] {
-					// TXT query trên canonical name nếu có CNAME
-					txtRec.Domain = strings.TrimSuffix(canonicalName, ".")
-					allRecords = append(allRecords, txtRec)
-					seenRecords[key] = true
-				}
+	// Process TXT records
+	for _, record := range txtResult.records {
+		if txtRec, ok := record.(models.DNSRecord); ok && txtRec.Type == "TXT" {
+			keyValue := txtRec.Value
+			if len(keyValue) > 100 {
+				keyValue = keyValue[:100]
+			}
+			key := fmt.Sprintf("TXT:%s", keyValue)
+			if !seenRecords[key] {
+				txtRec.Domain = strings.TrimSuffix(canonicalName, ".")
+				allRecords = append(allRecords, txtRec)
+				seenRecords[key] = true
 			}
 		}
-
 	}
 
-	// 7. Check DNSSEC
-	dnssecInfo := dns.ValidateDNSSEC(serverKey, fqdn)
+	// Set DNSSEC
 	response.Data.DNSSEC = &dnssecInfo
 
 	if len(allRecords) == 0 {
@@ -898,8 +960,15 @@ func HandleBlacklistStream(c *gin.Context) {
 		return
 	}
 
-	// Stream events from DNS engine
-	dns.StreamBlacklist(ip, func(e models.BlacklistStreamEvent) {
+	// Stream events from DNS engine with context awareness
+	ctx := c.Request.Context()
+	dns.StreamBlacklist(ctx, ip, func(e models.BlacklistStreamEvent) {
+		// Kiểm tra client còn kết nối không trước khi ghi
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		sendSSE(c, e)
 		flusher.Flush()
 	})

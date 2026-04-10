@@ -65,6 +65,10 @@ func (r *DoHResolver) queryJSON(domain string, qtype uint16) ([]models.DNSRecord
 		return records, err
 	}
 
+	// NXDOMAIN (Status=3) = domain chắc chắn không tồn tại
+	if result.Status == 3 {
+		return records, ErrNXDOMAIN
+	}
 	if result.Status != 0 {
 		return records, nil
 	}
@@ -181,6 +185,11 @@ func (r *DoHResolver) queryRFC8484(domain string, qtype uint16) ([]models.DNSRec
 	msg := new(dns.Msg)
 	if err := msg.Unpack(body); err != nil {
 		return records, err
+	}
+
+	// NXDOMAIN = domain chắc chắn không tồn tại
+	if msg.Rcode == dns.RcodeNameError {
+		return records, ErrNXDOMAIN
 	}
 
 	// ✅ Parse Answer section

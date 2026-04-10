@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -91,14 +92,22 @@ func queryRBL(qname, provider string) ([]dns.RR, error) {
 
 	c := newDNSClient()
 
-	for _, ns := range nsList {
+	// Thử tối đa 2 NS Server để tránh treo quá lâu nếu RBL provider chặn kết nối
+	maxAttempts := len(nsList)
+	if maxAttempts > 2 {
+		maxAttempts = 2
+	}
+
+	for i := 0; i < maxAttempts; i++ {
+		ns := nsList[i]
+		c.Timeout = 2500 * time.Millisecond // Ép Timeout thấp xuống 2.5s mỗi retry
 		r, _, err := c.Exchange(m, ns+":53")
 		if err == nil && r != nil {
 			return r.Answer, nil
 		}
 	}
 
-	return nil, fmt.Errorf("all NS failed")
+	return nil, fmt.Errorf("all attempted NS failed or timed out")
 }
 
 // =======================
@@ -165,8 +174,8 @@ func CheckBlacklist(ip string) ([]models.BlacklistRecord, int, int) {
 // STREAM
 // =======================
 
-func StreamBlacklist(ip string, cb func(models.BlacklistStreamEvent)) {
-	total := len(RBLProviders) // ← đưa lên đầu
+func StreamBlacklist(ctx context.Context, ip string, cb func(models.BlacklistStreamEvent)) {
+	total := len(RBLProviders)
 	reversed := ReverseIP(ip)
 
 	// === PHASE 1: INIT ===
@@ -175,7 +184,7 @@ func StreamBlacklist(ip string, cb func(models.BlacklistStreamEvent)) {
 		IP:        ip,
 		Listed:    0,
 		Total:     total,
-		Providers: RBLProviders, // Task 2: Gửi cho FE vẽ skeleton
+		Providers: RBLProviders,
 	})
 
 	if reversed == "" {
@@ -187,8 +196,6 @@ func StreamBlacklist(ip string, cb func(models.BlacklistStreamEvent)) {
 		})
 		return
 	}
-
-	// total := len(RBLProviders)   // ← đưa lên trên
 
 	type result struct {
 		host   string
@@ -224,19 +231,35 @@ func StreamBlacklist(ip string, cb func(models.BlacklistStreamEvent)) {
 
 	listed := 0
 
+	// Heartbeat ticker: gửi SSE comment mỗi 5s để giữ kết nối sống
+	heartbeat := time.NewTicker(5 * time.Second)
+	defer heartbeat.Stop()
+
 	for i := 0; i < total; i++ {
-		r := <-results
+		// Chờ kết quả kế tiếp HOẶC context bị hủy HOẶC heartbeat tick
+		select {
+		case <-ctx.Done():
+			// Client đã ngắt kết nối, dừng stream
+			return
+		case r := <-results:
+			if r.status == "LISTED" {
+				listed++
+			}
 
-		if r.status == "LISTED" {
-			listed++
+			cb(models.BlacklistStreamEvent{
+				Type:     "BLACKLIST",
+				Provider: r.host,
+				Status:   r.status,
+				Level:    r.level,
+			})
+		case <-heartbeat.C:
+			// Gửi SSE comment (: heartbeat) để giữ kết nối sống
+			// Callback sẽ bỏ qua vì type rỗng, nhưng cần ghi trực tiếp
+			cb(models.BlacklistStreamEvent{
+				Type: "HEARTBEAT",
+			})
+			i-- // Không tính heartbeat vào counter
 		}
-
-		cb(models.BlacklistStreamEvent{
-			Type:     "BLACKLIST",
-			Provider: r.host,
-			Status:   r.status,
-			Level:    r.level,
-		})
 	}
 
 	cb(models.BlacklistStreamEvent{

@@ -17,23 +17,21 @@
     --bg-error-message: var(--red-50);
     --border-error-message-box: var(--red-200);
     --text-error-message: var(--red-700);
-
-    --bg-type-dnssec: var(--purple-100);
     
     --text-status-dnssec: var(--white);
     --bg-status-dnssec-secure: var(--green-600);
     --bg-status-dnssec-insecure: var(--yellow-200);
     --bg-status-dnssec-bogus: var(--red-600);
     
-    --header-detail-dnskey: var(--sky-400);
-    --header-detail-ds: var(--green-500);
-    --header-detail-rrsig: var(--orange-400);
+    --header-detail-dnskey: var(--color-info);
+    --header-detail-ds: var(--color-success);
+    --header-detail-rrsig: var(--orange-600);
     
     --bg-key-role-badge: var(--gray-200);
-    --bg-key-role-zsk: var(--sky-100);
-    --text-key-role-zsk: var(--sky-700);
-    --bg-key-role-ksk: var(--purple-100);
-    --text-key-role-ksk: var(--purple-700);
+    --bg-key-role-zsk: var(--color-info);
+    --text-key-role-zsk: var(--color-text-inverse);
+    --bg-key-role-ksk: var(--purple-600);
+    --text-key-role-ksk: var(--color-text-inverse);
 
     --text-expiration-ok-detail-rrsig: var(--green-600);
     --text-expiration-soon-detail-rrsig: var(--yellow-600);
@@ -64,7 +62,7 @@
     --dns-tool-text-base: var(--gray-300);
     
     --bg-success-dns: var(--green-900);
-    --isp-link: var(--green-300);
+    --isp-link: var(--green-500);
     
     --bg-share-link: var(--blue-950);
     --border-share-link: var(--blue-800);
@@ -72,14 +70,12 @@
     --bg-error-message: var(--red-950);
     --border-error-message-box: var(--red-800);
     --text-error-message: var(--red-300);
-
-    --bg-type-dnssec: var(--purple-900);
     
     --bg-status-dnssec-insecure: var(--yellow-800);
 
-    --header-detail-dnskey: var(--sky-800);
-    --header-detail-ds: var(--green-800);
-    --header-detail-rrsig: var(--orange-800);
+    --header-detail-dnskey: var(--blue-900);
+    --header-detail-ds: var(--green-900);
+    --header-detail-rrsig: var(--orange-700);
 
     --bg-key-role-badge: var(--gray-800);
     --bg-key-role-zsk: var(--sky-900);
@@ -209,9 +205,8 @@
     border: var(--border-default);
     scrollbar-width: thin;
     scrollbar-color: var(--dns-tool-primary) #f1f1f1;
-    
     /* Preserve border-radius when content (like sticky header) overlaps */
-    overflow: hidden;
+    /* overflow: hidden; (Removed to allow horizontal scrolling on mobile/tablet) */
 }
 
 .page--dns .results-table {
@@ -266,6 +261,7 @@
 .page--dns .results-table td:nth-child(4),
 .page--dns .results-table th:nth-child(4) {
     width: 100%;
+    min-width: 280px;
     text-align: left;
 }
 
@@ -280,7 +276,8 @@
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
-    word-break: break-all;
+    word-break: normal;
+    overflow-wrap: break-word;
     padding: var(--space-4) var(--space-3);
 }
 
@@ -331,7 +328,8 @@
 /* DNSSEC CSS */
 .page--dns .results-table__cell .type-dnssec {
     padding: var(--space-1);
-    background-color: var(--bg-type-dnssec);
+    background-color: var(--dns-tool-primary);
+    color: var(--dns-tool-text-primary);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-bold);
 }
@@ -358,25 +356,45 @@
 
 /* CSS DNSKEY records */
 
-.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(1),
-.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(3),
-.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(4) {
+.page--dns .results-table.results-table--dnssec-dnskey th:nth-child(1),
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(1) {
+    width: 10%;
+    min-width: 90px;
     text-align: center;
 }
 
+.page--dns .results-table.results-table--dnssec-dnskey th:nth-child(2),
 .page--dns .results-table.results-table--dnssec-dnskey td:nth-child(2) {
+    width: 25%;
+    min-width: 160px;
     text-align: left;
 }
 
+.page--dns .results-table.results-table--dnssec-dnskey th:nth-child(3),
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(3) {
+    width: 10%;
+    min-width: 80px;
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-dnskey th:nth-child(4),
+.page--dns .results-table.results-table--dnssec-dnskey td:nth-child(4) {
+    width: 10%;
+    min-width: 90px;
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-dnskey th:nth-child(5),
 .page--dns .results-table.results-table--dnssec-dnskey td:nth-child(5) {
+    width: 45%;
     white-space: normal;
     word-break: break-all;
-    min-width: 200px;
+    min-width: 300px;
     text-align: left;
 }
 
 .page--dns #dnssecDetailTitleDNSKEY {
-    color: var(--header-detail-dnskey);
+    color: var(--color-info);
 }
 
 .page--dns .results-table.results-table--dnssec-dnskey .results-table__row--head .results-table__cell,
@@ -401,24 +419,38 @@
     color: var(--text-key-role-ksk);
 }
 
-.page--dns .results-table.results-table--dnssec-ds td:nth-child(1),
-.page--dns .results-table.results-table--dnssec-ds td:nth-child(3) {
+.page--dns .results-table.results-table--dnssec-ds th:nth-child(1),
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(1) {
+    width: 15%;
+    min-width: 100px;
     text-align: center;
 }
 
-.page--dns .results-table.results-table--dnssec-ds td:nth-child(2),
-.page--dns .results-table.results-table--dnssec-ds td:nth-child(4) {
+.page--dns .results-table.results-table--dnssec-ds th:nth-child(2),
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(2) {
+    width: 35%;
+    min-width: 180px;
     text-align: left;
 }
 
+.page--dns .results-table.results-table--dnssec-ds th:nth-child(3),
+.page--dns .results-table.results-table--dnssec-ds td:nth-child(3) {
+    width: 15%;
+    min-width: 100px;
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-ds th:nth-child(4),
 .page--dns .results-table.results-table--dnssec-ds td:nth-child(4) {
+    width: 35%;
+    min-width: 250px;
+    text-align: left;
     white-space: normal;
     word-break: break-all;
-    min-width: 200px;
 }
 
 .page--dns #dnssecDetailTitleDS {
-    color: var(--header-detail-ds);
+    color: var(--color-success);
 }
 
 .page--dns .results-table.results-table--dnssec-ds .results-table__row--head .results-table__cell,
@@ -426,14 +458,38 @@
     background-color: var(--header-detail-ds);
 }
 
-.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(1),
-.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(2),
-.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(3),
-.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(4) {
+.page--dns .results-table.results-table--dnssec-rrsig th:nth-child(1),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(1) {
+    width: 20%;
+    min-width: 150px;
     text-align: center;
 }
 
+.page--dns .results-table.results-table--dnssec-rrsig th:nth-child(2),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(2) {
+    width: 25%;
+    min-width: 180px;
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-rrsig th:nth-child(3),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(3) {
+    width: 10%;
+    min-width: 100px;
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-rrsig th:nth-child(4),
+.page--dns .results-table.results-table--dnssec-rrsig td:nth-child(4) {
+    width: 20%;
+    min-width: 150px;
+    text-align: center;
+}
+
+.page--dns .results-table.results-table--dnssec-rrsig th:nth-child(5),
 .page--dns .results-table.results-table--dnssec-rrsig td:nth-child(5) {
+    width: 25%;
+    min-width: 180px;
     text-align: left;
 }
 
@@ -489,10 +545,10 @@
 
 .page--dns .results-table__cell .type-blacklist {
     padding: var(--space-1);
-    background-color: var(--bg-type-blacklist);
+    background-color: var(--dns-tool-primary);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-medium);
-    color: var(--text-type-blacklist);
+    color: var(--dns-tool-text-primary);
 }
 
 .page--dns .results-table__cell .level-badge {
@@ -587,7 +643,7 @@
     .page--dns .table-wrapper {
         max-height: none;
         overflow-y: visible;
-        overflow-x: hidden;
+        overflow-x: auto;
     }
 
     .page--dns .results-table__row--head .results-table__cell,

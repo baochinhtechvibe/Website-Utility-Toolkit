@@ -61,7 +61,13 @@ func (r *UDPResolver) Query(domain string, qtype uint16) ([]models.DNSRecord, er
 		return records, err
 	}
 
-	if resp == nil || resp.Rcode != dns.RcodeSuccess {
+	if resp == nil {
+		return records, nil
+	}
+	if resp.Rcode == dns.RcodeNameError {
+		return records, ErrNXDOMAIN
+	}
+	if resp.Rcode != dns.RcodeSuccess {
 		return records, nil
 	}
 

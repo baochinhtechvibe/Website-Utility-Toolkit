@@ -80,6 +80,7 @@ const shareLink = document.getElementById("shareLink");
 const btnCopyLink = document.getElementById("btnCopyLink");
 const btnWhois = document.getElementById("whoisBtn");
 const traceRootCheckbox = document.getElementById("traceRoot");
+const traceRootContainer = document.getElementById("traceRootContainer");
 const traceLogBox = document.getElementById("traceLogBox");
 
 // Task 11: Removed hardcoded BLACKLIST_PROVIDERS. 
@@ -314,6 +315,9 @@ function performBlacklistStream(ip) {
     blacklistEventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
+        // Bỏ qua heartbeat keep-alive từ backend
+        if (data.type === "HEARTBEAT") return;
+
         // Task 11: Dynamic Skeleton rendering from Backend list
         if (data.type === "BLACKLIST_INIT") {
             resultsTableBody.innerHTML = "";
@@ -345,12 +349,12 @@ function performBlacklistStream(ip) {
             if (blacklistTimeout) clearTimeout(blacklistTimeout);
             blacklistTimeout = setTimeout(() => {
                 if (blacklistEventSource) {
-                    console.warn("SSE Timeout: Closing connection after 30s");
+                    console.warn("SSE Timeout: Closing connection after 60s");
                     blacklistEventSource.close();
                     blacklistEventSource = null;
                     toggleLoading(btnResolve, dLookupIcon, dLookupLoading, false);
                 }
-            }, 30000); // 30s is plenty for parallel RBL checks
+            }, 60000); // 60s is plenty for parallel RBL checks
 
             return;
         }
@@ -370,6 +374,19 @@ function performBlacklistStream(ip) {
                 </span>
             </div>
         `;
+            // Đóng stream sau khi hoàn thành phòng EventSource auto-reconnect
+            if (blacklistEventSource) {
+                blacklistEventSource.close();
+                blacklistEventSource = null;
+            }
+            
+            toggleLoading(
+                btnResolve,
+                dLookupIcon,
+                dLookupLoading,
+                false
+            );
+
             return;
         }
 
@@ -387,16 +404,41 @@ function performBlacklistStream(ip) {
             clearTimeout(blacklistTimeout);
             blacklistTimeout = null;
         }
-        blacklistEventSource.close();
-        blacklistEventSource = null;
-        
-        // Task 14: Show error feedback instead of silent fail
-        const msg = (ip === "127.0.0.1" || ip === "localhost") 
-            ? "Địa chỉ IP Local/Loopback không thể kiểm tra Blacklist. Vui lòng dùng IP Public."
-            : "Không thể kết nối với dịch vụ kiểm tra Blacklist hoặc IP không hợp lệ.";
-            
-        showError(errorSection, errorMessage, msg, [shareLinkSection, resultsSection]);
-        
+
+        // Kiểm tra xem đã nhận được data nào chưa
+        const hasReceivedData = resultsTableBody && resultsTableBody.querySelectorAll("tr").length > 0;
+
+        if (blacklistEventSource) {
+            blacklistEventSource.close();
+            blacklistEventSource = null;
+        }
+
+        if (hasReceivedData) {
+            // Đã có data trên bảng → giữ nguyên, chỉ đánh dấu các mục chưa xong là TIMEOUT
+            const pendingCells = resultsTableBody.querySelectorAll(".status-cell");
+            pendingCells.forEach(cell => {
+                if (cell.textContent.includes("Checking")) {
+                    cell.innerHTML = renderBlacklistStatus("TIMEOUT");
+                }
+            });
+            // Cập nhật title thành trạng thái hoàn tất (partial)
+            resultsTitle.innerHTML = `
+                <i class="fas fa-shield-alt"></i>
+                Blacklist Check:
+                <div class="results__section-title-rbl-realtime">
+                    ${escapeHTML(ip)}
+                    <span class="ml-1 badge badge-warning">Kết nối bị gián đoạn</span>
+                </div>
+            `;
+        } else {
+            // Chưa có data gì → lỗi kết nối thực sự
+            const msg = (ip === "127.0.0.1" || ip === "localhost")
+                ? "Địa chỉ IP Local/Loopback không thể kiểm tra Blacklist. Vui lòng dùng IP Public."
+                : "Không thể kết nối với dịch vụ kiểm tra Blacklist hoặc IP không hợp lệ.";
+
+            showError(errorSection, errorMessage, msg, [shareLinkSection, resultsSection]);
+        }
+
         toggleLoading(
             btnResolve,
             dLookupIcon,
@@ -597,7 +639,7 @@ function createTableRow(record, domain) {
                 ispOrg = `
                     <a href="${getIPInfoLink(domain)}"
                         target="_blank"
-                        class="isp-link">
+                        class="isp-link d-inline-flex items-center gap-1 btn btn-success">
                         <span class="isp-link__text">${displayText}</span>
                         <i class="fas fa-external-link-alt isp-link__icon"></i>
                     </a>
@@ -757,7 +799,7 @@ function displayResults(data) {
                         ${data.data.dnssec.status || "UNKNOWN"}
                     </span>
                 </td>
-                <td "results-table__cell results-table__cell--details">${data.data.dnssec.message || "-"}</td>
+                <td class = "results-table__cell results-table__cell--details">${escapeHTML(data.data.dnssec.message || "-")}</td>
             </tr>
         `;
 
@@ -798,24 +840,14 @@ function displayResults(data) {
     // Check if we have actual records
     const hasTraceLogs = data.data && data.data.traceLogs && data.data.traceLogs.length > 0;
 
-    if ((!actualRecords || actualRecords.length === 0) && !hasTraceLogs) {
-        setDisplay(tableWrapper, "none");
-        setDisplay(resultsSection, "none");
-        showError(errorSection, errorMessage, resultsMessage || "Không tìm thấy bản ghi DNS cho truy vấn này", [
-            shareLinkSection
-        ])
-        resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-    }
-
-    // If we have trace logs but no records, show both trace log and error card
-    if (actualRecords.length === 0 && hasTraceLogs) {
+    if (!actualRecords || actualRecords.length === 0) {
         setDisplay(tableWrapper, "none");
         setDisplay(resultsSection, "block");
-        showElements("block", resultsTitle); // Removed shareLinkSection
+        showElements("block", resultsTitle); // Keep title visible
         setDisplay(shareLinkSection, "none"); 
+        if (cacheNotice) setDisplay(cacheNotice, "none"); // 🚨 Ẩn Cache Banner khi lỗi
         
-        // Use showError but DONT hide resultsSection
+        // Show error message inside the result area, don't hide resultsSection
         showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS", []);
     } else {
         setDisplay(tableWrapper, "block");
@@ -964,22 +996,22 @@ function displayDNSSECResults(data) {
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td class="results-table__cell">
-                    <span class="key-role-badge key-role-${role.class}">
-                        ${role.type}
+                    <span class="key-role-badge key-role-${escapeHTML(role.class)}">
+                        ${escapeHTML(role.type)}
                     </span>
                 </td>
                 <td class="results-table__cell">
-                    ${getAlgorithmName(record.algorithm)}
+                    ${escapeHTML(getAlgorithmName(record.algorithm))}
                 </td>
                 <td class="results-table__cell results-table__cell--mono">
-                    ${record.keyTag}
+                    ${escapeHTML(String(record.keyTag))}
                 </td>
                 <td class="results-table__cell results-table__cell--mono">
-                    ${record.protocol}
+                    ${escapeHTML(String(record.protocol))}
                 </td>
                 <td class="results-table__cell results-table__cell--mono">
                     <code>
-                        ${record.publicKey}
+                        ${escapeHTML(record.publicKey)}
                     </code>
                     <i class="fa-solid fa-copy copy-dnssec"
                         title="Copy public key"
@@ -1014,17 +1046,17 @@ function displayDNSSECResults(data) {
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td class="results-table__cell results-table__cell--mono">
-                    ${record.keyTag}
+                    ${escapeHTML(String(record.keyTag))}
                 </td>
                 <td class="results-table__cell">
-                    ${getAlgorithmName(record.algorithm)}
+                    ${escapeHTML(getAlgorithmName(record.algorithm))}
                 </td>
                 <td class="results-table__cell">
-                    ${getDigestTypeName(record.digestType)}
+                    ${escapeHTML(getDigestTypeName(record.digestType))}
                 </td>
                 <td class="results-table__cell results-table__cell--mono">
                     <code>
-                        ${record.digest}
+                        ${escapeHTML(record.digest)}
                     </code>
                     <i class="fa-solid fa-copy copy-dnssec"
                         title="Copy digest"
@@ -1060,16 +1092,16 @@ function displayDNSSECResults(data) {
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td class="results-table__cell">
-                    ${record.typeCovered}
+                    ${escapeHTML(record.typeCovered)}
                 </td>
                 <td class="results-table__cell">
-                    ${getAlgorithmName(record.algorithm)}
+                    ${escapeHTML(getAlgorithmName(record.algorithm))}
                 </td>
                 <td class="results-table__cell results-table__cell--mono">
-                    ${record.keyTag}
+                    ${escapeHTML(String(record.keyTag))}
                 </td>
                 <td class="results-table__cell results-table__cell--mono">
-                    ${record.signerName}
+                    ${escapeHTML(record.signerName)}
                 </td>
                 <td class="results-table__cell">
                     ${formatExpirationDate(record.expiration)}
@@ -1097,7 +1129,8 @@ function handleURLParams() {
         hostnameInput.value = host;
     }
 
-    if (type && recordTypeSelect.querySelector(`option[value="${type}"]`)) {
+    const matchedOption = type && [...recordTypeSelect.options].find(o => o.value === type);
+    if (matchedOption) {
         recordTypeSelect.value = type;
     }
 
@@ -1119,6 +1152,7 @@ function initApp() {
         document.getElementById('domainValidationError'),
         btnResolve
     );
+    updateTraceVisibility();
     handleURLParams();
     hostnameInput.focus();
 
@@ -1133,6 +1167,7 @@ function initApp() {
             if (type && recordTypeSelect.querySelector(`option[value="${type}"]`)) {
                 recordTypeSelect.value = type;
             }
+            updateTraceVisibility();
             form.dispatchEvent(new Event("submit"));
         } else {
             hostnameInput.value = "";
@@ -1221,6 +1256,28 @@ hostnameInput.addEventListener("input", () => {
     setDisplay(resultsSection, "none");
     setDisplay(shareLinkSection, "none");
 });
+
+recordTypeSelect.addEventListener("change", () => {
+    updateTraceVisibility();
+});
+
+/**
+ * Update Trace Root checkbox visibility based on record type
+ */
+function updateTraceVisibility() {
+    if (!recordTypeSelect || !traceRootContainer || !traceRootCheckbox) return;
+
+    const type = recordTypeSelect.value;
+    const hideTraceTypes = ["PTR", "DNSSEC", "BLACKLIST"];
+
+    if (hideTraceTypes.includes(type)) {
+        setDisplay(traceRootContainer, "none");
+        traceRootCheckbox.checked = false;
+    } else {
+        setDisplay(traceRootContainer, "block");
+        traceRootCheckbox.checked = true;
+    }
+}
 
 /**
 
