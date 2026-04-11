@@ -6,6 +6,7 @@ import {
 } from "../../../utils/index.js";
 import { escapeHTML } from "../../../utils/format.js";
 import { API_BASE_URL } from "../../../config.js";
+import { initFileUploadToggle, resetFileUpload } from "../../../utils/file-upload.js";
 
 /**
  * SSL Key Matcher Module
@@ -14,6 +15,25 @@ import { API_BASE_URL } from "../../../config.js";
 export function init() {
     const form = document.getElementById("formKeyMatcher");
     if (!form) return;
+
+    // --- Init File Upload Toggles for 2 Boxes ---
+    initFileUploadToggle(
+        "matcher1Mode",
+        "matcher1PasteZone",
+        "matcher1UploadZone",
+        "uploadMatcher1Dropzone",
+        "inputMatcher1File",
+        "matcherBox1"
+    );
+
+    initFileUploadToggle(
+        "matcher2Mode",
+        "matcher2PasteZone",
+        "matcher2UploadZone",
+        "uploadMatcher2Dropzone",
+        "inputMatcher2File",
+        "matcherBox2"
+    );
 
     const radioCertKey = document.querySelector('input[name="matcherMode"][value="cert_key"]');
     const radioCsrCert = document.querySelector('input[name="matcherMode"][value="csr_cert"]');
@@ -119,6 +139,10 @@ export function init() {
         box1.value = "";
         box2.value = "";
 
+        // Reset File Upload areas
+        resetFileUpload("uploadMatcher1Dropzone", "Kéo thả tệp hoặc click chọn");
+        resetFileUpload("uploadMatcher2Dropzone", "Kéo thả tệp hoặc click chọn");
+
         setDisplay(resultCard, "none");
         setDisplay(errorCard, "none");
         setDisplay(errBox1, "none");
@@ -156,13 +180,25 @@ export function init() {
         const val1 = box1.value;
         const val2 = box2.value;
 
+        // Dropzones and Modes
+        const dropzone1 = document.getElementById("uploadMatcher1Dropzone");
+        const dropzone2 = document.getElementById("uploadMatcher2Dropzone");
+        const isUpload1 = document.querySelector('input[name="matcher1Mode"]:checked')?.value === 'upload';
+        const isUpload2 = document.querySelector('input[name="matcher2Mode"]:checked')?.value === 'upload';
+
         if (!val1.trim()) {
             box1.classList.remove("is-invalid");
             if (errBox1) setDisplay(errBox1, "none");
+            if (isUpload1 && dropzone1) {
+                dropzone1.classList.remove('ssl-file-upload--valid', 'ssl-file-upload--invalid');
+            }
         }
         if (!val2.trim()) {
             box2.classList.remove("is-invalid");
             if (errBox2) setDisplay(errBox2, "none");
+            if (isUpload2 && dropzone2) {
+                dropzone2.classList.remove('ssl-file-upload--valid', 'ssl-file-upload--invalid');
+            }
         }
 
         const error1 = validatePEM(val1, type1);
@@ -172,18 +208,34 @@ export function init() {
             box1.classList.add("is-invalid");
             if (errBox1) setDisplay(errBox1, "block");
             if (errMsg1) errMsg1.textContent = error1;
+            if (isUpload1 && dropzone1) {
+                dropzone1.classList.add('ssl-file-upload--invalid');
+                dropzone1.classList.remove('ssl-file-upload--valid');
+            }
         } else if (val1.trim()) {
             box1.classList.remove("is-invalid");
             if (errBox1) setDisplay(errBox1, "none");
+            if (isUpload1 && dropzone1) {
+                dropzone1.classList.add('ssl-file-upload--valid');
+                dropzone1.classList.remove('ssl-file-upload--invalid');
+            }
         }
 
         if (error2) {
             box2.classList.add("is-invalid");
             if (errBox2) setDisplay(errBox2, "block");
             if (errMsg2) errMsg2.textContent = error2;
+            if (isUpload2 && dropzone2) {
+                dropzone2.classList.add('ssl-file-upload--invalid');
+                dropzone2.classList.remove('ssl-file-upload--valid');
+            }
         } else if (val2.trim()) {
             box2.classList.remove("is-invalid");
             if (errBox2) setDisplay(errBox2, "none");
+            if (isUpload2 && dropzone2) {
+                dropzone2.classList.add('ssl-file-upload--valid');
+                dropzone2.classList.remove('ssl-file-upload--invalid');
+            }
         }
 
         btnSubmit.disabled = !!(error1 || error2 || !val1.trim() || !val2.trim());

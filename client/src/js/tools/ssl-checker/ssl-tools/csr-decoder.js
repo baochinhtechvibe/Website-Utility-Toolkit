@@ -10,6 +10,7 @@ import {
 } from "../../../utils/dom.js";
 import { escapeHTML } from "../../../utils/format.js";
 import { API_BASE_URL } from "../../../config.js";
+import { initFileUploadToggle } from "../../../utils/file-upload.js";
 
 /**
  * SSL CSR Decoder Module
@@ -18,6 +19,16 @@ import { API_BASE_URL } from "../../../config.js";
 function init() {
     const form = document.getElementById("formCsrDecoder");
     if (!form) return;
+
+    // --- Init File Upload Toggle ---
+    initFileUploadToggle(
+        "csrInputMode", 
+        "csrPasteZone", 
+        "csrUploadZone", 
+        "uploadCsrDropzone", 
+        "inputCsrFile", 
+        "inputCsr"
+    );
 
     // --- UI Elements ---
     const inputCsr = document.getElementById("inputCsr");
@@ -94,11 +105,16 @@ function init() {
     inputCsr.addEventListener("input", () => {
         clearUIState();
         const val = inputCsr.value.trim();
+        const dropzone = document.getElementById("uploadCsrDropzone");
+        const isUploadMode = document.querySelector('input[name="csrInputMode"]:checked')?.value === 'upload';
         
         if (!val) {
             inputCsr.classList.remove('is-invalid');
             if (inputValidationError) hide(inputValidationError);
             btnDecoder.disabled = true;
+            if (isUploadMode && dropzone) {
+                dropzone.classList.remove('ssl-file-upload--valid', 'ssl-file-upload--invalid');
+            }
             return;
         }
 
@@ -107,6 +123,11 @@ function init() {
             inputCsr.classList.remove('is-invalid');
             if (inputValidationError) hide(inputValidationError);
             btnDecoder.disabled = false;
+
+            if (isUploadMode && dropzone) {
+                dropzone.classList.add('ssl-file-upload--valid');
+                dropzone.classList.remove('ssl-file-upload--invalid');
+            }
         } catch (err) {
             inputCsr.classList.add('is-invalid');
             if (inputValidationError) {
@@ -114,6 +135,11 @@ function init() {
                 if (inputValidationMsg) inputValidationMsg.textContent = err.message;
             }
             btnDecoder.disabled = true;
+
+            if (isUploadMode && dropzone) {
+                dropzone.classList.add('ssl-file-upload--invalid');
+                dropzone.classList.remove('ssl-file-upload--valid');
+            }
         }
     });
 
@@ -145,7 +171,7 @@ function init() {
             }
 
             const data = result.data;
-            renderSuccessHeader(resultTitle, "Kết quả giải mã CSR");
+            renderSuccessHeader(resultTitle, "Kết quả giải mã CSR", "fa-qrcode");
             
             resultsBody.innerHTML = `
                 <div class="ssl-checker__result-group">

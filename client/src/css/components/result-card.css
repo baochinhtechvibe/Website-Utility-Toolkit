@@ -18,31 +18,11 @@
 
 .result-card__title {
     margin: 0;
-    font-size: var(--text-h3);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .result-card__body {
     margin: var(--margin-y-3) 0;
 }
 
-/* Cache/Refresh Notice Banner */
-.result-card__cache-notice {
-    background-color: var(--color-surface-muted);
-    border: var(--border-subtle);
-    border-left: var(--border-width-4) solid var(--color-info);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-    padding: var(--space-2) var(--space-4) !important;
-}
 
-.result-card__cache-notice b {
-    color: var(--color-info);
-}
-
-.cache-notice__btn-refresh {
-    min-height: unset;
-    padding: var(--space-1) var(--space-3);
-}

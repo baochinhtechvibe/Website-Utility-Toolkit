@@ -114,3 +114,7 @@
 .tool-card--whois {
     --tool-card-icon: var(--green-600);
 }
+
+.tool-card--bot-sim {
+    --tool-card-icon: var(--gray-600);
+}

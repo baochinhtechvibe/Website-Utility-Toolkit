@@ -155,4 +155,11 @@
   - **Kết quả trả về (`result-card.css`):** Bất cứ tool nào cũng cần render kết quả trong `.result-card`. Tiêu đề nằm trong `.result-card__title`. Banner báo lấy từ cache bắt buộc nằm trong class `.result-card__cache-notice` > nút `.cache-notice__btn-refresh`.
   - **Thẻ chia sẻ URL (`share-card.css`):** Khối chia sẻ gắn class `.share-card`. Trong đó có input text readonly `.share-card__input` và nút copy `.share-card__button.share-card__button--copy`.
   - **Nhãn dán (`badge.css`):** Để ghi chú tĩnh, dùng `.badge.badge-default` (hoặc `.badge-success`, `.badge-warning`). Biến chữ in hoa `.uppercase`. Không dùng `font-size` để chỉnh.
+
+### 24. CẨN THẬN KHI XÓA COMMENT TRONG CSS LÀM MẤT NGOẶC NHỌN CỦA BLOCK
+- **Lỗi đã mắc:** Khi sửa CSS để gỡ bỏ một thuộc tính (như `overflow: hidden;`), đã comment out cả dấu đóng ngoặc nhọn `}` hoặc vô tình xóa mất dấu `}` của selector đó. Hậu quả là trình duyệt hiểu sai toàn bộ phần CSS bên dưới, làm vỡ khung giao diện, mất màu nền, ẩn hiện loạn xạ.
+- **Cách khắc phục đúng:** 
+  - Khi xóa hoặc comment bất kỳ dòng CSS nào, ĐẶC BIỆT chú ý đến các dấu ngoặc nhọn mở `{` và đóng `}`.
+  - Phải chắc chắn rằng mỗi block CSS đều có đủ các cặp dấu. Việc comment một thuộc tính không bao giờ được phép "nuốt" luôn vách ngăn của class đó.
+
 - **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"

@@ -80,6 +80,14 @@ export function init() {
         updateVisibility();
     }
 
+    // --- Result Reset ---
+    function clearResults() {
+        setDisplay(mainErrorCard, "none");
+        if (mainSuccessCard) setDisplay(mainSuccessCard, "none");
+        const downloadArea = document.getElementById("converterDownloadArea");
+        if (downloadArea) setDisplay(downloadArea, "none");
+    }
+
     // --- Download Helper ---
     async function triggerDownload(base64Data, filename, contentType) {
         try {
@@ -221,8 +229,20 @@ export function init() {
     });
 
     // --- Init ---
-    selectCurrent.addEventListener("change", syncTargetOptions);
-    selectTarget.addEventListener("change", updateVisibility);
+    selectCurrent.addEventListener("change", () => {
+        syncTargetOptions();
+        clearResults();
+    });
+    selectTarget.addEventListener("change", () => {
+        updateVisibility();
+        clearResults();
+    });
+
+    [inputCert, inputKey, inputChain1, inputChain2, inputPfxPw].forEach(input => {
+        if (!input) return;
+        const eventType = input.tagName === "INPUT" && input.type === "file" ? "change" : "input";
+        input.addEventListener(eventType, clearResults);
+    });
 
     syncTargetOptions();
 }

@@ -53,7 +53,7 @@
 .btn-action {
     --btn-bg: var(--color-brand);
     --btn-text: var(--white);
-    --btn-hover-bg: var(--gray-700); 
+    --btn-hover-bg: var(--color-brand-hover);
     --btn-hover-text: var(--white);
     --btn-shadow-hover: var(--shadow-accent-brand);
 }
@@ -72,10 +72,10 @@
 
 /* Nút Success */
 .btn-success {
-    --btn-bg: var(--green-600);
-    --btn-border: var(--green-600);
+    --btn-bg: var(--color-success);
+    --btn-border: var(--color-success-border);
     --btn-text: var(--white);
-    --btn-hover-bg: var(--green-700); 
+    --btn-hover-bg: var(--color-success-hover);
     --btn-hover-text: var(--white);
     --btn-shadow-hover: var(--shadow-accent-green);
 }
@@ -91,19 +91,19 @@
 
 /* Nút Danger */
 .btn-danger {
-    --btn-bg: var(--overlay-red);
-    --btn-border: var(--red-500);
-    --btn-text: var(--red-900);
-    --btn-hover-bg: color-mix(in srgb, var(--red-500) 60%, transparent);
+    --btn-bg: var(--color-error);
+    --btn-border: var(--color-error-border);
+    --btn-text: var(--white);
+    --btn-hover-bg: var(--color-error-hover);
     --btn-shadow-hover: var(--shadow-accent-red);
 }
 
 /* Nút Warning */
 .btn-warning {
-    --btn-bg: var(--overlay-yellow);
-    --btn-border: var(--yellow-500);
-    --btn-text: var(--yellow-900);
-    --btn-hover-bg: color-mix(in srgb, var(--yellow-500) 60%, transparent);
+    --btn-bg: var(--color-warning);
+    --btn-border: var(--color-warning-border);
+    --btn-text: var(--gray-900);
+    --btn-hover-bg: var(--color-warning-hover);
     --btn-shadow-hover: var(--shadow-accent-yellow);
 }
 
@@ -139,13 +139,6 @@
     text-transform: uppercase;
 }
 
-[data-theme="dark"] .btn-whois {
-    --btn-text: var(--sky-400);
-    --btn-border: var(--sky-400);
-    --btn-hover-bg: var(--sky-600);
-    --btn-hover-text: var(--white);
-}
-
 /* =======================================
    3. DARK MODE MODIFIERS
 ========================================== */
@@ -160,27 +153,33 @@
 [data-theme="dark"] .btn-action {
     --btn-bg: color-mix(in srgb, var(--slate-700) 80%, transparent);
     --btn-text: var(--white);
-    --btn-hover-bg: var(--slate-600);
+    --btn-hover-bg: var(--color-brand-hover);
+    --btn-active-bg: var(--color-brand-active);
 }
 
 [data-theme="dark"] .btn-success {
-    --btn-bg: var(--green-700);
-    --btn-border: var(--green-700);
-    --btn-text: var(--white);
-    --btn-hover-bg: var(--green-600);
-}
-
-[data-theme="dark"] .btn-share {
-    --btn-text: var(--blue-300);
-    --btn-border: color-mix(in srgb, var(--blue-500) 50%, transparent);
+    --btn-bg: var(--color-success-bg);
+    --btn-border: var(--color-success-border);
+    --btn-text: var(--color-success-text);
+    --btn-hover-bg: var(--color-success-hover);
 }
 
 [data-theme="dark"] .btn-danger {
-    --btn-text: var(--red-300);
-    --btn-border: color-mix(in srgb, var(--red-500) 50%, transparent);
+    --btn-bg: var(--color-error-bg);
+    --btn-text: var(--color-error-text);
+    --btn-border: var(--color-error-border);
 }
 
 [data-theme="dark"] .btn-warning {
-    --btn-text: var(--yellow-300);
-    --btn-border: color-mix(in srgb, var(--yellow-500) 50%, transparent);
+    --btn-bg: var(--color-warning-bg);
+    --btn-text: var(--color-warning-text);
+    --btn-border: var(--color-warning-border);
+}
+
+[data-theme="dark"] .btn-whois {
+    --btn-bg: transparent;
+    --btn-text: var(--sky-400);
+    --btn-border: var(--sky-400);
+    --btn-hover-bg: var(--sky-600);
+    --btn-hover-text: var(--white);
 }

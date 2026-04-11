@@ -296,16 +296,17 @@ export const $$ = (s, scope = document) =>
  *
  * @param {HTMLElement} el - Phần tử DOM sẽ hiển thị kết quả.
  * @param {string} msg - Nội dung thông báo cần hiển thị.
+ * @param {string} icon - FontAwesome icon class (mặc định fa-circle-check).
  *
  * Nếu `el` không tồn tại thì hàm sẽ dừng ngay để tránh lỗi.
  * Khi hợp lệ, hàm sẽ chèn icon thành công và message vào bên trong element.
  */
-export function renderSuccessHeader(el, msg) {
+export function renderSuccessHeader(el, msg, icon = "fa-circle-check") {
     if (!el) return;
 
     // SECURITY: msg có thể chứa HTML. Đảm bảo input đã được escape nếu lấy từ user.
     el.innerHTML = `
-        <i class="fa-solid fa-circle-check result__icon--checked"></i>
+        <i class="fa-solid ${icon} mr-2"></i>
         ${msg}
     `
 }

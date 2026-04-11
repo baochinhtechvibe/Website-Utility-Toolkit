@@ -94,7 +94,7 @@
                         <div class="card">
                             <!-- Header Card -->
                             <div class="card__header">
-                                <h2 class="card__title text-xl font-bold text-center">
+                                <h2 class="card__title text-h4 font-bold text-center">
                                     <i class="fa-solid fa-shield mr-2"></i>
                                     SSL Checker
                                 </h2>
@@ -142,7 +142,7 @@
                                     <div id="resultCheckerHeader"
                                         class="result-card__header d-flex flex-row justify-between items-center">
                                         <h3 class="result-card__title text-h3 font-bold">
-                                            <i class="fas fa-check-circle text-success mr-2"></i>
+                                            <i class="fas fa-circle-check text-success mr-2"></i>
                                             Kết quả cho domain <span id="resultDomainName" class="text-success"></span>:
                                         </h3>
                                         <div class="ssl-checker__actions" id="sslActions">
@@ -169,7 +169,7 @@
                                 <!-- Error Card -->
                                 <div id="toolErrorChecker" class="message-card message-card--error mt-6 d-none">
                                     <div class="message-card__header">
-                                        <h3 class="message-card__title">
+                                        <h3 class="message-card__title text-h4 font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Kiểm tra SSL lỗi
                                         </h3>
@@ -184,7 +184,7 @@
                                 <!-- Share Card -->
                                 <div id="toolShareLink" class="share-card mt-6 d-none">
                                     <div class="share-card__header">
-                                        <h4 class="share-card__title text-xl font-bold">
+                                        <h4 class="share-card__title text-h4 font-bold">
                                             <i class="fa-solid fa-share-nodes"></i>
                                             Chia sẻ kết quả:
                                         </h4>
@@ -212,7 +212,7 @@
                         <br>
                         <div class="card csr-generator__card">
                             <div class="card__header">
-                                <h2 class="card__title text-xl font-bold text-center">
+                                <h2 class="card__title text-h4 font-bold text-center">
                                     <i class="fa-solid fa-file-lines mr-2"></i>
                                     Generate a Certificate Signing Request
                                 </h2>
@@ -387,7 +387,7 @@
                                 <!-- Error Card -->
                                 <div id="toolErrorCsrGenerator" class="message-card message-card--error mt-6 d-none">
                                     <div class="message-card__header">
-                                        <h3 class="message-card__title text-xl font-bold">
+                                        <h3 class="message-card__title text-h4 font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Lỗi tạo CSR Generator
                                         </h3>
@@ -437,18 +437,35 @@
 
                         <div class="card ssl-checker__card">
                             <div class="card__header">
-                                <h2 class="card__title text-xl font-bold text-center">
+                                <h2 class="card__title text-h4 font-bold text-center">
                                     <i class="fa-solid fa-file-lines mr-2"></i>
                                     CSR Decoder
                                 </h2>
                             </div>
                             <div class="card__body pt-4">
                                 <form id="formCsrDecoder">
-                                    <div class="form-field">
-                                        <label class="form-label" for="inputCsr">Dán Certificate Signing Request
-                                            (CSR):</label>
+                                    <div class="form-radio-group justify-center mb-4">
+                                        <label class="form-radio-label">
+                                            <input type="radio" name="csrInputMode" value="paste" class="form-radio" checked>
+                                            <span>📝 Dán văn bản</span>
+                                        </label>
+                                        <label class="form-radio-label">
+                                            <input type="radio" name="csrInputMode" value="upload" class="form-radio">
+                                            <span>📄 Tải tệp lên</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-field" id="csrPasteZone">
+                                        <label class="form-label d-none" for="inputCsr">Dán Certificate Signing Request (CSR):</label>
                                         <textarea id="inputCsr" name="csr" class="form-text-area" required
                                             placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;MII..."></textarea>
+                                    </div>
+                                    <div class="form-field d-none" id="csrUploadZone">
+                                        <div class="ssl-file-upload js-ssl-upload" id="uploadCsrDropzone">
+                                            <input type="file" id="inputCsrFile" class="ssl-file-upload__input" accept=".csr,.txt,.pem">
+                                            <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
+                                            <span class="ssl-file-upload__text js-upload-text">Kéo thả tệp CSR vào đây hoặc click để chọn</span>
+                                            <span class="ssl-file-upload__hint">Hỗ trợ: .csr, .txt, .pem (Dung lượng tối đa: Thấp hơn 2MB)</span>
+                                        </div>
                                     </div>
                                     <div class="form-field form-field--button mt-4">
                                         <button type="submit" id="btnCsrDecoder"
@@ -474,7 +491,7 @@
                                 <!-- Error Card cho CSR -->
                                 <div id="errorCardCsr" class="message-card message-card--error mt-6 d-none">
                                     <div class="message-card__header">
-                                        <h3 class="message-card__title text-xl font-bold">
+                                        <h3 class="message-card__title text-h4 font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Lỗi giải mã CSR
                                         </h3>
@@ -489,8 +506,8 @@
                                 <!-- Result Card cho CSR -->
                                 <div id="resultCardCsr" class="result-card ssl-checker__result-card mt-6 d-none">
                                     <div class="result-card__header d-flex flex-row justify-between items-center">
-                                        <h3 class="result-card__title text-xl font-bold">
-                                            <i class="fa-solid fa-qrcode"></i>
+                                        <h3 class="result-card__title text-h4 font-bold">
+                                            <i class="fa-solid fa-qrcode mr-2"></i>
                                             Kết quả giải mã CSR
                                         </h3>
                                     </div>
@@ -532,17 +549,35 @@
 
                         <div class="card">
                             <div class="card__header">
-                                <h2 class="card__title text-xl font-bold text-center">
+                                <h2 class="card__title text-h4 font-bold text-center">
                                     <i class="fa-solid fa-file-lines mr-2"></i>
                                     Certificate Decoder
                                 </h2>
                             </div>
                             <div class="card__body pt-4">
                                 <form id="formCertDecoder">
-                                    <div class="form-field">
-                                        <label class="form-label" for="inputCert">Dán Certificate (CRT/PEM):</label>
+                                    <div class="form-radio-group justify-center mb-4">
+                                        <label class="form-radio-label">
+                                            <input type="radio" name="certInputMode" value="paste" class="form-radio" checked>
+                                            <span>📝 Dán văn bản</span>
+                                        </label>
+                                        <label class="form-radio-label">
+                                            <input type="radio" name="certInputMode" value="upload" class="form-radio">
+                                            <span>📄 Tải tệp lên</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-field" id="certPasteZone">
+                                        <label class="form-label d-none" for="inputCert">Dán Certificate (CRT/PEM):</label>
                                         <textarea id="inputCert" name="cert" class="form-text-area" required
                                             placeholder="-----BEGIN CERTIFICATE-----&#10;MII..."></textarea>
+                                    </div>
+                                    <div class="form-field d-none" id="certUploadZone">
+                                        <div class="ssl-file-upload js-ssl-upload" id="uploadCertDropzone">
+                                            <input type="file" id="inputCertFile" class="ssl-file-upload__input" accept=".crt,.cer,.pem,.txt">
+                                            <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
+                                            <span class="ssl-file-upload__text js-upload-text">Kéo thả tệp Certificate vào đây hoặc click để chọn</span>
+                                            <span class="ssl-file-upload__hint">Hỗ trợ: .crt, .cer, .pem, .txt (Dung lượng tối đa: Thấp hơn 2MB)</span>
+                                        </div>
                                     </div>
                                     <div class="form-field form-field--button mt-4">
                                         <button type="button" id="btnCertDecoder"
@@ -569,7 +604,7 @@
                                 <!-- Error Card cho Certificate -->
                                 <div id="errorCardCert" class="message-card message-card--error mt-6 d-none">
                                     <div class="message-card__header">
-                                        <h3 class="message-card__title text-xl font-bold">
+                                        <h3 class="message-card__title text-h4 font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Lỗi giải mã Certificate
                                         </h3>
@@ -584,8 +619,8 @@
                                 <!-- Result Card cho Certificate -->
                                 <div id="resultCardCert" class="result-card mt-6 d-none">
                                     <div class="result-card__header d-flex flex-row justify-between items-center">
-                                        <h3 class="result-card__title text-xl font-bold">
-                                            <i class="fa-solid fa-qrcode"></i>
+                                        <h3 class="result-card__title text-h4 font-bold">
+                                            <i class="fa-solid fa-qrcode mr-2"></i>
                                             Kết quả giải mã Certificate:
                                         </h3>
                                     </div>
@@ -628,7 +663,7 @@
 
                         <div class="card">
                             <div class="card__header">
-                                <h2 class="card__title text-xl font-bold text-center">
+                                <h2 class="card__title text-h4 font-bold text-center">
                                     <i class="fa-solid fa-puzzle-piece mr-2"></i>
                                     Key Matcher
                                 </h2>
@@ -651,12 +686,31 @@
                                     <div class="form-grid form-grid-2">
                                         <!-- Box 1 -->
                                         <div class="form-field">
-                                            <label id="lblMatcherBox1" for="matcherBox1"
-                                                class="form-label font-bold text-gray-700">
-                                                Private Key (KEY)
-                                            </label>
-                                            <textarea id="matcherBox1" name="matcherBox1" class="form-text-area"
-                                                required></textarea>
+                                            <div class="d-flex justify-between items-center mb-2">
+                                                <label id="lblMatcherBox1" for="matcherBox1"
+                                                    class="form-label font-bold mb-0">
+                                                    Private Key (KEY)
+                                                </label>
+                                                <div class="form-radio-group matcher-box-modes">
+                                                    <label class="form-radio-label text-sm">
+                                                        <input type="radio" name="matcher1Mode" value="paste" class="form-radio" checked> Dán
+                                                    </label>
+                                                    <label class="form-radio-label text-sm">
+                                                        <input type="radio" name="matcher1Mode" value="upload" class="form-radio"> Tệp
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div id="matcher1PasteZone">
+                                                <textarea id="matcherBox1" name="matcherBox1" class="form-text-area"
+                                                    required></textarea>
+                                            </div>
+                                            <div id="matcher1UploadZone" class="d-none">
+                                                <div class="ssl-file-upload ssl-file-upload--matcher js-ssl-upload" id="uploadMatcher1Dropzone">
+                                                    <input type="file" id="inputMatcher1File" class="ssl-file-upload__input" accept=".key,.pem,.txt,.csr,.crt,.cer">
+                                                    <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
+                                                    <span class="ssl-file-upload__text js-upload-text text-sm">Kéo thả tệp hoặc click chọn</span>
+                                                </div>
+                                            </div>
                                             <div id="matcher1ValidationError"
                                                 class="message-card message-card--error mt-2 d-none">
                                                 <div class="message-card__header">
@@ -672,12 +726,31 @@
 
                                         <!-- Box 2 -->
                                         <div class="form-field">
-                                            <label id="lblMatcherBox2" for="matcherBox2"
-                                                class="form-label font-bold text-gray-700">
-                                                Certificate (CRT)
-                                            </label>
-                                            <textarea id="matcherBox2" name="matcherBox2" class="form-text-area"
-                                                required></textarea>
+                                            <div class="d-flex justify-between items-center mb-2">
+                                                <label id="lblMatcherBox2" for="matcherBox2"
+                                                    class="form-label font-bold mb-0">
+                                                    Certificate (CRT)
+                                                </label>
+                                                <div class="form-radio-group matcher-box-modes">
+                                                    <label class="form-radio-label text-sm">
+                                                        <input type="radio" name="matcher2Mode" value="paste" class="form-radio" checked> Dán
+                                                    </label>
+                                                    <label class="form-radio-label text-sm">
+                                                        <input type="radio" name="matcher2Mode" value="upload" class="form-radio"> Tệp
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div id="matcher2PasteZone">
+                                                <textarea id="matcherBox2" name="matcherBox2" class="form-text-area"
+                                                    required></textarea>
+                                            </div>
+                                            <div id="matcher2UploadZone" class="d-none">
+                                                <div class="ssl-file-upload ssl-file-upload--matcher js-ssl-upload" id="uploadMatcher2Dropzone">
+                                                    <input type="file" id="inputMatcher2File" class="ssl-file-upload__input" accept=".crt,.cer,.pem,.txt,.csr">
+                                                    <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
+                                                    <span class="ssl-file-upload__text js-upload-text text-sm">Kéo thả tệp hoặc click chọn</span>
+                                                </div>
+                                            </div>
                                             <div id="matcher2ValidationError"
                                                 class="message-card message-card--error mt-2 d-none">
                                                 <div class="message-card__header">
@@ -716,7 +789,7 @@
                                 </form>
 
                                 <div id="resultCardMatcher" class="result-card mt-6 d-none">
-                                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                                    <div class="result-card__header d-flex flex-row justify-center items-center">
                                         <h3 class="result-card__title text-xl font-bold">
                                             <!-- Icon & Title JS -->
                                         </h3>
@@ -742,8 +815,8 @@
                         <div class="card">
                             <!-- Header Card -->
                             <div class="card__header">
-                                <h2 class="card__title text-xl font-bold text-center">
-                                    <i class="fa-solid fa-exchange mr-2"></i>
+                                <h2 class="card__title text-h4 font-bold text-center">
+                                    <i class="fa-solid fa-arrow-right-arrow-left mr-2"></i>
                                     SSL Converter
                                 </h2>
                             </div>
@@ -766,13 +839,17 @@
                                             <label class="form-label" for="inputFilePrivateKey">Tệp Private Key (Private
                                                 Key File)</label>
                                             <input type="file" id="inputFilePrivateKey" name="privateKey"
-                                                class="form-input">
+                                                class="form-input">                                            
                                             <div class="message-card message-card--warning mt-2">
-                                                <span class="message-card__message">
-                                                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>
-                                                    Private Key là dữ liệu nhạy cảm bậc nhất. Không chia sẻ hoặc upload lên bất kỳ dịch vụ nào không đáng tin cậy. File chỉ được xử lý trên server của bạn và không được lưu trữ.
-                                                </span>
+                                            <div class="message-card__header">
+                                                <h3 class="message-card__title"><i
+                                                        class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
+                                                    mật</h3>
                                             </div>
+                                            <div class="message-card__body">
+                                                <p class="message-card__message">Private Key là dữ liệu nhạy cảm bậc nhất. Không chia sẻ hoặc upload lên bất kỳ dịch vụ nào không đáng tin cậy. File chỉ được xử lý trên server của bạn và không được lưu trữ.</p>
+                                            </div>
+                                        </div>
                                         </div>
 
                                         <!-- Chain Certificate File 1 (Hidden by default) -->
@@ -845,9 +922,8 @@
                                         <!-- Button -->
                                         <div class="form-field w-full mt-4">
                                             <button id="btnConvertCertificate" type="submit"
-                                                class="btn btn-action btn-block w-full"
-                                                style="justify-content: center;">
-                                                <i class="fas fa-exchange mr-2" id="btnConvertCertificateIcon"></i>
+                                                class="btn btn-action btn-block w-full justify-center">
+                                                <i class="fa-solid fa-arrow-right-arrow-left mr-2" id="btnConvertCertificateIcon"></i>
                                                 Convert Certificate
                                                 <i class="fa-solid fa-spinner fa-spin d-none"
                                                     id="btnConvertCertificateLoading"></i>
@@ -876,12 +952,12 @@
                                          <div class="message-card__body">
                                              <p class="message-card__message">Tệp chứng chỉ của bạn đã được chuyển đổi thành công!</p>
                                              <div id="converterDownloadArea" class="mt-4 d-none">
-                                                 <div class="d-flex align-items-center mb-3" style="gap: 10px;">
+                                                 <div class="d-flex items-center mb-4 gap-2">
                                                      <i class="fa-solid fa-file-export text-success"></i>
                                                      <span id="converterFilenameDisplay" class="font-mono text-xs opacity-75">filename.der</span>
                                                  </div>
                                                  <button type="button" id="btnManualDownload" class="btn btn-action btn-sm">
-                                                     <i class="fa-solid fa-download mr-1"></i> Lưu tệp về máy (Save As)
+                                                     <i class="fa-solid fa-download mr-1"></i> Lưu tệp
                                                  </button>
                                              </div>
                                          </div>

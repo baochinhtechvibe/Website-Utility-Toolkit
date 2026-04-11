@@ -3,13 +3,13 @@
     Error Card Component
 ========================================== */
 .message-card {
-    --color-text-error: var(--red-700);
-    --color-background: color-mix(in srgb, var(--color-error) 10%, var(--white));
-    --msg-border: var(--color-error);
+    --msg-text: var(--color-error-text);
+    --msg-bg: var(--color-error-bg);
+    --msg-border: var(--color-error-border);
     border-radius: var(--radius-lg);
     border: var(--border-width-1) solid var(--msg-border);
     border-left: var(--border-width-4) solid var(--msg-border);
-    background-color: var(--color-background);
+    background-color: var(--msg-bg);
     padding: var(--space-4) var(--space-6);
     display: flex;
     flex-direction: column;
@@ -17,7 +17,7 @@
 }
 
 .message-card__title {
-    color: var(--color-text-error);
+    color: var(--msg-text);
     font-weight: var(--font-weight-bold);
     display: flex;
     align-items: center;
@@ -25,44 +25,24 @@
 }
 
 .message-card__message {
-    color: var(--color-text-error);
+    color: var(--msg-text);
     line-height: var(--line-height-relaxed);
 }
 
 .message-card--warning {
-    --color-text-error: var(--yellow-900);
-    --color-background: color-mix(in srgb, var(--color-warning) 10%, var(--white));
-    --msg-border: var(--color-warning);
+    --msg-text: var(--color-warning-text);
+    --msg-bg: var(--color-warning-bg);
+    --msg-border: var(--color-warning-border);
 }
 
 .message-card--info {
-    --color-text-error: var(--blue-900);
-    --color-background: color-mix(in srgb, var(--color-info) 10%, var(--white));
-    --msg-border: var(--color-info);
+    --msg-text: var(--color-info-text);
+    --msg-bg: var(--color-info-bg);
+    --msg-border: var(--color-info-border);
 }
 
-.message-card--success,.message-card--suggestion {
-    --color-text-error: var(--green-900);
-    --color-background: color-mix(in srgb, var(--color-success) 10%, var(--white));
-    --msg-border: var(--color-success);
-}
-
-[data-theme="dark"] .message-card {
-    --color-text-error: var(--red-200);
-    background-color: rgba(239, 68, 68, 0.1);
-}
-
-[data-theme="dark"] .message-card--warning {
-    --color-text-error: var(--yellow-200);
-    background-color: rgba(234, 179, 8, 0.1);
-}
-
-[data-theme="dark"] .message-card--info {
-    --color-text-error: var(--blue-200);
-    background-color: rgba(59, 130, 246, 0.1);
-}
-
-[data-theme="dark"] .message-card--suggestion {
-    --color-text-error: var(--green-400);
-    background-color: rgba(16, 185, 129, 0.1);
+.message-card--success, .message-card--suggestion {
+    --msg-text: var(--color-success-text);
+    --msg-bg: var(--color-success-bg);
+    --msg-border: var(--color-success-border);
 }

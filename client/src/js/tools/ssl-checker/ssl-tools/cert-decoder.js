@@ -6,6 +6,7 @@ import {
     escapeHTML
 } from "../../../utils/index.js";
 import { API_BASE_URL } from "../../../config.js";
+import { initFileUploadToggle } from "../../../utils/file-upload.js";
 
 const CERT_STORAGE_KEY = "web_utility_kit_cert_decoder_input";
 
@@ -16,6 +17,16 @@ const CERT_STORAGE_KEY = "web_utility_kit_cert_decoder_input";
 export function init() {
     const formCertDecoder = document.getElementById("formCertDecoder");
     if (!formCertDecoder) return;
+
+    // --- Init File Upload Toggle ---
+    initFileUploadToggle(
+        "certInputMode",
+        "certPasteZone",
+        "certUploadZone",
+        "uploadCertDropzone",
+        "inputCertFile",
+        "inputCert"
+    );
 
     const inputCert = document.getElementById("inputCert");
     const btnCertDecoder = document.getElementById("btnCertDecoder");
@@ -97,6 +108,32 @@ export function init() {
 
         const addr = [locality, state, country].filter(v => v).join(", ");
 
+        const getExpiryStatus = (validTo) => {
+            const expiry = new Date(validTo);
+            const now = new Date();
+            const diffTime = expiry - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return {
+                    textClass: "text-error",
+                    icon: "fa-solid fa-circle-xmark"
+                };
+            } else if (diffDays <= 30) {
+                return {
+                    textClass: "text-warning",
+                    icon: "fa-solid fa-triangle-exclamation"
+                };
+            } else {
+                return {
+                    textClass: "text-success",
+                    icon: "fa-solid fa-calendar-check"
+                };
+            }
+        };
+
+        const expiryStatus = getExpiryStatus(valid_to);
+
         resultBodyCert.innerHTML = `
             <div class="ssl-checker__result-row">
                 <div class="ssl-checker__result-label"><i class="fa-solid fa-file-signature text-success mr-2"></i> Common Name:</div>
@@ -119,12 +156,12 @@ export function init() {
                 <div class="ssl-checker__result-value font-bold">${safe(issuer_common_name)} ${issuer_organization ? `(${safe(issuer_organization)})` : ""}</div>
             </div>
             <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label"><i class="fa-solid fa-calendar-check text-success mr-2"></i> Valid From:</div>
+                <div class="ssl-checker__result-label"><i class="fa-solid fa-calendar-day text-success mr-2"></i> Valid From:</div>
                 <div class="ssl-checker__result-value">${formatVNDate(valid_from)}</div>
             </div>
-            <div class="ssl-checker__result-row border-warning">
-                <div class="ssl-checker__result-label"><i class="fa-solid fa-calendar-xmark text-warning mr-2"></i> Valid To (Expiry):</div>
-                <div class="ssl-checker__result-value font-bold">${formatVNDate(valid_to)}</div>
+            <div class="ssl-checker__result-row">
+                <div class="ssl-checker__result-label"><i class="${expiryStatus.icon} ${expiryStatus.textClass} mr-2"></i> Valid To (Expiry):</div>
+                <div class="ssl-checker__result-value font-bold ${expiryStatus.textClass}">${formatVNDate(valid_to)}</div>
             </div>
             <div class="ssl-checker__result-row">
                 <div class="ssl-checker__result-label"><i class="fa-solid fa-shield-halved text-success mr-2"></i> Algorithm & Key Size:</div>
@@ -187,6 +224,9 @@ export function init() {
     // ─── Event Listeners ────────────────────────────────────────────────────
     inputCert.addEventListener("input", function() {
         const val = this.value;
+        const dropzone = document.getElementById("uploadCertDropzone");
+        const isUploadMode = document.querySelector('input[name="certInputMode"]:checked')?.value === 'upload';
+        
         sessionStorage.setItem(CERT_STORAGE_KEY, val);
         setDisplay(errorCardCert, "none");
         setDisplay(resultCardCert, "none");
@@ -195,6 +235,9 @@ export function init() {
             setDisplay(certValidationError, "none");
             inputCert.classList.remove("is-invalid");
             btnCertDecoder.disabled = true;
+            if (isUploadMode && dropzone) {
+                dropzone.classList.remove('ssl-file-upload--valid', 'ssl-file-upload--invalid');
+            }
             return;
         }
 
@@ -203,12 +246,22 @@ export function init() {
             setDisplay(certValidationError, "none");
             inputCert.classList.remove("is-invalid");
             btnCertDecoder.disabled = false;
+
+            if (isUploadMode && dropzone) {
+                dropzone.classList.add('ssl-file-upload--valid');
+                dropzone.classList.remove('ssl-file-upload--invalid');
+            }
         } catch (err) {
             setDisplay(certValidationError, "block");
             const msgEl = certValidationError.querySelector('.message-card__message');
             if (msgEl) msgEl.textContent = err.message;
             inputCert.classList.add("is-invalid");
             btnCertDecoder.disabled = true;
+
+            if (isUploadMode && dropzone) {
+                dropzone.classList.add('ssl-file-upload--invalid');
+                dropzone.classList.remove('ssl-file-upload--valid');
+            }
         }
     });
 
