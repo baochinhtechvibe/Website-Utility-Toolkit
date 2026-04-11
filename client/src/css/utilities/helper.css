@@ -90,6 +90,15 @@
 .font-serif { font-family: var(--font-family-serif) !important; }
 .font-mono  { font-family: var(--font-family-mono) !important; }
 
+.text-xs    { font-size: var(--text-xs) !important; }
+.text-sm    { font-size: var(--text-sm) !important; }
+.text-base  { font-size: var(--text-base) !important; }
+.text-md    { font-size: var(--text-md) !important; }
+.text-lg    { font-size: var(--text-lg) !important; }
+
+.break-all  { word-break: break-all !important; }
+.break-word { word-break: break-word !important; }
+
 .truncate {
   overflow: hidden !important;
   text-overflow: ellipsis !important;

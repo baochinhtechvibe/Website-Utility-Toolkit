@@ -174,7 +174,7 @@ export function init() {
             <div class="ssl-checker__result-row">
                 <div class="ssl-checker__result-label"><i class="fa-solid fa-barcode text-success mr-2"></i> Serial Number:</div>
                 <div class="ssl-checker__result-value">
-                    <div class="font-mono text-sm break-all text-secondary pb-1">${escapeHTML(serial_hex)}</div>
+                    <div class="font-mono break-all text-secondary pb-1">${escapeHTML(serial_hex)}</div>
                 </div>
             </div>
         `;

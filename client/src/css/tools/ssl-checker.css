@@ -333,7 +333,15 @@
 .ssl-checker__cert-info {
     display: flex;
     flex-direction: column;
-    margin-bottom: var(--space-1);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border-width-1) dashed var(--color-border);
+}
+
+.ssl-checker__cert-info:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .ssl-checker__cert-label {
@@ -342,6 +350,7 @@
 }
 
 .ssl-checker__cert-value {
+    margin-left: var(--space-4);
     word-break: break-word;
     color: var(--color-text-primary);
 }
@@ -349,7 +358,6 @@
 /* Fingerprint value: mono font để dễ đọc */
 .ssl-checker__cert-value--fingerprint {
     font-family: var(--font-family-mono);
-    font-size: var(--text-sm);
     word-break: break-all;
     color: var(--color-text-secondary);
 }
@@ -380,12 +388,6 @@
 .ssl-checker__cert-date-not-after.valid { color: var(--color-success-text); }
 .ssl-checker__cert-date-not-after.warning { color: var(--color-warning); }
 .ssl-checker__cert-date-not-after.expired { color: var(--color-error); }
-
-.ssl-checker__cert-issuer {
-    padding-top: var(--space-4);
-    margin-top: var(--space-2);
-    border-top: var(--border-width-1) solid var(--color-border);
-}
 
 /* Share Link Box */
 .ssl-tools__share-box {
@@ -425,12 +427,18 @@
     
     .ssl-checker__cert-info {
         flex-direction: row;
-        align-items: center;
+        align-items: flex-start;
+        padding-bottom: var(--space-3);
+        margin-bottom: var(--space-3);
     }
     
     .ssl-checker__cert-label {
-        width: 160px;
+        width: 175px;
         flex-shrink: 0;
+    }
+
+    .ssl-checker__cert-value {
+        margin-left: 0;
     }
     
     /* CSR Decoder Results Row */
@@ -440,7 +448,7 @@
     }
     
     .ssl-checker__result-label {
-        width: 250px;
+        width: 225px;
         flex-shrink: 0;
         margin-bottom: 0;
     }
@@ -555,6 +563,7 @@
 .matcher-result__hash-value {
     font-family: var(--font-family-mono);
     color: var(--color-text-secondary);
+    margin-left: var(--space-4);
     word-break: break-all;
 }
 

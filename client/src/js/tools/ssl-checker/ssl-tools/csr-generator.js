@@ -146,7 +146,7 @@ function init() {
 
         resultBody.innerHTML = `
             <div class="csr-generator__result-wrapper mt-4 px-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md-grid-cols-2 gap-4">
                     <!-- CSR Block -->
                     <div class="code-block">
                         <div class="code-block__header">

@@ -196,7 +196,15 @@ function renderCertCard(c) {
     const sanList = (sans || []).filter(v => v).map(v => v.trim());
     const orgList = (organization || []).filter(v => v).map(v => v.trim());
     const location = [locality, province, country].flat().filter(v => typeof v === "string" && v.trim()).map(v => v.trim()).join(", ");
-    const nafStatus = Date.now() < new Date(naf).getTime() ? "valid" : "expired";
+    const nafTime = new Date(naf).getTime();
+    const now = Date.now();
+    let nafStatus = "valid";
+    if (now > nafTime) {
+        nafStatus = "expired";
+    } else if (nafTime - now < 30 * 24 * 60 * 60 * 1000) {
+        nafStatus = "warning";
+    }
+
     const pubKeyDisplay = pka ? `${escapeHTML(pka)}${pkb ? ` (${pkb}-bit)` : ""}` : null;
     const dataIcon = getCertIconData(level, naf);
 
@@ -207,16 +215,16 @@ function renderCertCard(c) {
             </div>
             <div class="ssl-checker__cert-content ${level.toLowerCase()} shadow-sm rounded-md d-flex flex-col gap-1">
                 <div class="ssl-checker__cert-level"><h4 class="ssl-checker__cert-level-${level.toLowerCase()}">${level.charAt(0).toUpperCase()}${level.slice(1)} Certificate</h4></div>
-                <div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Common Name:</strong> <span class="ssl-checker__cert-value">${escapeHTML(safe(cn))}</span></div>
+                <div class="ssl-checker__cert-info ssl-checker__cert-common-name"><strong class="ssl-checker__cert-label">Common Name:</strong> <span class="ssl-checker__cert-value">${escapeHTML(safe(cn))}</span></div>
                 ${sanList.length > 0 ? `<div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">SANs:</strong> <span class="ssl-checker__cert-value">${sanList.map(s => escapeHTML(s)).join(", ")}</span></div>` : ""}
                 ${orgList.length > 0 ? `<div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Organization:</strong> <span class="ssl-checker__cert-value">${orgList.map(o => escapeHTML(o)).join(", ")}</span></div>` : ""}
                 ${location.length > 0 ? `<div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Location:</strong> <span class="ssl-checker__cert-value">${escapeHTML(location)}</span></div>` : ""}
-                <div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Valid:</strong> <div class="ssl-checker__cert-value"><span>From ${escapeHTML(formatDate(nbf))}</span> <span>to <span class="${nafStatus}">${escapeHTML(formatDate(naf))}</span></span></div></div>
+                <div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Valid:</strong> <div class="ssl-checker__cert-value"><span>From ${escapeHTML(formatDate(nbf))}</span> <span>to <span class="ssl-checker__cert-date-not-after ${nafStatus} font-bold">${escapeHTML(formatDate(naf))}</span></span></div></div>
                 ${pubKeyDisplay ? `<div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Public Key:</strong> <span class="ssl-checker__cert-value">${pubKeyDisplay}</span></div>` : ""}
                 <div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Serial Number:</strong> <span class="ssl-checker__cert-value">${escapeHTML(sxh)}</span></div>
                 <div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Signature Algorithm:</strong> <span class="ssl-checker__cert-value">${escapeHTML(sga)}</span></div>
-                ${fp256 ? `<div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">SHA-256:</strong> <span class="ssl-checker__cert-value text-xs font-mono break-all">${escapeHTML(fp256)}</span></div>` : ""}
-                <div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">Issuer:</strong> <span class="ssl-checker__cert-value">${escapeHTML(issuer)}</span></div>
+                ${fp256 ? `<div class="ssl-checker__cert-info"><strong class="ssl-checker__cert-label">SHA-256:</strong> <span class="ssl-checker__cert-value font-mono break-all">${escapeHTML(fp256)}</span></div>` : ""}
+                <div class="ssl-checker__cert-info ssl-checker__cert-issuer"><strong class="ssl-checker__cert-label">Issuer:</strong> <span class="ssl-checker__cert-value">${escapeHTML(issuer)}</span></div>
             </div>
         </div>`;
 }
@@ -324,7 +332,7 @@ export function init() {
                     <tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Server Type: <strong class="text-primary">${escapeHTML(server_type)}</strong>.</span></td></tr>
                     ${brnd ? `<tr><td class="ssl-checker__icon ssl-checker__icon--issuer">&nbsp;</td><td class="d-flex items-center"><span>Issuer: <strong class="font-bold">${brnd}</strong></span> ${logo ? `<img src="${logo}" width="48" height="48" class="ml-2">` : ""}</td></tr>` : ""}
                     ${tls.message ? `<tr><td class="ssl-checker__icon ssl-checker__icon--tls ${tls.iconClass}">&nbsp;</td><td><span>TLS: <strong>${tls.message}</strong> (${tls.iconClass.toUpperCase()})</span></td></tr>` : ""}
-                    ${cipher_suite ? `<tr><td class="ssl-checker__icon ssl-checker__icon--tls ok">&nbsp;</td><td><span>Cipher: <strong class="text-xs font-mono">${escapeHTML(cipher_suite)}</strong></span></td></tr>` : ""}
+                    ${cipher_suite ? `<tr><td class="ssl-checker__icon ssl-checker__icon--tls ok">&nbsp;</td><td><span>Cipher: <strong class="font-mono">${escapeHTML(cipher_suite)}</strong></span></td></tr>` : ""}
                     ${pk ? `<tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Public Key: <strong>${pk}</strong></span></td></tr>` : ""}
                     ${renderCaseContent(cType, data)}
                 </tbody>
