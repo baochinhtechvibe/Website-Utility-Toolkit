@@ -64,7 +64,7 @@ func (h *CERHandler) HandleCerDecode(c *gin.Context) {
 			return
 		}
 
-		response.Error(c, http.StatusInternalServerError, "Lỗi máy chủ ("+err.Error()+")")
+		response.Error(c, http.StatusInternalServerError, "Đã xảy ra lỗi hệ thống khi giải mã Certificate.")
 		return
 	}
 

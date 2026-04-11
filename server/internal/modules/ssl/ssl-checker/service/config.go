@@ -10,8 +10,9 @@ import "time"
 
 // Timeouts
 const (
-	TLSDialTimeout    = 8 * time.Second
+	TLSDialTimeout    = 6 * time.Second // Giảm xuống 6s, dự phòng budget cho probe song song
 	HTTPProbeTimeout  = 5 * time.Second
+	ProbeTimeout      = 8 * time.Second // Timeout tổng cho cụm probe server type
 	DNSResolveTimeout = 5 * time.Second
 )
 

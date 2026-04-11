@@ -29,8 +29,11 @@ import (
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/service"
+	"tools.bctechvibe.com/server/internal/platform/cache"
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
+
+var sslCache = cache.NewMemoryCache(30 * time.Minute)
 
 // ===========================
 // Domain normalization
@@ -83,11 +86,22 @@ func HandleSSLCheck(c *gin.Context) {
 		return
 	}
 
-	// 4. Context timeout
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	// 4. Cache interception
+	cacheKey := "ssl:" + domain
+	if !req.BypassCache {
+		if data, fetchedAt, found := sslCache.Get(cacheKey); found {
+			response.Success(c, data, true, fetchedAt)
+			return
+		}
+	} else {
+		sslCache.Delete(cacheKey)
+	}
+
+	// 5. Context timeout
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 	defer cancel()
 
-	// 5. Scan
+	// 6. Scan
 	start := time.Now()
 	result, err := service.Scan(ctx, domain)
 	duration := time.Since(start)
@@ -97,11 +111,12 @@ func HandleSSLCheck(c *gin.Context) {
 		return
 	}
 
-	// 6. Log success (Monitor)
+	// 7. Update cache & Log success
+	sslCache.Set(cacheKey, result)
 	log.Info().Str("domain", domain).Dur("duration", duration).Msg("SSL check success")
 
-	// 7. Response thành công
-	response.SuccessNoMeta(c, result)
+	// 8. Response thành công
+	response.Success(c, result, false, time.Now())
 }
 
 // ===========================
@@ -141,6 +156,7 @@ func handleScanError(c *gin.Context, err error, domain string) {
 	}
 
 	// Fallback generic
+	log.Error().Err(err).Str("domain", domain).Msg("SSL check unexpected error")
 	response.Error(c, http.StatusInternalServerError,
 		"Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.")
 }

@@ -131,12 +131,11 @@ func (h *ConvertHandler) HandleConvert(c *gin.Context) {
 			return
 		}
 
-		// NOTE: Service errors đã được sanitize bằng tiếng Việt. 
-		// Khi mở rộng service, đảm bảo mọi error path mới đều trả về message thân thiện, tuyệt đối không chứa OS paths.
+		// Trả về lỗi thực tế từ Service (đã được sanitize tiếng Việt)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 6. Trả response trực tiếp JSON vì payload có cục Base64 lớn.
-	c.JSON(http.StatusOK, res)
+	// 6. Trả response chuẩn API (success: true, data: { ... })
+	response.SuccessNoMeta(c, res)
 }

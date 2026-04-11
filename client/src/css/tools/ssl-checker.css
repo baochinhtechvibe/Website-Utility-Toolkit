@@ -51,7 +51,7 @@
 
 .ssl-tools__list .ssl-tools__item:hover {
     color: var(--color-brand);
-    background-color: color-mix(in srgb, var(--color-brand) 10%, transparent);
+    background-color: var(--color-brand-subtle);
 }
 
 .ssl-tools__list .ssl-tools__item.active {
@@ -120,19 +120,19 @@
 }
 
 .ssl-checker__badge--valid { 
-    background-color: color-mix(in srgb, var(--color-success) 12%, transparent);
-    color: var(--color-success);
-    border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+    background-color: var(--color-success-bg);
+    color: var(--color-success-text);
+    border-color: var(--color-success-border);
 }
 .ssl-checker__badge--warning { 
-    background-color: color-mix(in srgb, var(--color-warning) 12%, transparent);
-    color: var(--color-warning);
-    border-color: color-mix(in srgb, var(--color-warning) 25%, transparent);
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    border-color: var(--color-warning-border);
 }
 .ssl-checker__badge--critical { 
-    background-color: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error);
-    border-color: color-mix(in srgb, var(--color-error) 25%, transparent);
+    background-color: var(--color-error-bg);
+    color: var(--color-error-text);
+    border-color: var(--color-error-border);
 }
 
 .ssl-checker__badge-icon {
@@ -153,7 +153,7 @@
 .ssl-checker__btn-renew {
     --btn-bg: var(--color-success);
     --btn-text: var(--white);
-    --btn-hover-bg: var(--green-700);
+    --btn-hover-bg: var(--color-success-hover);
     
     padding: var(--space-1) var(--space-3);
     text-transform: uppercase;
@@ -169,14 +169,9 @@
 }
 
 [data-theme="dark"] .ssl-checker__btn-renew {
-    --btn-bg: var(--green-600);
-    --btn-hover-bg: var(--green-500);
-}
-
-.ssl-checker__btn-renew:hover {
-    background-color: var(--btn-hover-bg);
-    transform: translateY(-1px);
-    color: var(--white);
+    --btn-bg: var(--color-success-bg);
+    --btn-text: var(--color-success-text);
+    --btn-hover-bg: var(--color-success-hover);
 }
 
 /* Results Table */
@@ -224,13 +219,13 @@
     font-weight: var(--font-weight-bold);
 }
 
-.ssl-checker__message .ssl-checker__message--tlsStatus.good { color: var(--green-600); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.good { color: var(--color-success-text); }
 .ssl-checker__message .ssl-checker__message--expiry.ok,
-.ssl-checker__message .ssl-checker__message--tlsStatus.ok { color: var(--blue-500); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.ok { color: var(--color-info-text); }
 .ssl-checker__message .ssl-checker__message--expiry.warning,
-.ssl-checker__message .ssl-checker__message--tlsStatus.weak { color: var(--yellow-500); }
-.ssl-checker__message .ssl-checker__message--tlsStatus.bad { color: var(--red-500); }
-.ssl-checker__message .ssl-checker__message--tlsStatus.insecure { color: var(--red-700); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.weak { color: var(--color-warning-text); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.bad { color: var(--color-error-text); }
+.ssl-checker__message .ssl-checker__message--tlsStatus.insecure { color: var(--color-error-text); font-weight: bold; }
 
 /* CSR Decoder Results Row */
 .ssl-checker__result-row {
@@ -262,9 +257,20 @@
 }
 
 .ssl-checker__message-trust-issues { 
-    color: var(--color-error);
     font-weight: var(--font-weight-bold);
 }
+
+.ssl-checker__message-trust-issues.critical {
+    color: var(--color-error);
+}
+
+/* .text-warning apply màu vàng cho issue cấp warning - dùng utility class sẵn có */
+
+/* Warning icon: dùng icon warning thay vì critical */
+.ssl-checker__icon--trusted-issue--warning {
+    background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_warning.png");
+}
+
 
 /* Certificate Chain Cards */
 .ssl-checker__cert-card {
@@ -340,6 +346,14 @@
     color: var(--color-text-primary);
 }
 
+/* Fingerprint value: mono font để dễ đọc */
+.ssl-checker__cert-value--fingerprint {
+    font-family: var(--font-family-mono);
+    font-size: var(--text-sm);
+    word-break: break-all;
+    color: var(--color-text-secondary);
+}
+
 .ssl-checker__cert-value--date {
     display: flex;
     flex-direction: row;
@@ -350,17 +364,20 @@
 
 .ssl-checker__cert-common-name .ssl-checker__cert-value {
     font-weight: var(--font-weight-bold);
-    font-size: var(--text-md);
     color: var(--color-text-primary);
 }
 
 .ssl-checker__cert-date-not-before,
 .ssl-checker__cert-date-not-after { 
     white-space: nowrap;
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-bold);
 }
 
-.ssl-checker__cert-date-not-after.valid { color: var(--color-success); }
+.ssl-checker__cert-issuer .ssl-checker__cert-value {
+    font-weight: var(--font-weight-bold);
+}
+
+.ssl-checker__cert-date-not-after.valid { color: var(--color-success-text); }
 .ssl-checker__cert-date-not-after.warning { color: var(--color-warning); }
 .ssl-checker__cert-date-not-after.expired { color: var(--color-error); }
 
@@ -379,8 +396,8 @@
 }
 
 [data-theme="dark"] .ssl-tools__share-box {
-    background-color: color-mix(in srgb, var(--blue-500) 10%, transparent);
-    border-color: var(--blue-500);
+    background-color: var(--color-info-bg);
+    border-color: var(--color-info-border);
 }
 
 .ssl-tools__share-header {
@@ -408,7 +425,7 @@
     
     .ssl-checker__cert-info {
         flex-direction: row;
-        align-items: flex-start;
+        align-items: center;
     }
     
     .ssl-checker__cert-label {
@@ -438,5 +455,108 @@
 @media (min-width: 1024px) {
     .ssl-checker__result {
         padding: 0 var(--space-4);
+    }
+}
+
+/* --- CSR Generator Results --- */
+.csr-generator__result-wrapper {
+    animation: fadeIn var(--transition-slow);
+}
+
+.csr-generator__result-wrapper .grid {
+    gap: var(--space-6);
+}
+
+.csr-generator__result-wrapper .code-block {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.csr-generator__result-wrapper .code-block__body {
+    flex: 1;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Key Matcher Results --- */
+.matcher-result__status-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: var(--space-4) 0;
+}
+
+.matcher-result__icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-4);
+}
+
+.matcher-result__title {
+    font-size: 1.75rem;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+}
+
+.matcher-result__message {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+    margin-top: var(--space-1);
+}
+
+.matcher-result__details {
+    border-top: var(--border-width-1) solid var(--color-border);
+    padding-top: var(--space-6);
+    margin-top: var(--space-2);
+}
+
+.matcher-result__key-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+    padding: var(--space-2);
+}
+
+.matcher-result__hashes-box {
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-muted);
+    border: var(--border-width-1) solid var(--color-border-subtle);
+}
+
+.matcher-result__hash-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.matcher-result__hash-row--bordered {
+    border-bottom: var(--border-width-1) dashed var(--color-border);
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.matcher-result__hash-label {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+}
+
+.matcher-result__hash-value {
+    font-family: var(--font-family-mono);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    word-break: break-all;
+}
+
+@media (min-width: 640px) {
+    .matcher-result__status-box {
+        padding: var(--space-6) 0;
     }
 }

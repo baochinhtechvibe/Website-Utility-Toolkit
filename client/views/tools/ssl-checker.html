@@ -123,14 +123,14 @@
                                         </div>
                                     </div>
 
-                                    <div id="domainValidationError" class="error-card mt-4 d-none">
-                                        <div class="error-card__header">
-                                            <h3 class="error-card__title">
+                                    <div id="domainValidationError" class="message-card message-card--error mt-4 d-none">
+                                        <div class="message-card__header">
+                                            <h3 class="message-card__title">
                                                 <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
                                             </h3>
                                         </div>
-                                        <div class="error-card__body">
-                                            <p class="error-card__message">Vui lòng nhập đúng định dạng domain (ví dụ:
+                                        <div class="message-card__body">
+                                            <p class="message-card__message">Vui lòng nhập đúng định dạng domain (ví dụ:
                                                 <code>google.com</code>).
                                             </p>
                                         </div>
@@ -154,11 +154,10 @@
 
                                     <!-- CACHE BANNER (Premium Refresh) -->
                                     <div id="cacheNotice"
-                                        class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center d-none">
-                                        <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b
-                                                id="cacheTime"></b>.</span>
+                                        class="cache-card mt-2 flex-row justify-between items-center d-none">
+                                        <span><i class="fa-solid fa-clock"></i> <b id="cacheText"></b> <b id="cacheTime"></b></span>
                                         <button type="button" id="btnBypassCache"
-                                            class="btn btn-sm btn-outline cache-notice__btn-refresh">
+                                            class="btn btn-sm btn-outline cache-card__btn">
                                             <i class="fa-solid fa-arrows-rotate"></i> Làm mới
                                         </button>
                                     </div>
@@ -168,15 +167,15 @@
                                 </div>
 
                                 <!-- Error Card -->
-                                <div id="toolErrorChecker" class="error-card mt-6 d-none">
-                                    <div class="error-card__header">
-                                        <h3 class="error-card__title text-xl font-bold">
+                                <div id="toolErrorChecker" class="message-card message-card--error mt-6 d-none">
+                                    <div class="message-card__header">
+                                        <h3 class="message-card__title">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Kiểm tra SSL lỗi
                                         </h3>
                                     </div>
-                                    <div class="error-card__body">
-                                        <p id="toolErrorMessage" class="error-card__message">
+                                    <div class="message-card__body">
+                                        <p id="toolErrorMessage" class="message-card__message">
                                             Kiểm tra SSL thất bại. Vui lòng thử lại sau!
                                         </p>
                                     </div>
@@ -230,12 +229,12 @@
                                             <input type="text" id="inputCsrDomain" name="domainName" class="form-input"
                                                 placeholder="VD: example.com" required>
                                             
-                                            <div id="csrDomainValidationError" class="error-card mt-2 d-none">
-                                                <div class="error-card__header">
-                                                    <h3 class="error-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
+                                            <div id="csrDomainValidationError" class="message-card message-card--error mt-2 d-none">
+                                                <div class="message-card__header">
+                                                    <h3 class="message-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
                                                 </div>
-                                                <div class="error-card__body py-2">
-                                                    <p class="error-card__message text-sm">Vui lòng nhập đúng định dạng domain (ví dụ: <code>example.com</code>).</p>
+                                                <div class="message-card__body py-2">
+                                                    <p class="message-card__message text-sm">Vui lòng nhập đúng định dạng domain (ví dụ: <code>example.com</code>).</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -251,12 +250,12 @@
                                                 Phân cách bằng dấu phẩy. Common Name sẽ tự động được thêm vào.
                                             </p>
                                             
-                                            <div id="sansValidationError" class="error-card mt-2 d-none">
-                                                <div class="error-card__header">
-                                                    <h3 class="error-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> SANs không hợp lệ</h3>
+                                            <div id="sansValidationError" class="message-card message-card--error mt-2 d-none">
+                                                <div class="message-card__header">
+                                                    <h3 class="message-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> SANs không hợp lệ</h3>
                                                 </div>
-                                                <div class="error-card__body py-2">
-                                                    <p id="sansValidationMessage" class="error-card__message text-sm"></p>
+                                                <div class="message-card__body py-2">
+                                                    <p id="sansValidationMessage" class="message-card__message text-sm"></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -270,12 +269,12 @@
                                             <input type="text" id="inputCsrCountry" name="country" class="form-input"
                                                 placeholder="VN" maxlength="2">
                                             
-                                            <div id="countryValidationError" class="error-card mt-2 d-none">
-                                                <div class="error-card__header">
-                                                    <h3 class="error-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
+                                            <div id="countryValidationError" class="message-card message-card--error mt-2 d-none">
+                                                <div class="message-card__header">
+                                                    <h3 class="message-card__title text-base"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h3>
                                                 </div>
-                                                <div class="error-card__body py-2">
-                                                    <p class="error-card__message text-sm">Vui lòng nhập đúng 2 ký tự chữ cái mã quốc gia (ví dụ: VN, US).</p>
+                                                <div class="message-card__body py-2">
+                                                    <p class="message-card__message text-sm">Vui lòng nhập đúng 2 ký tự chữ cái mã quốc gia (ví dụ: VN, US).</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -380,20 +379,21 @@
                                         </h3>
                                     </div>
 
-                                    <div id="resultCsrGeneratorContent" class="result-card__body">
-                                    </div>
+                                     <div class="result-card__body p-0">
+                                         <div id="resultCsrGeneratorContent"></div>
+                                     </div>
                                 </div>
 
                                 <!-- Error Card -->
-                                <div id="toolErrorCsrGenerator" class="error-card mt-6 d-none">
-                                    <div class="error-card__header">
-                                        <h3 class="error-card__title text-xl font-bold">
+                                <div id="toolErrorCsrGenerator" class="message-card message-card--error mt-6 d-none">
+                                    <div class="message-card__header">
+                                        <h3 class="message-card__title text-xl font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Lỗi tạo CSR Generator
                                         </h3>
                                     </div>
-                                    <div class="error-card__body">
-                                        <p id="toolErrorCsrGeneratorMessage" class="error-card__message">
+                                    <div class="message-card__body">
+                                        <p id="toolErrorCsrGeneratorMessage" class="message-card__message">
                                             Tạo CSR thất bại, vui lòng thử lại sau!
                                         </p>
                                     </div>
@@ -459,28 +459,28 @@
                                         </button>
                                     </div>
 
-                                    <div id="csrValidationError" class="error-card mt-4 d-none">
-                                        <div class="error-card__header">
-                                            <h3 class="error-card__title">
+                                    <div id="csrValidationError" class="message-card message-card--error mt-4 d-none">
+                                        <div class="message-card__header">
+                                            <h3 class="message-card__title">
                                                 <i class="fa-solid fa-triangle-exclamation"></i> Lỗi định dạng CSR
                                             </h3>
                                         </div>
-                                        <div class="error-card__body">
-                                            <p class="error-card__message">Nội dung CSR không hợp lệ.</p>
+                                        <div class="message-card__body">
+                                            <p class="message-card__message">Nội dung CSR không hợp lệ.</p>
                                         </div>
                                     </div>
                                 </form>
 
                                 <!-- Error Card cho CSR -->
-                                <div id="errorCardCsr" class="error-card ssl-checker__error-card mt-6 d-none">
-                                    <div class="error-card__header">
-                                        <h3 class="error-card__title text-xl font-bold">
+                                <div id="errorCardCsr" class="message-card message-card--error mt-6 d-none">
+                                    <div class="message-card__header">
+                                        <h3 class="message-card__title text-xl font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Lỗi giải mã CSR
                                         </h3>
                                     </div>
-                                    <div class="error-card__body">
-                                        <p id="errorMsgCsr" class="error-card__message">
+                                    <div class="message-card__body">
+                                        <p id="errorMsgCsr" class="message-card__message">
                                             Nội dung CSR không hợp lệ. Vui lòng kiểm tra lại!
                                         </p>
                                     </div>
@@ -553,29 +553,29 @@
                                         </button>
                                     </div>
                                     <!-- Inline Validation Error Card cho CERT Decoder -->
-                                    <div id="certValidationError" class="error-card mt-4 d-none">
-                                        <div class="error-card__header">
-                                            <h3 class="error-card__title"><i
+                                    <div id="certValidationError" class="message-card message-card--error mt-4 d-none">
+                                        <div class="message-card__header">
+                                            <h3 class="message-card__title"><i
                                                     class="fa-solid fa-triangle-exclamation"></i> Lỗi định dạng
                                                 Certificate</h3>
                                         </div>
-                                        <div class="error-card__body">
-                                            <p class="error-card__message">Vui lòng kiểm tra lại nội dung Certificate.
+                                        <div class="message-card__body">
+                                            <p class="message-card__message">Vui lòng kiểm tra lại nội dung Certificate.
                                             </p>
                                         </div>
                                     </div>
                                 </form>
 
                                 <!-- Error Card cho Certificate -->
-                                <div id="errorCardCert" class="error-card mt-6 d-none">
-                                    <div class="error-card__header">
-                                        <h3 class="error-card__title text-xl font-bold">
+                                <div id="errorCardCert" class="message-card message-card--error mt-6 d-none">
+                                    <div class="message-card__header">
+                                        <h3 class="message-card__title text-xl font-bold">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                             Lỗi giải mã Certificate
                                         </h3>
                                     </div>
-                                    <div class="error-card__body">
-                                        <p id="errorMsgCert" class="error-card__message">
+                                    <div class="message-card__body">
+                                        <p id="errorMsgCert" class="message-card__message">
                                             Nội dung Certificate không hợp lệ. Vui lòng kiểm tra lại!
                                         </p>
                                     </div>
@@ -658,14 +658,14 @@
                                             <textarea id="matcherBox1" name="matcherBox1" class="form-text-area"
                                                 required></textarea>
                                             <div id="matcher1ValidationError"
-                                                class="error-card error-card--inline mt-2 d-none">
-                                                <div class="error-card__header">
-                                                    <h3 class="error-card__title"><i
+                                                class="message-card message-card--error mt-2 d-none">
+                                                <div class="message-card__header">
+                                                    <h3 class="message-card__title"><i
                                                             class="fa-solid fa-triangle-exclamation"></i> Định
                                                         dạng không hợp lệ</h3>
                                                 </div>
-                                                <div class="error-card__body">
-                                                    <p class="error-card__message"></p>
+                                                <div class="message-card__body">
+                                                    <p class="message-card__message"></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -679,14 +679,14 @@
                                             <textarea id="matcherBox2" name="matcherBox2" class="form-text-area"
                                                 required></textarea>
                                             <div id="matcher2ValidationError"
-                                                class="error-card error-card--inline mt-2 d-none">
-                                                <div class="error-card__header">
-                                                    <h3 class="error-card__title"><i
+                                                class="message-card message-card--error mt-2 d-none">
+                                                <div class="message-card__header">
+                                                    <h3 class="message-card__title"><i
                                                             class="fa-solid fa-triangle-exclamation"></i> Định
                                                         dạng không hợp lệ</h3>
                                                 </div>
-                                                <div class="error-card__body">
-                                                    <p class="error-card__message"></p>
+                                                <div class="message-card__body">
+                                                    <p class="message-card__message"></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -703,13 +703,13 @@
                                     </div>
 
                                     <!-- Main Error Card (Moved below button) -->
-                                    <div id="errorCardMatcher" class="error-card mt-4 d-none">
-                                        <div class="error-card__header">
-                                            <h3 class="error-card__title"><i
+                                    <div id="errorCardMatcher" class="message-card message-card--error mt-4 d-none">
+                                        <div class="message-card__header">
+                                            <h3 class="message-card__title"><i
                                                     class="fa-solid fa-triangle-exclamation"></i> Lỗi đối soát</h3>
                                         </div>
-                                        <div class="error-card__body">
-                                            <p class="error-card__message" id="errorMsgMatcher"></p>
+                                        <div class="message-card__body">
+                                            <p class="message-card__message" id="errorMsgMatcher"></p>
                                         </div>
                                     </div>
 
@@ -767,6 +767,12 @@
                                                 Key File)</label>
                                             <input type="file" id="inputFilePrivateKey" name="privateKey"
                                                 class="form-input">
+                                            <div class="message-card message-card--warning mt-2">
+                                                <span class="message-card__message">
+                                                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                                                    Private Key là dữ liệu nhạy cảm bậc nhất. Không chia sẻ hoặc upload lên bất kỳ dịch vụ nào không đáng tin cậy. File chỉ được xử lý trên server của bạn và không được lưu trữ.
+                                                </span>
+                                            </div>
                                         </div>
 
                                         <!-- Chain Certificate File 1 (Hidden by default) -->
@@ -817,14 +823,14 @@
                                         </div>
 
                                         <!-- Cảnh báo bảo mật PFX (Giống mockup) -->
-                                        <div id="groupPfxWarning" class="warning-card mt-4 d-none">
-                                            <div class="warning-card__header">
-                                                <h3 class="warning-card__title"><i
+                                        <div id="groupPfxWarning" class="message-card message-card--warning mt-4 d-none">
+                                            <div class="message-card__header">
+                                                <h3 class="message-card__title"><i
                                                         class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
                                                     mật</h3>
                                             </div>
-                                            <div class="warning-card__body">
-                                                <p class="warning-card__message">Tệp Private Key và Mật khẩu của bạn nên
+                                            <div class="message-card__body">
+                                                <p class="message-card__message">Tệp Private Key và Mật khẩu của bạn nên
                                                     được
                                                     giữ an toàn. Website Utility Toolkit sử dụng kết nối SSL mã hóa để
                                                     tải lên
@@ -849,115 +855,37 @@
                                         </div>
                                     </div>
 
-                                    <div id="toolErrorConverter" class="error-card mt-4 d-none">
-                                        <div class="error-card__header">
-                                            <h3 class="error-card__title">
+                                    <div id="toolErrorConverter" class="message-card message-card--error mt-4 d-none">
+                                        <div class="message-card__header">
+                                            <h3 class="message-card__title">
                                                 <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
                                             </h3>
                                         </div>
-                                        <div class="error-card__body">
-                                            <p class="error-card__message">Định dạng tệp chứng chỉ không hợp lệ.
+                                        <div class="message-card__body">
+                                            <p class="message-card__message">Định dạng tệp chứng chỉ không hợp lệ.
                                             </p>
                                         </div>
                                     </div>
-                                </form>
-                            </div>
-                        </div>
-                        <br>
-                        <div class="ssl-converter__info">
-                            <h3 class="ssl-converter__title font-bold">Các định dạng chứng chỉ</h3>
 
-                            <div class="ssl-converter__block mt-4">
-                                <h4 class="ssl-converter__subtitle font-bold">Định dạng PEM</h4>
-                                <div class="ssl-converter__message mt-2">
-                                    <p>
-                                        PEM là định dạng phổ biến nhất được các tổ chức cấp chứng chỉ (CA) sử dụng để
-                                        phát
-                                        hành chứng chỉ. Các file PEM thường có phần mở rộng như <code
-                                            class="font-semibold">.pem</code>, <code class="font-semibold">.crt</code>,
-                                        <code class="font-semibold">.cer</code>, <code
-                                            class="font-semibold">.key</code>.
-                                        Đây
-                                        là dạng văn bản ASCII được mã hóa Base64, chứa các dòng
-                                        "-----BEGIN CERTIFICATE-----" và "-----END CERTIFICATE-----".
-                                        Định dạng PEM có thể chứa chứng chỉ máy chủ, chứng chỉ trung gian và cả private
-                                        key.
-                                    </p>
-                                    <p class="mt-2">
-                                        <strong>Apache và các máy chủ tương tự </strong> sử dụng chứng chỉ định dạng
-                                        PEM. Nhiều
-                                        certificate,
-                                        thậm chí cả private key, có thể được đặt chung trong một file (xếp nối tiếp
-                                        nhau),
-                                        tuy nhiên đa số nền tảng như Apache thường yêu cầu certificate và private key
-                                        được
-                                        tách thành các file riêng biệt.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="ssl-converter__block mt-4">
-                                <h4 class="ssl-converter__subtitle font-bold">Định dạng DER</h4>
-                                <div class="ssl-converter__message mt-2">
-                                    <p>
-                                        DER là dạng nhị phân của chứng chỉ, khác với định dạng PEM dạng văn bản ASCII.
-                                        File DER có thể có đuôi <code class="font-semibold">.der</code>, nhưng cũng
-                                        thường
-                                        dùng <code class="font-semibold">.cer</code>, nên cách phân biệt
-                                        với <code class="font-semibold">.cer</code> dạng PEM là mở bằng trình soạn thảo:
-                                        nếu
-                                        không có dòng BEGIN/END thì đó
-                                        là DER. Mọi loại certificate và private key đều có thể mã hóa ở định dạng DER.
-                                        Định dạng
-                                        này thường được sử dụng trong <strong>các nền tảng Java</strong>. Công cụ SSL
-                                        Converter chỉ hỗ trợ chuyển đổi certificate sang DER. Nếu cần chuyển
-                                        private key sang DER, bạn nên sử dụng <a href="https://docs.openssl.org/master/"
-                                            class="text-info">các lệnh OpenSSL</a>.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="ssl-converter__block mt-4">
-                                <h4 class="ssl-converter__subtitle font-bold">Định dạng PKCS#7 / P7B</h4>
-                                <div class="ssl-converter__message mt-2">
-                                    <p>
-                                        PKCS#7 (P7B) là định dạng thường được lưu dưới dạng Base64 ASCII, với phần mở
-                                        rộng <code class="font-semibold">.p7b</code> hoặc <code
-                                            class="font-semibold">.p7c</code>.
-                                    </p>
-                                    <p class="mt-2">
-                                        File P7B chứa các dòng
-                                        "-----BEGIN PKCS7-----" và "-----END PKCS7-----". Định dạng này chỉ bao gồm
-                                        certificate và chuỗi chứng chỉ (chain), không chứa
-                                        private key. P7B được hỗ trợ bởi nhiều nền tảng như <strong>Microsoft Windows và
-                                            Java
-                                            Tomcat</strong>.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="ssl-converter__block mt-4">
-                                <h4 class="ssl-converter__subtitle font-bold">Định dạng PKCS#12 / PFX</h4>
-                                <div class="ssl-converter__message mt-2">
-                                    <p>
-                                        PKCS#12 (PFX) là định dạng nhị phân dùng để lưu trữ server certificate, các
-                                        intermediate certificates và private key trong cùng một file có thể mã hóa. File
-                                        PFX thường có đuôi <code class="font-semibold">.pfx</code> hoặc <code
-                                            class="font-semibold">.p12</code> và được sử dụng phổ biến trên
-                                        <strong>Windows</strong> để
-                                        import/export chứng chỉ và private key.
-                                    </p>
-                                    <p class="mt-2">
-                                        Khi chuyển từ PFX sang PEM bằng OpenSSL, toàn bộ certificate và private key sẽ
-                                        được gộp vào một file. Bạn cần mở file đó bằng trình soạn thảo, sau đó tách
-                                        riêng từng certificate và private key (bao gồm cả dòng BEGIN/END) thành các file
-                                        riêng như <code class="font-semibold">certificate.cer</code>, <code
-                                            class="font-semibold">CACert.cer</code> và <code
-                                            class="font-semibold">privateKey.key</code>.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                                    <div id="toolSuccessConverter" class="message-card message-card--success mt-4 d-none">
+                                         <div class="message-card__header">
+                                             <h3 class="message-card__title">
+                                                 <i class="fa-solid fa-circle-check"></i> Chuyển đổi thành công
+                                             </h3>
+                                         </div>
+                                         <div class="message-card__body">
+                                             <p class="message-card__message">Tệp chứng chỉ của bạn đã được chuyển đổi thành công!</p>
+                                             <div id="converterDownloadArea" class="mt-4 d-none">
+                                                 <div class="d-flex align-items-center mb-3" style="gap: 10px;">
+                                                     <i class="fa-solid fa-file-export text-success"></i>
+                                                     <span id="converterFilenameDisplay" class="font-mono text-xs opacity-75">filename.der</span>
+                                                 </div>
+                                                 <button type="button" id="btnManualDownload" class="btn btn-action btn-sm">
+                                                     <i class="fa-solid fa-download mr-1"></i> Lưu tệp về máy (Save As)
+                                                 </button>
+                                             </div>
+                                         </div>
+                                     </div>
                         <br>
                         <div class="ssl-converter__commands">
                             <h3 class="ssl-converter__title font-bold">Lệnh OpenSSL để chuyển đổi SSL trên máy của bạn

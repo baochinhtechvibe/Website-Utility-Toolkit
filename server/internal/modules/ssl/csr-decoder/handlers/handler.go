@@ -63,7 +63,7 @@ func (h *CSRHandler) HandleCSRDecode(c *gin.Context) {
 			return
 		}
 
-		response.Error(c, http.StatusInternalServerError, "Lỗi máy chủ ("+err.Error()+")")
+		response.Error(c, http.StatusInternalServerError, "Đã xảy ra lỗi hệ thống khi giải mã CSR.")
 		return
 	}
 

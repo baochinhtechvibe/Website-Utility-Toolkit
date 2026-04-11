@@ -1,369 +1,182 @@
-// ===================================================
-//  SSL TOOLS - CSR DECODER PAGE
-// ===================================================
 import {
-    /* dom.js */
     toggleLoading,
     setDisplay,
     renderSuccessHeader,
-    showElements,
     resetUI,
     setElementsEnabled,
     showError,
-
-    /* network.js */
-    normalizeHostnameInput,
-
-    /* url.js */
-    getWhoisDomain,
-    setupCopyButton,
-
-    /* format.js */
-    formatDate,
-    escapeHTML
-} from "../../../utils/index.js";
-
-// ===================================================
-//  CONFIGURATION
-// ===================================================
+    hide,
+    $
+} from "../../../utils/dom.js";
+import { escapeHTML } from "../../../utils/format.js";
 import { API_BASE_URL } from "../../../config.js";
 
-/*
- * CSR Decoder Elements
- */
-const formCsr = document.getElementById("formCsrDecoder");
-const inputCsr = document.getElementById("inputCsr");
-const btnCsrDecoder = document.getElementById("btnCsrDecoder");
-const iconCsrDecoder = document.getElementById("iconCsrDecoder");
-const iconCsrLoading = document.getElementById("iconCsrLoading");
-const toolResult = document.getElementById("resultCardCsr");
-const sslResultTitle = document.querySelector("#resultCardCsr .result-card__title");
-const resultsContent = document.getElementById("resultBodyCsr");
-const toolError = document.getElementById("errorCardCsr");
-const toolErrorTitle = document.querySelector("#errorCardCsr .message-card__title");
-const toolErrorMessage = document.getElementById("errorMsgCsr");
-
-const CSR_STORAGE_KEY = "web_utility_kit_csr_decoder_input";
-
-/* ================================
-    HELPER FUNCTIONS
-=================================== */
-
-
 /**
- * Chuẩn hóa dữ liệu CSR người dùng nhập
+ * SSL CSR Decoder Module
+ * Hardened & Refactored version
  */
-function normalizeCSRInput(input) {
-    if (input == null || typeof input !== "string") return "";
-    if (input.trim() === "") return "";
+function init() {
+    const form = document.getElementById("formCsrDecoder");
+    if (!form) return;
 
-    const MAX_CSR_SIZE = 100 * 1024;
-    if (input.length > MAX_CSR_SIZE) {
-        throw new Error("CSR vượt quá kích thước cho phép (100KB).");
-    }
+    // --- UI Elements ---
+    const inputCsr = document.getElementById("inputCsr");
+    const btnDecoder = document.getElementById("btnCsrDecoder");
+    const iconDecoder = document.getElementById("iconCsrDecoder");
+    const iconLoading = document.getElementById("iconCsrLoading");
+    const toolResult = document.getElementById("resultCardCsr");
+    const resultTitle = $("#resultCardCsr .result-card__title");
+    const resultsBody = document.getElementById("resultBodyCsr");
+    const toolError = document.getElementById("errorCardCsr");
+    const toolErrorMsg = document.getElementById("errorMsgCsr");
 
-    input = input.trim()
-        .replace(/\r\n/g, "\n")
-        .replace(/\r/g, "\n");
+    const inputValidationError = document.getElementById("csrValidationError");
+    const inputValidationMsg = $("#csrValidationError .message-card__message");
 
-    const PEM_REGEX = /-----BEGIN ((?:NEW )?CERTIFICATE REQUEST)-----([\s\S]*?)-----END \1-----/g;
-    const matches = [...input.matchAll(PEM_REGEX)];
+    // --- Helper Functions ---
 
-    if (matches.length === 0) {
-        if (!input.includes("-----BEGIN")) {
-            throw new Error("CSR không hợp lệ: Thiếu thẻ mở (Ví dụ: -----BEGIN CERTIFICATE REQUEST-----).");
-        }
-        if (input.includes("PRIVATE KEY")) {
-            throw new Error("Dữ liệu không hợp lệ: Đây là Private Key, không phải CSR.");
-        }
-        if (input.includes("BEGIN CERTIFICATE") && !input.includes("REQUEST")) {
-            throw new Error("Dữ liệu không hợp lệ: Đây là Chứng chỉ (Certificate), không phải hệ thống CSR.");
-        }
-        if (!input.includes("-----END")) {
-            throw new Error("CSR không hợp lệ: Thiếu thẻ đóng (Ví dụ: -----END CERTIFICATE REQUEST-----).");
-        }
-        throw new Error("CSR không hợp lệ: Cấu trúc PEM sai định dạng hoặc bị hỏng.");
-    }
+    /**
+     * Clean and validate PEM structure locally before sending to server
+     */
+    function normalizeCSRInput(input) {
+        if (!input || typeof input !== "string") return "";
+        const val = input.trim();
+        if (!val) return "";
 
-    if (matches.length > 1) {
-        throw new Error("Hệ thống chỉ hỗ trợ giải mã 1 CSR mỗi lần nhập.");
-    }
+        const MAX_SIZE = 100 * 1024;
+        if (val.length > MAX_SIZE) throw new Error("CSR vượt quá kích thước cho phép (100KB).");
 
-    const match = matches[0];
-    const type = match[1];
-    const rawBase64 = match[2];
+        const normalized = val.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        const PEM_REGEX = /-----BEGIN ((?:NEW )?CERTIFICATE REQUEST)-----([\s\S]*?)-----END \1-----/g;
+        const matches = [...normalized.matchAll(PEM_REGEX)];
 
-    const base64Content = rawBase64.replace(/\s+/g, "");
-
-    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Content)) {
-        throw new Error("CSR không hợp lệ: Nội dung mã hóa bị lỗi hoặc chứa ký tự lạ không thuộc chuẩn Base64.");
-    }
-
-    if (base64Content.length % 4 !== 0) {
-        throw new Error("CSR không hợp lệ: Dữ liệu mã hóa của CSR bị thiếu ký tự hoặc bị cắt xén.");
-    }
-
-    if (base64Content.length < 150) {
-        throw new Error("CSR không hợp lệ: Nội dung quá ngắn, có thể đoạn mã CSR đã bị cắt xén hoặc copy thiếu.");
-    }
-
-    const lines = [];
-    for (let i = 0; i < base64Content.length; i += 64) {
-        lines.push(base64Content.slice(i, i + 64));
-    }
-
-    return `-----BEGIN ${type}-----\n${lines.join("\n")}\n-----END ${type}-----`;
-}
-
-/* =================================
-    PERFORM CSR DECODER FUNCTIONS
-================================== */
-/**
- * Gửi CSR lên server để decode
- */
-async function performCSRDecoder(csr) {
-    if (typeof csr !== "string" || csr.trim() === "") {
-        return { success: false, error: "CSR không hợp lệ", code: 400 };
-    }
-
-    const url = `${API_BASE_URL}/ssl/csr/decode`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            body: JSON.stringify({ csr }),
-            signal: controller.signal,
-        });
-
-        let data = {};
-        try {
-            data = await response.json();
-        } catch {
-            data = {};
+        if (matches.length === 0) {
+            if (!normalized.includes("-----BEGIN")) throw new Error("CSR không hợp lệ: Thiếu thẻ mở (BEGIN).");
+            if (normalized.includes("PRIVATE KEY")) throw new Error("Đây là Private Key, không phải CSR.");
+            if (normalized.includes("BEGIN CERTIFICATE") && !normalized.includes("REQUEST")) throw new Error("Đây là Chứng chỉ (Certificate), không phải CSR.");
+            if (!normalized.includes("-----END")) throw new Error("CSR không hợp lệ: Thiếu thẻ đóng (END).");
+            throw new Error("CSR không hợp lệ: Sai định dạng PEM.");
         }
 
-        if (!response.ok) {
-            return {
-                success: false,
-                code: response.status,
-                error: data?.error || "Server error",
-            };
-        }
+        if (matches.length > 1) throw new Error("Chỉ hỗ trợ giải mã 1 CSR mỗi lần.");
 
-        // Cần unwrap 'data' để các hàm render dễ dàng lấy biến
-        if (data && data.data !== undefined) return data.data;
-        return data;
+        const match = matches[0];
+        const content = match[2].replace(/\s+/g, "");
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(content)) throw new Error("CSR chứa ký tự lạ không thuộc chuẩn Base64.");
+        if (content.length % 4 !== 0) throw new Error("Dữ liệu CSR bị cắt xén hoặc thiếu ký tự.");
 
-    } catch (err) {
-        if (err.name === "AbortError") {
-            return { success: false, error: "Request timeout", code: 408 };
-        }
-        console.error("CSR decode network error:", err);
-        return { success: false, error: "Không thể kết nối server", code: 0 };
-    } finally {
-        clearTimeout(timeoutId);
-    }
-}
-
-/* =================================
-    UI RENDER FUNCTIONS
-================================== */
-/**
- * Hiển thị kết quả giải mã CSR
- */
-function displayResults(data) {
-    if (!data || data.error) {
-        showError(
-            toolError,
-            toolErrorMessage,
-            data?.error || "Giải mã CSR thất bại, vui lòng thử lại sau",
-            [toolResult]
-        );
-        return;
+        return `-----BEGIN ${match[1]}-----\n${content.match(/.{1,64}/g).join("\n")}\n-----END ${match[1]}-----`;
     }
 
-    setDisplay(toolResult, "block");
-    setDisplay(toolError, "none");
-    renderSuccessHeader(sslResultTitle, "Kết quả giải mã CSR");
-    renderCSRResult(data);
-}
-
-function renderCSRResult(data) {
-    if (!data) return;
-    const {
-        common_name,
-        organization,
-        organizational_unit,
-        country,
-        state,
-        locality,
-        sans,
-        key_size,
-        algorithm,
-    } = data;
-
-    const safeArr = (arr) => (Array.isArray(arr) && arr.length > 0 ? escapeHTML(arr.join(", ")) : "N/A");
-    const safeStr = (str) => (str ? escapeHTML(str) : "N/A");
-
-    resultsContent.innerHTML = `
-        <div class="ssl-checker__result-group">
+    function renderCSRDetailRow(label, value, icon, isBold = false, isCode = false) {
+        const displayValue = Array.isArray(value) ? value.join(", ") : (value || "N/A");
+        const iconClass = icon || "fa-solid fa-circle-check";
+        return `
             <div class="ssl-checker__result-row">
                 <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Common Name:
+                    <i class="${iconClass} text-success mr-2"></i>
+                    ${label}:
                 </div>
-                <div class="ssl-checker__result-value font-bold text-primary">${safeStr(common_name)}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Subject Alternative Names (SANs):
+                <div class="ssl-checker__result-value ${isBold ? 'font-bold text-primary' : ''} ${isCode ? 'font-mono text-sm text-secondary' : ''}">
+                    ${escapeHTML(displayValue)}
                 </div>
-                <div class="ssl-checker__result-value">${safeArr(sans)}</div>
             </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Organization:
-                </div>
-                <div class="ssl-checker__result-value">${safeArr(organization)}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Organizational Unit:
-                </div>
-                <div class="ssl-checker__result-value">${safeArr(organizational_unit)}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Locality:
-                </div>
-                <div class="ssl-checker__result-value">${safeArr(locality)}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    State / Province:
-                </div>
-                <div class="ssl-checker__result-value">${safeArr(state)}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Country:
-                </div>
-                <div class="ssl-checker__result-value">${safeArr(country)}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Key Size:
-                </div>
-                <div class="ssl-checker__result-value">${key_size ? `${escapeHTML(key_size)} bits` : "N/A"}</div>
-            </div>
-
-            <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label">
-                    <i class="fa-solid fa-circle-check text-success mr-2"></i>
-                    Algorithm:
-                </div>
-                <div class="ssl-checker__result-value uppercase font-semibold">${safeStr(algorithm)}</div>
-            </div>
-        </div>
-    `;
-}
-
-/* =================================
-    EVENT BINDINGS
-================================== */
-if (formCsr) {
-    formCsr.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        setElementsEnabled([inputCsr, btnCsrDecoder], false);
-        resetUI([toolResult, toolError]);
-        toggleLoading(btnCsrDecoder, iconCsrDecoder, iconCsrLoading, true);
-
-        try {
-            const csr = normalizeCSRInput(inputCsr.value);
-            const result = await performCSRDecoder(csr);
-            displayResults(result);
-        } catch (error) {
-            const msg = error?.message || "Không thể giải mã CSR. Vui lòng thử lại.";
-            showError(toolError, toolErrorMessage, msg, [toolResult]);
-        } finally {
-            toggleLoading(btnCsrDecoder, iconCsrDecoder, iconCsrLoading, false);
-            setElementsEnabled([inputCsr, btnCsrDecoder], true);
-        }
-    });
-}
-
-function initApp() {
-    const savedCSR = sessionStorage.getItem(CSR_STORAGE_KEY);
-    if (savedCSR) {
-        inputCsr.value = savedCSR;
+        `;
     }
+
+    function clearUIState() {
+        if (toolResult) hide(toolResult);
+        if (toolError) hide(toolError);
+    }
+
+    // --- Core Logic ---
 
     inputCsr.addEventListener("input", () => {
-        sessionStorage.setItem(CSR_STORAGE_KEY, inputCsr.value);
-
-        // Ẩn bảng kết quả hoặc lỗi cũ nếu đang hiển thị
-        if (!toolError.classList.contains("d-none")) {
-            setDisplay(toolError, "none");
-        }
-        if (!toolResult.classList.contains("d-none")) {
-            setDisplay(toolResult, "none");
-        }
-
-        // Validate realtime
+        clearUIState();
         const val = inputCsr.value.trim();
-        const csrValidationError = document.getElementById("csrValidationError");
-        const csrValidationMsg = document.querySelector("#csrValidationError .message-card__message");
-
+        
         if (!val) {
             inputCsr.classList.remove('is-invalid');
-            if (csrValidationError) csrValidationError.classList.add('d-none');
-            btnCsrDecoder.disabled = true;
+            if (inputValidationError) hide(inputValidationError);
+            btnDecoder.disabled = true;
             return;
         }
 
         try {
             normalizeCSRInput(val);
-            // Hợp lệ
             inputCsr.classList.remove('is-invalid');
-            if (csrValidationError) csrValidationError.classList.add('d-none');
-            btnCsrDecoder.disabled = false;
+            if (inputValidationError) hide(inputValidationError);
+            btnDecoder.disabled = false;
         } catch (err) {
-            // Không hợp lệ
             inputCsr.classList.add('is-invalid');
-            if (csrValidationError) {
-                csrValidationError.classList.remove('d-none');
-                if (csrValidationMsg) csrValidationMsg.textContent = err.message;
+            if (inputValidationError) {
+                inputValidationError.classList.remove('d-none');
+                if (inputValidationMsg) inputValidationMsg.textContent = err.message;
             }
-            btnCsrDecoder.disabled = true;
+            btnDecoder.disabled = true;
         }
     });
 
-    // Chạy sự kiện input lần đầu để cập nhật trạng thái UI tương ứng nội dung được nạp từ localStorage
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        let csr;
+        try {
+            csr = normalizeCSRInput(inputCsr.value);
+        } catch (err) {
+            showError(toolError, toolErrorMsg, err.message, [toolResult]);
+            return;
+        }
+
+        toggleLoading(btnDecoder, iconDecoder, iconLoading, true);
+        setElementsEnabled([inputCsr, btnDecoder], false);
+        clearUIState();
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/ssl/csr/decode`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ csr })
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Giải mã CSR thất bại.");
+            }
+
+            const data = result.data;
+            renderSuccessHeader(resultTitle, "Kết quả giải mã CSR");
+            
+            resultsBody.innerHTML = `
+                <div class="ssl-checker__result-group">
+                    ${renderCSRDetailRow("Common Name", data.common_name, "fa-solid fa-file-signature", true)}
+                    ${renderCSRDetailRow("SANs", data.sans, "fa-solid fa-list-check")}
+                    ${renderCSRDetailRow("Organization", data.organization, "fa-solid fa-building")}
+                    ${renderCSRDetailRow("Unit", data.organizational_unit, "fa-solid fa-sitemap")}
+                    ${renderCSRDetailRow("Locality", data.locality, "fa-solid fa-city")}
+                    ${renderCSRDetailRow("State / Province", data.state, "fa-solid fa-map-location")}
+                    ${renderCSRDetailRow("Country", data.country, "fa-solid fa-earth-asia")}
+                    ${renderCSRDetailRow("Algorithm", data.algorithm, "fa-solid fa-shield-halved", false, true)}
+                    ${renderCSRDetailRow("Key Size", data.key_size ? `${data.key_size} bits` : "N/A", "fa-solid fa-key", false, true)}
+                </div>
+            `;
+
+            setDisplay(toolResult, "block");
+            toolResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        } catch (error) {
+            console.error("Decode Error:", error);
+            showError(toolError, toolErrorMsg, error.message, [toolResult]);
+        } finally {
+            toggleLoading(btnDecoder, iconDecoder, iconLoading, false);
+            setElementsEnabled([inputCsr, btnDecoder], true);
+        }
+    });
+
+    // Initial check if there's content (e.g. from browser autofill)
     if (inputCsr.value) {
         inputCsr.dispatchEvent(new Event('input'));
     }
-
-    console.log("🚀 CSR Decoder Tool Initialized");
 }
 
-document.addEventListener("DOMContentLoaded", initApp);
+document.addEventListener("DOMContentLoaded", init);

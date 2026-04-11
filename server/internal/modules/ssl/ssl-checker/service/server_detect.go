@@ -36,8 +36,10 @@ func normalizeServer(v string) (string, int) {
 		return "Cloudflare", 100
 	case strings.Contains(s, "cloudfront"):
 		return "CloudFront", 100
-	case strings.Contains(s, "fastly"), strings.Contains(s, "github"):
+	case strings.Contains(s, "fastly"):
 		return "Fastly", 100
+	case strings.Contains(s, "github"):
+		return "GitHub Pages", 100
 	case strings.Contains(s, "akamaighost"):
 		return "AkamaiGHost", 100
 	case strings.Contains(s, "akamai"):

@@ -13,7 +13,8 @@ import "time"
 // ===========================
 
 type CheckRequest struct {
-	Domain string `json:"domain" binding:"required"`
+	Domain      string `json:"domain" binding:"required"`
+	BypassCache bool   `json:"bypass_cache"`
 }
 
 // ===========================
@@ -23,9 +24,20 @@ type CheckRequest struct {
 type CertLevel string
 
 const (
-	CertLevelDomain       CertLevel = "Domain"
-	CertLevelIntermediate CertLevel = "Intermediate"
-	CertLevelRoot         CertLevel = "Root"
+	CertLevelDomain       CertLevel = "domain"
+	CertLevelIntermediate CertLevel = "intermediate"
+	CertLevelRoot         CertLevel = "root"
+)
+
+// ===========================
+// Trust Level (severity)
+// ===========================
+
+type TrustLevel string
+
+const (
+	TrustLevelCritical TrustLevel = "critical"
+	TrustLevelWarning  TrustLevel = "warning"
 )
 
 // ===========================
@@ -49,17 +61,23 @@ const (
 	// Expiration
 	TrustCertExpired  TrustCode = "cert_expired"
 	TrustChainExpired TrustCode = "chain_expired"
+	TrustExpiringSoon TrustCode = "expiring_soon"
 
 	// Hostname
 	TrustNameMismatch TrustCode = "name_mismatch"
+
+	// Weak security (Warnings)
+	TrustWeakKey       TrustCode = "weak_key"
+	TrustWeakAlgorithm TrustCode = "weak_algorithm"
 
 	// Fallback
 	TrustUnknown TrustCode = "unknown"
 )
 
 type TrustIssue struct {
-	Code    TrustCode `json:"code"`
-	Message string    `json:"message"`
+	Code    TrustCode  `json:"code"`
+	Level   TrustLevel `json:"level"`
+	Message string     `json:"message"`
 }
 
 // ===========================
@@ -85,6 +103,12 @@ type CertDetail struct {
 	SerialNumberHex string `json:"serial_hex"`
 
 	SignatureAlgo string `json:"signature_algo"`
+
+	// Security details
+	PublicKeyAlgorithm string `json:"public_key_algorithm,omitempty"`
+	PublicKeyBits      int    `json:"public_key_bits,omitempty"`
+	FingerprintSHA256  string `json:"fingerprint_sha256,omitempty"`
+	FingerprintSHA1    string `json:"fingerprint_sha1,omitempty"`
 }
 
 // ===========================
@@ -96,15 +120,16 @@ type SSLCheckResponse struct {
 	IP         string `json:"ip"`
 	ServerType string `json:"server_type"`
 
-	Valid    bool  `json:"valid"`
-	IsExpired bool `json:"is_expired"` // Rõ ràng hơn cho frontend
-	DaysLeft int64 `json:"days_left"` // Có thể âm nếu đã hết hạn
+	Valid     bool  `json:"valid"`
+	IsExpired bool  `json:"is_expired"` // Rõ ràng hơn cho frontend
+	DaysLeft  int64 `json:"days_left"`  // Có thể âm nếu đã hết hạn
 
 	HostnameOK  bool         `json:"hostname_ok"`
 	Trusted     bool         `json:"trusted"`
 	TrustIssues []TrustIssue `json:"trust_issues,omitempty"`
 
 	TLSVersion         string `json:"tls_version"`
+	CipherSuite        string `json:"cipher_suite,omitempty"`
 	InsecureConnection bool   `json:"insecure_connection,omitempty"` // Track fallback TLS
 
 	CertChain []CertDetail `json:"cert_chain"`

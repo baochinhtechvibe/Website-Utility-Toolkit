@@ -1,111 +1,87 @@
-/* ==========================
-    SSL TOOLS ROUTER
-   ==========================
-*/
-import {
-    setDisplay,
-    resetUI
-} from "../../../utils/index.js";
-// ===================================================
-//  TOOL MENU BUTTONS (Sidebar / Toolbar)
-// ===================================================
-const toolMenuButtons = document.querySelectorAll(".js-tool-btn");
-// ===================================================
-//  TOOL CONTAINERS (Tool Panels / Sections)
-// ===================================================
-const toolChecker = document.getElementById("toolChecker");
-const toolCsrGenerator = document.getElementById("toolCsrGenerator");
-const toolCsr = document.getElementById("toolCsr");
-const toolCert = document.getElementById("toolCert");
-const toolMatcher = document.getElementById("toolMatcher");
-const toolConverter = document.getElementById("toolConverter");
-
-// Checker-specific cards
-const toolResultChecker = document.getElementById("toolResultChecker");
-const toolErrorChecker = document.getElementById("toolErrorChecker");
-const toolShareLink = document.getElementById("toolShareLink");
-
-// CSR-specific cards
-const resultCardCsr = document.getElementById("resultCardCsr");
-const errorCardCsr = document.getElementById("errorCardCsr");
-
-const RESET_SECTIONS = [
-    toolResultChecker,
-    toolErrorChecker,
-    toolShareLink,
-    resultCardCsr,
-    errorCardCsr
-];
-
-
-// ===================================================
-//  TOOL MAP: slug => { panel }
-// ===================================================
-
-const TOOL_MAP = {
-    "ssl-checker":   { panel: toolChecker },
-    "csr-generator": { panel: toolCsrGenerator },
-    "csr-decoder":   { panel: toolCsr },
-    "cert-decoder":  { panel: toolCert },
-    "key-matcher":   { panel: toolMatcher },
-    "ssl-converter": { panel: toolConverter }
-};
-
-/** Slug đang active */
-let currentSlug = "ssl-checker";
-
+import { resetUI } from "../../../utils/index.js";
 
 /**
- * Active tool theo slug (chỉ show/hide, KHÔNG đổi URL)
+ * SSL Tools Router
+ * Handles tab switching and result resetting
  */
-function activateTool(slug) {
 
+const RESET_SECTIONS = [
+    "toolResultChecker",
+    "toolErrorChecker",
+    "toolShareLink",
+    "resultCardCsr",
+    "errorCardCsr",
+    "resultCardCert",
+    "errorCardCert",
+    "resultCardMatcher",
+    "errorCardMatcher",
+    "toolResultCsrGenerator",
+    "toolErrorCsrGenerator",
+    "cacheNotice"
+];
+
+const TOOL_MAP = {
+    "ssl-checker":   "toolChecker",
+    "csr-generator": "toolCsrGenerator",
+    "csr-decoder":   "toolCsr",
+    "cert-decoder":  "toolCert",
+    "key-matcher":   "toolMatcher",
+    "ssl-converter": "toolConverter"
+};
+
+let currentSlug = "ssl-checker";
+
+function activateTool(slug) {
     if (!TOOL_MAP[slug]) {
         slug = "ssl-checker";
     }
 
-    /* ===== RESET RESULT UI khi chuyển tool ===== */
+    // 1. Reset results if switching
     if (slug !== currentSlug) {
-        resetUI(RESET_SECTIONS);
+        const resetElements = RESET_SECTIONS.map(id => document.getElementById(id)).filter(el => el);
+        resetUI(resetElements);
     }
 
-    const targetPanel = TOOL_MAP[slug].panel;
+    const targetId = TOOL_MAP[slug];
+    const targetPanel = document.getElementById(targetId);
 
-    /* ================= RESET BUTTON ================= */
-    toolMenuButtons.forEach(btn => {
+    // 2. Clear active classes from all buttons
+    const toolBtns = document.querySelectorAll(".js-tool-btn");
+    toolBtns.forEach(btn => {
         btn.classList.remove("active");
     });
 
-    /* ================= HIDE OLD PANELS ================= */
-    Object.values(TOOL_MAP).forEach(item => {
-        if (!item.panel || item.panel === targetPanel) return;
-        item.panel.classList.remove("ssl-tools__section--active");
-        setDisplay(item.panel, "none");
-    });
-
-    /* ================= ACTIVE BUTTON ================= */
+    // 3. Set active button
     const activeBtn = document.querySelector(`.js-tool-btn[data-slug="${slug}"]`);
     if (activeBtn) {
         activeBtn.classList.add("active");
     }
 
-    /* ================= SHOW NEW PANEL ================= */
-    if (targetPanel) {
-        setDisplay(targetPanel, "block");
-        // Force reflow
-        targetPanel.offsetHeight;
-        targetPanel.classList.add("ssl-tools__section--active");
-    }
+    // 4. Toggle Sections using d-block / d-none classes to avoid !important conflicts
+    Object.values(TOOL_MAP).forEach(id => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+
+        if (id === targetId) {
+            panel.classList.remove("d-none");
+            panel.classList.add("d-block", "ssl-tools__section--active");
+        } else {
+            panel.classList.remove("d-block", "ssl-tools__section--active");
+            panel.classList.add("d-none");
+        }
+    });
+
+    // Scroll to top for better mobile UX
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     currentSlug = slug;
 }
 
+export function init() {
+    const toolBtns = document.querySelectorAll(".js-tool-btn");
+    if (toolBtns.length === 0) return;
 
-/**
- * Bind click trên các nút menu
- */
-function bindToolMenu() {
-    toolMenuButtons.forEach(btn => {
+    toolBtns.forEach(btn => {
         btn.addEventListener("click", () => {
             const slug = btn.dataset.slug;
             if (slug) {
@@ -113,17 +89,11 @@ function bindToolMenu() {
             }
         });
     });
+
+    // Initialize state
+    const currentURL = new URL(window.location.href);
+    const initialSlug = currentURL.searchParams.get("tool") || "ssl-checker";
+    activateTool(initialSlug);
 }
 
-
-// ===================================================
-//  INITIALIZATION
-// ===================================================
-
-function initSSLTools() {
-    bindToolMenu();
-    // Mặc định hiển thị SSL Checker
-    activateTool("ssl-checker");
-}
-
-document.addEventListener("DOMContentLoaded", initSSLTools);
+document.addEventListener("DOMContentLoaded", init);

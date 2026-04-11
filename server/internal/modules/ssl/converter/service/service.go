@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -92,7 +93,19 @@ func (s *serviceImpl) Convert(ctx context.Context, req *models.ConvertRequest) (
 	outPath := filepath.Join(tmpDir, "out.file")
 	// Thêm Timestamp cho tên file để user down về không bị trùng
 	outFilename := fmt.Sprintf("certificate_%s.%s", time.Now().Format("20060102_150405"), req.TargetFormat)
+
+	// Set appropriate ContentType based on target format
 	contentType := "application/octet-stream"
+	switch req.TargetFormat {
+	case "pem":
+		contentType = "application/x-pem-file"
+	case "der":
+		contentType = "application/x-x509-ca-cert"
+	case "pfx":
+		contentType = "application/x-pkcs12"
+	case "p7b":
+		contentType = "application/x-pkcs7-certificates"
+	}
 
 	// 4. Ma trận cấu hình args cho lệnh OpenSSL
 	var args []string
@@ -144,7 +157,7 @@ func (s *serviceImpl) Convert(ctx context.Context, req *models.ConvertRequest) (
 			// Bước 1: p7b -> pem (lưu ra file trung gian)
 			intermediatePath := filepath.Join(tmpDir, "intermediate.pem")
 			args1 := []string{"pkcs7", "-print_certs", "-in", certPath, "-out", intermediatePath}
-			if err := runOpenSSL(execCtx, args1); err != nil {
+			if err := s.runOpenSSL(execCtx, args1, req.PfxPassword != ""); err != nil {
 				return nil, err
 			}
 			// Bước 2: chuẩn bị lệnh pem -> pfx từ intermediate
@@ -161,7 +174,7 @@ func (s *serviceImpl) Convert(ctx context.Context, req *models.ConvertRequest) (
 	}
 
 	// 5. Thực thi OpenSSL an toàn
-	if err := runOpenSSL(execCtx, args); err != nil {
+	if err := s.runOpenSSL(execCtx, args, req.PfxPassword != ""); err != nil {
 		return nil, err
 	}
 
@@ -186,24 +199,60 @@ func (s *serviceImpl) Convert(ctx context.Context, req *models.ConvertRequest) (
 	}, nil
 }
 
+// findOpenSSLPath tries to find the openssl executable.
+// It checks the system PATH first, then common installation paths on Windows.
+func findOpenSSLPath() string {
+	path, err := exec.LookPath("openssl")
+	if err == nil {
+		return path
+	}
+
+	// Falls back to common Windows paths (e.g. Git OpenSSL)
+	if runtime.GOOS == "windows" {
+		fallbacks := []string{
+			`C:\Program Files\Git\usr\bin\openssl.exe`,
+			`C:\Program Files\OpenSSL-Win64\bin\openssl.exe`,
+			`C:\Program Files (x86)\OpenSSL-Win32\bin\openssl.exe`,
+		}
+		for _, f := range fallbacks {
+			if _, err := os.Stat(f); err == nil {
+				return f
+			}
+		}
+	}
+
+	return "openssl" // Default to PATH if nothing found
+}
+
 // runOpenSSL gom nhóm code gọi exec và bắt Stderr của os exec.
-func runOpenSSL(ctx context.Context, args []string) error {
-	cmd := exec.CommandContext(ctx, "openssl", args...)
+func (s *serviceImpl) runOpenSSL(ctx context.Context, args []string, hasPassword bool) error {
+	exePath := findOpenSSLPath()
+	cmd := exec.CommandContext(ctx, exePath, args...)
+	
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
 		// Capture raw stderr ra log máy chủ để debug.
-		// Context Err() != nil gom cả Deadline Exceeded (timeout) và Canceled (bị ngắt).
 		if ctx.Err() != nil {
 			log.Error().Err(ctx.Err()).Msg("OpenSSL command context cancelled or timed out")
 			return errors.New("Quá thời gian xử lý định dạng. Xin thử lại.")
 		}
 
-		log.Error().Err(err).Str("stderr", stderr.String()).Msg("openssl command failed")
+		stderrStr := stderr.String()
+		log.Error().Err(err).Str("stderr", stderrStr).Str("path", exePath).Msg("openssl command failed")
 
-		// Client thấy câu thông báo thân thiện (tránh lộ thông tin nhạy cảm ở Stderr)
-		return errors.New("Không thể xử lý tệp tin chứng chỉ - Vui lòng kiểm tra lại tính hợp lệ và mật khẩu (nếu có).")
+		// 1. Kiểm tra nếu file không tồn tại
+		if errors.Is(err, exec.ErrNotFound) || (runtime.GOOS == "windows" && exePath == "openssl" && stderrStr == "") {
+			return errors.New("Hệ thống chưa cài đặt OpenSSL hoặc chưa cấu hình biến môi trường PATH.")
+		}
+
+		// 2. Thông báo lỗi thông minh dựa trên context
+		if hasPassword {
+			return errors.New("Không thể xử lý tệp tin - Vui lòng kiểm tra lại tính hợp lệ của tệp chứng chỉ hoặc mật khẩu PFX.")
+		}
+		
+		return errors.New("Không thể xử lý tệp tin - Vui lòng kiểm tra lại định dạng tệp chứng chỉ đầu vào (X.509 PEM/DER/P7B).")
 	}
 	return nil
 }

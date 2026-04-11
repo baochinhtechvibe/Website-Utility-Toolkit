@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 )
 
 // ===========================
@@ -38,7 +39,8 @@ type Probe struct {
 // ===========================
 
 // collectProbes gửi HTTP request tới domain để lấy response headers.
-// Chạy tuần tự, dừng ngay khi có response thành công (tránh bị WAF chặn).
+// Thực thi SONG SONG (Parallel) để tối ưu thời gian phản hồi.
+// Dùng cơ chế Early-Abort: Hủy các request còn lại ngay khi có một probe thành công.
 func collectProbes(ctx context.Context, domain string, ip string) []*Probe {
 
 	dialer := &net.Dialer{Timeout: HTTPProbeTimeout}
@@ -62,7 +64,9 @@ func collectProbes(ctx context.Context, domain string, ip string) []*Probe {
 	strictTransport := baseTransport.Clone()
 
 	insecureTransport := baseTransport.Clone()
-	insecureTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	// InsecureSkipVerify intentional: probe chỉ để lấy response headers phục vụ
+	// detect server type, không cần verify cert tại bước này.
+	insecureTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
 
 	plainTransport := baseTransport.Clone()
 
@@ -81,22 +85,43 @@ func collectProbes(ctx context.Context, domain string, ip string) []*Probe {
 		{plainClient, "http://" + domain, http.MethodGet},
 	}
 
-	var probes []*Probe
+	// Context riêng cho cụm probe để can cancel
+	pCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	probeChan := make(chan *Probe, len(defs))
+	var wg sync.WaitGroup
 
 	for _, d := range defs {
-		resp, err := doRequest(ctx, d.client, d.url, d.method)
+		wg.Add(1)
+		go func(d probeDef) {
+			defer wg.Done()
+			resp, err := doRequest(pCtx, d.client, d.url, d.method)
 
-		p := &Probe{
-			URL:      d.url,
-			Method:   d.method,
-			Response: resp,
-			Error:    err,
-		}
+			p := &Probe{
+				URL:      d.url,
+				Method:   d.method,
+				Response: resp,
+				Error:    err,
+			}
+			probeChan <- p
+
+			// Nếu thành công, hủy các probe khác đang chạy
+			if err == nil && resp != nil {
+				cancel()
+			}
+		}(d)
+	}
+
+	// Đóng channel sau khi tất cả xong
+	go func() {
+		wg.Wait()
+		close(probeChan)
+	}()
+
+	var probes []*Probe
+	for p := range probeChan {
 		probes = append(probes, p)
-
-		if err == nil && resp != nil {
-			break
-		}
 	}
 
 	return probes

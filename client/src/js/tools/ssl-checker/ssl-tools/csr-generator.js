@@ -1,11 +1,21 @@
 import { isValidHostname } from "../../../utils/validation.js";
 import { API_BASE_URL } from "../../../config.js";
+import { 
+    copyToClipboard, 
+    toggleLoading, 
+    setElementsEnabled,
+    hide
+} from "../../../utils/dom.js";
 
-document.addEventListener("DOMContentLoaded", () => {
+/**
+ * SSL CSR Generator Module
+ * Hardened & Refactored version
+ */
+function init() {
     const form = document.getElementById("formCsrGenerator");
     if (!form) return;
 
-    // Các thành phần UI
+    // --- UI Elements ---
     const keyTypeRadios = form.querySelectorAll('input[name="keyType"]');
     const groupRsa = document.getElementById("keySizeRsa");
     const groupEcdsa = document.getElementById("keySizeEcdsa");
@@ -21,17 +31,64 @@ document.addEventListener("DOMContentLoaded", () => {
     const sansErrorCard = document.getElementById("sansValidationError");
     const sansErrorMsg = document.getElementById("sansValidationMessage");
 
-    // --- Lắng nghe thay đổi toàn form để xoá Card lỗi & Kết quả ---
-    function hideToolCards() {
-        const toolResultCard = document.getElementById("toolResultCsrGenerator");
-        const toolErrorCard = document.getElementById("toolErrorCsrGenerator");
-        if (toolResultCard) toolResultCard.classList.add("d-none");
-        if (toolErrorCard) toolErrorCard.classList.add("d-none");
-    }
-    form.addEventListener("input", hideToolCards);
-    form.addEventListener("change", hideToolCards);
+    const toolResultCard = document.getElementById("toolResultCsrGenerator");
+    const resultBody = document.getElementById("resultCsrGeneratorContent");
+    const toolErrorCard = document.getElementById("toolErrorCsrGenerator");
+    const toolErrorMsg = document.getElementById("toolErrorCsrGeneratorMessage");
 
-    // --- Helper Validation CSR ---
+    // --- Helper Functions ---
+
+    /**
+     * Standard Save As / Download Helper
+     */
+    async function handleSaveAs(content, filename, contentType = "text/plain") {
+        const blob = new Blob([content], { type: contentType });
+
+        // Modern File System Access API
+        if (window.showSaveFilePicker) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'SSL File',
+                        accept: { [contentType]: [`.${filename.split('.').pop()}`] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                console.warn("showSaveFilePicker failed, falling back to <a> tag:", err);
+            }
+        }
+
+        // Standard Fallback
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 1000);
+    }
+
+    /**
+     * Clear result/error cards on input change
+     */
+    function clearUIState() {
+        if (toolResultCard) hide(toolResultCard);
+        if (toolErrorCard) hide(toolErrorCard);
+        const downloadArea = document.getElementById("csrDownloadArea");
+        if (downloadArea) hide(downloadArea);
+    }
+
     function isValidCN(raw) {
         if (!raw) return false;
         const val = raw.trim();
@@ -39,10 +96,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return isValidHostname(stripped);
     }
 
-    function checkToggleSubmitBtn() {
+    function updateSubmitBtnState() {
         if (!domainInput || !btnGenerate) return;
         const cnVal = domainInput.value.trim();
-        // Nút bị vô hiệu hóa nếu Common Name rỗng hoặc sai chuẩn
         btnGenerate.disabled = !(cnVal.length > 0 && isValidCN(cnVal));
     }
 
@@ -52,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (!sansVal) {
             sansInput.classList.remove("is-invalid");
-            if (sansErrorCard) sansErrorCard.classList.add("d-none");
+            if (sansErrorCard) hide(sansErrorCard);
             return true;
         }
 
@@ -78,137 +134,214 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         sansInput.classList.remove("is-invalid");
-        if (sansErrorCard) sansErrorCard.classList.add("d-none");
+        if (sansErrorCard) hide(sansErrorCard);
         return true;
     }
 
-    // --- 1. Gắn Events Realtime Validation ---
+    /**
+     * Render the generated results (CSR & Private Key)
+     */
+    function renderGeneratorResult(data, hostname) {
+        if (!resultBody) return;
 
-    // Domain (CN) Realtime
+        resultBody.innerHTML = `
+            <div class="csr-generator__result-wrapper mt-4 px-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- CSR Block -->
+                    <div class="code-block">
+                        <div class="code-block__header">
+                            <span class="code-block__lang text-brand">
+                                <i class="fa-solid fa-file-shield mr-2"></i> CSR
+                            </span>
+                            <div class="code-block__actions d-flex gap-1">
+                                <button class="code-block__btn-copy js-copy-csr" title="Copy CSR">
+                                    <i class="fa-regular fa-clone"></i>
+                                </button>
+                                <button class="code-block__btn-download js-download-csr" title="Download CSR (Save As)">
+                                    <i class="fa-solid fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="code-block__body">
+                            <code class="code-block__text text-xs" id="outputCsr">${data.csr}</code>
+                        </div>
+                    </div>
+
+                    <!-- Private Key Block -->
+                    <div class="code-block">
+                        <div class="code-block__header">
+                            <span class="code-block__lang text-error">
+                                <i class="fa-solid fa-key mr-2"></i> Private Key
+                            </span>
+                            <div class="code-block__actions d-flex gap-1">
+                                <button class="code-block__btn-copy js-copy-key" title="Copy Private Key">
+                                    <i class="fa-regular fa-clone"></i>
+                                </button>
+                                <button class="code-block__btn-download js-download-key" title="Download Private Key (Save As)">
+                                    <i class="fa-solid fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="code-block__body">
+                            <code class="code-block__text text-xs" id="outputKey">${data.privateKey}</code>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-card message-card--warning mt-4">
+                    <div class="message-card__header">
+                        <h3 class="message-card__title">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            Lưu ý bảo mật
+                        </h3>
+                    </div>
+                    <div class="message-card__body">
+                        <p class="message-card__message">
+                            Chúng tôi không lưu trữ Private Key của bạn. Vui lòng tải xuống hoặc lưu lại an toàn ngay bây giờ. Nếu mất khóa này, bạn sẽ không thể cài đặt chứng chỉ SSL.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Attach Download events
+        const btnDownloadCsr = resultBody.querySelector(".js-download-csr");
+        const btnDownloadKey = resultBody.querySelector(".js-download-key");
+
+        btnDownloadCsr?.addEventListener("click", () => {
+            handleSaveAs(data.csr, `${hostname}.csr`, "application/x-pem-file");
+        });
+
+        btnDownloadKey?.addEventListener("click", () => {
+            handleSaveAs(data.privateKey, `${hostname}.key`, "application/x-pem-file");
+        });
+
+        // Attach Copy events
+        const btnCopyCsr = resultBody.querySelector(".js-copy-csr");
+        const btnCopyKey = resultBody.querySelector(".js-copy-key");
+
+        btnCopyCsr?.addEventListener("click", async () => {
+            const success = await copyToClipboard(data.csr);
+            if (success) {
+                const icon = btnCopyCsr.querySelector("i");
+                icon.className = "fa-solid fa-check text-success";
+                setTimeout(() => icon.className = "fa-regular fa-clone", 2000);
+            }
+        });
+
+        btnCopyKey?.addEventListener("click", async () => {
+            const success = await copyToClipboard(data.privateKey);
+            if (success) {
+                const icon = btnCopyKey.querySelector("i");
+                icon.className = "fa-solid fa-check text-success";
+                setTimeout(() => icon.className = "fa-regular fa-clone", 2000);
+            }
+        });
+
+        if (toolResultCard) {
+            toolResultCard.classList.remove("d-none");
+            toolResultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    // --- Event Listeners ---
+
+    form.addEventListener("input", clearUIState);
+    form.addEventListener("change", clearUIState);
+
     if (domainInput) {
-        const checkDomain = () => {
+        domainInput.addEventListener("input", () => {
             const val = domainInput.value.trim();
             const valid = val.length > 0 && isValidCN(val);
 
-            if (!valid && val.length > 0) {
-                domainInput.classList.add("is-invalid");
-                if (domainError) domainError.classList.remove("d-none");
-            } else {
-                domainInput.classList.remove("is-invalid");
-                if (domainError) domainError.classList.add("d-none");
-            }
+            domainInput.classList.toggle("is-invalid", !valid && val.length > 0);
+            if (domainError) domainError.classList.toggle("d-none", valid || val.length === 0);
 
-            checkToggleSubmitBtn();
-        };
-
-        domainInput.addEventListener("input", checkDomain);
-        domainInput.addEventListener("paste", () => setTimeout(() => domainInput.dispatchEvent(new Event("input")), 0));
-        
-        // Kích hoạt check 1 lần ngay từ đầu phục hồi UI Disabled Button sau khi Auto-fill
-        checkToggleSubmitBtn();
+            updateSubmitBtnState();
+        });
+        updateSubmitBtnState(); // Initial check
     }
 
-    // SANs Realtime
     if (sansInput) {
         sansInput.addEventListener("input", validateSANsRealtime);
         sansInput.addEventListener("blur", validateSANsRealtime);
-        sansInput.addEventListener("paste", () => setTimeout(() => sansInput.dispatchEvent(new Event("input")), 0));
     }
 
-    // Country Realtime & Auto-Uppercase
     if (countryInput) {
         countryInput.addEventListener("input", (e) => {
-            let val = e.target.value;
-            if (val !== val.toUpperCase()) {
-                val = val.toUpperCase();
-                e.target.value = val;
-            }
+            let val = e.target.value.toUpperCase().trim();
+            e.target.value = val;
 
-            val = val.trim();
-            if (val.length > 0 && (val.length !== 2 || !/^[A-Z]{2}$/.test(val))) {
-                countryInput.classList.add("is-invalid");
-                if (countryError) countryError.classList.remove("d-none");
-            } else {
-                countryInput.classList.remove("is-invalid");
-                if (countryError) countryError.classList.add("d-none");
-            }
+            const isValid = val.length === 0 || (val.length === 2 && /^[A-Z]{2}$/.test(val));
+            countryInput.classList.toggle("is-invalid", !isValid);
+            if (countryError) countryError.classList.toggle("d-none", isValid);
         });
     }
 
-    // --- 2. Xử lý logic switch Loại khóa (RSA / ECDSA) ---
     keyTypeRadios.forEach(radio => {
         radio.addEventListener("change", (e) => {
             const val = e.target.value;
-            if (val === "rsa") {
-                if (groupRsa) groupRsa.classList.remove("d-none");
-                if (groupEcdsa) groupEcdsa.classList.add("d-none");
-                if (hintEcdsaRsa) hintEcdsaRsa.textContent = "RSA 2048-bit: phổ biến nhất, tương thích cao. 4096-bit: bảo mật hơn nhưng chậm hơn.";
+            const isRsa = val === "rsa";
 
+            if (groupRsa) groupRsa.classList.toggle("d-none", !isRsa);
+            if (groupEcdsa) groupEcdsa.classList.toggle("d-none", isRsa);
+            
+            if (hintEcdsaRsa) {
+                hintEcdsaRsa.textContent = isRsa 
+                    ? "RSA 2048-bit: phổ biến nhất, tương thích cao. 4096-bit: bảo mật hơn nhưng chậm hơn."
+                    : "ECDSA nhanh hơn, tốn ít tài nguyên hơn và cực kỳ bảo mật.";
+            }
+
+            // Set default key size
+            if (isRsa) {
                 const defaultRsa = groupRsa?.querySelector('input[value="2048"]');
                 if (defaultRsa) defaultRsa.checked = true;
-
-            } else if (val === "ecdsa") {
-                if (groupEcdsa) groupEcdsa.classList.remove("d-none");
-                if (groupRsa) groupRsa.classList.add("d-none");
-                if (hintEcdsaRsa) hintEcdsaRsa.textContent = "ECDSA nhanh hơn, tốn ít tài nguyên thẻ hơn và cực kỳ bảo mật.";
-
+            } else {
                 const defaultEcdsa = groupEcdsa?.querySelector('input[value="256"]');
                 if (defaultEcdsa) defaultEcdsa.checked = true;
             }
         });
     });
 
-    // --- 3. Xử lý Submit Form ---
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // Validate Common Name (Bắt buộc)
-        const cnVal = domainInput ? domainInput.value.trim() : "";
+        const cnVal = domainInput?.value.trim() || "";
         if (!cnVal || !isValidCN(cnVal)) {
-            if (domainInput) domainInput.classList.add("is-invalid");
-            if (domainError) domainError.classList.remove("d-none");
-            if (domainInput) domainInput.focus();
+            domainInput?.focus();
             return;
         }
 
-        // Validate Country (Tùy chọn, nhưng nếu có nhập phải đúng 2 ký tự)
         if (countryInput) {
             const countryVal = countryInput.value.trim();
             if (countryVal && (countryVal.length !== 2 || !/^[A-Za-z]{2}$/.test(countryVal))) {
-                countryInput.classList.add("is-invalid");
-                if (countryError) countryError.classList.remove("d-none");
                 countryInput.focus();
                 return;
             }
         }
 
-        // Validate SANs
         if (!validateSANsRealtime()) {
-            if (sansInput) sansInput.focus();
+            sansInput?.focus();
             return;
         }
 
-        // Bắt đầu Loading State UI
-        if (btnGenerate) btnGenerate.disabled = true;
-        if (iconGenerateCsr) iconGenerateCsr.classList.add("d-none");
-        if (iconGenerateCsrLoading) iconGenerateCsrLoading.classList.remove("d-none");
+        // Start Loading
+        toggleLoading(btnGenerate, iconGenerateCsr, iconGenerateCsrLoading, true);
         
         try {
-            // Chuẩn bị mảng SANs hợp chuẩn API []string
             const sansValue = sansInput ? sansInput.value.trim() : "";
             const sansArray = sansValue ? sansValue.split(",").map(s => s.trim()).filter(Boolean) : [];
 
-            // Thu thập cấu hình khóa
-            const keyTypeRadio = document.querySelector('input[name="keyType"]:checked');
+            const keyTypeRadio = form.querySelector('input[name="keyType"]:checked');
             const keyType = keyTypeRadio ? keyTypeRadio.value : "rsa";
             const keySizeSelector = keyType === "rsa" ? 'input[name="keySizeRsa"]:checked' : 'input[name="keySizeEcdsa"]:checked';
-            const keySizeRadio = document.querySelector(keySizeSelector);
+            const keySizeRadio = form.querySelector(keySizeSelector);
             const keySize = keySizeRadio ? parseInt(keySizeRadio.value, 10) : (keyType === "rsa" ? 2048 : 256);
 
             const payload = {
                 domainName: cnVal,
                 sans: sansArray,
-                country: countryInput ? countryInput.value.trim() : "",
+                country: countryInput?.value.trim() || "",
                 state: document.getElementById("inputCsrState")?.value.trim() || "",
                 locality: document.getElementById("inputCsrLocality")?.value.trim() || "",
                 organization: document.getElementById("inputCsrOrg")?.value.trim() || "",
@@ -228,64 +361,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(result.message || "Hệ thống gặp sự cố, không thể tạo CSR. Vui lòng thử lại!");
             }
 
-            // Gán dữ liệu lên Result Card
-            const toolResultCard = document.getElementById("toolResultCsrGenerator");
-            const resultBody = document.getElementById("resultCsrGeneratorContent");
-            const toolErrorCard = document.getElementById("toolErrorCsrGenerator");
-
-            if (toolErrorCard) toolErrorCard.classList.add("d-none");
-            
-            if (toolResultCard && resultBody) {
-                resultBody.innerHTML = `
-                    <div class="result-card__item mb-4 rounded-md shadow-sm mt-4">
-                        <div class="grid grid-cols-1 md-grid-cols-2 w-full" style="gap: 1.5rem;">
-                            <div class="code-block w-full" style="width: 100%; max-width: 100%; overflow: hidden;">
-                                <div class="code-block__header">
-                                    <span class="code-block__lang text-brand font-bold">
-                                        <i class="fa-solid fa-file-shield text-brand mr-2"></i> Certificate Signing Request
-                                    </span>
-                                    <button class="code-block__btn-copy js-copy-code font-bold" type="button" data-clipboard-target="#generatedCsrCode">
-                                        <i class="fa-regular fa-clone mr-2"></i> Copy CSR
-                                    </button>
-                                </div>
-                                <pre class="code-block__pre" style="width: 100%; max-width: 100%; margin: 0; padding: 1rem; overflow-x: auto; background-color: var(--color-gray-50);"><code id="generatedCsrCode" class="font-mono text-xs" style="white-space: pre;">${result.data.csr}</code></pre>
-                            </div>
-                            <div class="code-block w-full" style="width: 100%; max-width: 100%; overflow: hidden;">
-                                <div class="code-block__header">
-                                    <span class="code-block__lang text-danger font-bold">
-                                        <i class="fa-solid fa-key text-danger mr-2"></i> Private Key
-                                    </span>
-                                    <button class="code-block__btn-copy js-copy-code font-bold" type="button" data-clipboard-target="#generatedPrivateKey">
-                                        <i class="fa-regular fa-clone mr-2"></i> Copy Private Key
-                                    </button>
-                                </div>
-                                <pre class="code-block__pre" style="width: 100%; max-width: 100%; margin: 0; padding: 1rem; overflow-x: auto; background-color: var(--color-gray-50);"><code id="generatedPrivateKey" class="font-mono text-xs" style="white-space: pre;">${result.data.privateKey}</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                toolResultCard.classList.remove("d-none");
-                toolResultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
+            if (toolErrorCard) hide(toolErrorCard);
+            renderGeneratorResult(result.data, cnVal);
 
         } catch (error) {
-            console.error("Lỗi khi tạo CSR:", error);
-            const toolErrorCard = document.getElementById("toolErrorCsrGenerator");
-            const toolErrorMsg = document.getElementById("toolErrorCsrGeneratorMessage");
-            const toolResultCard = document.getElementById("toolResultCsrGenerator");
-
-            if (toolResultCard) toolResultCard.classList.add("d-none");
+            console.error("CSR Generator Error:", error);
+            if (toolResultCard) hide(toolResultCard);
             if (toolErrorCard && toolErrorMsg) {
                 toolErrorMsg.textContent = error.message;
                 toolErrorCard.classList.remove("d-none");
                 toolErrorCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         } finally {
-            // Trả lại trạng thái UI cho người dùng để có thể tương tác lại.
-            if (btnGenerate) btnGenerate.disabled = false;
-            if (iconGenerateCsr) iconGenerateCsr.classList.remove("d-none");
-            if (iconGenerateCsrLoading) iconGenerateCsrLoading.classList.add("d-none");
+            toggleLoading(btnGenerate, iconGenerateCsr, iconGenerateCsrLoading, false);
+            setElementsEnabled([domainInput, sansInput, btnGenerate], true);
         }
     });
-});
+}
+
+document.addEventListener("DOMContentLoaded", init);
+
