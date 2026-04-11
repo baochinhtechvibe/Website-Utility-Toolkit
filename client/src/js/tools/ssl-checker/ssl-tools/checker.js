@@ -271,9 +271,14 @@ export function init() {
         const expr = getExpiryInfo(valid, days_left);
         const issues = renderTrustIssues(trust_issues);
 
+        // Tránh lặp lại thông báo hết hạn nếu đã có trong trust_issues
+        const hasExpiryIssue = (trust_issues || []).some(i => 
+            i.code === "cert_expired" || i.code === "expiring_soon"
+        );
+
         const trustRow = `<tr><td class="ssl-checker__icon ssl-checker__icon--trusted-${trustStatus.iconClass}">&nbsp;</td><td><strong class="ssl-checker__message">${trustStatus.message}</strong></td></tr>`;
         const hostRow = hostStatus.message ? `<tr><td class="ssl-checker__icon ssl-checker__icon--hostname${hostStatus.iconClass}">&nbsp;</td><td><strong class="ssl-checker__message">${hostStatus.message}</strong></td></tr>` : "";
-        const expiryRow = renderExpiryRow(expr);
+        const expiryRow = (expr.visible && !hasExpiryIssue) ? renderExpiryRow(expr) : "";
 
         switch (caseType) {
             case "PERFECT": return `${trustRow}${expiryRow}${hostRow}`;
