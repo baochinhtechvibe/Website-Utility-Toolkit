@@ -172,7 +172,7 @@ function renderTrustIssues(trust_issues) {
         const isWarning = issue.level === "warning";
         const iconClass = isWarning ? "ssl-checker__icon--trusted-issue--warning" : "ssl-checker__icon--trusted-issue";
         const textClass = isWarning ? "text-warning" : "text-error";
-        let extra = issue.code === "cert_expired" ? `<a href="https://tino.vn/ssl" target="_blank" class="btn btn-sm btn-outline ml-2 py-0">Gia hạn</a>` : "";
+        let extra = issue.code === "cert_expired" ? `<a href="https://tino.vn/chung-chi-bao-mat-ssl?php=2925" target="_blank" class="btn btn-sm btn-outline ml-2 py-0">Gia hạn</a>` : "";
         return `<tr><td class="ssl-checker__icon ${iconClass}">&nbsp;</td><td><strong class="${textClass}">${escapeHTML(issue.message || "")}${extra}</strong></td></tr>`;
     }).join("");
 }
