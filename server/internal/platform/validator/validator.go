@@ -14,11 +14,66 @@ func IsValidDomain(domain string) bool {
 	if domain == "" || len(domain) > 253 {
 		return false
 	}
-	// Simple domain syntax validation
-	if strings.HasPrefix(domain, "-") || strings.HasSuffix(domain, "-") {
+
+	// Allow IP addresses (used for PTR lookups)
+	if net.ParseIP(domain) != nil {
+		return true
+	}
+
+	// Split into labels and validate each one
+	labels := strings.Split(domain, ".")
+
+	// Domain must have at least 2 labels (name + TLD)
+	if len(labels) < 2 {
 		return false
 	}
-	// Allow IP addresses as well (it's a valid "target")
+
+	// TLD (last label) must be purely alphabetic and at least 2 chars
+	tld := labels[len(labels)-1]
+	if len(tld) < 2 {
+		return false
+	}
+	for _, ch := range tld {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+			return false
+		}
+	}
+
+	// Validate each non-TLD label
+	for _, label := range labels[:len(labels)-1] {
+		if !isValidDNSLabel(label) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isValidDNSLabel validates a single DNS label.
+// Allows: a-z, A-Z, 0-9, hyphen (-), underscore (_)
+// Underscore is needed for:
+//   - DKIM:  tino._domainkey.domain.com
+//   - DMARC: _dmarc.domain.com
+//   - ACME:  _acme-challenge.domain.com
+//   - SRV:   _sip._tcp.domain.com
+func isValidDNSLabel(label string) bool {
+	if label == "" || len(label) > 63 {
+		return false
+	}
+
+	// Label must not start or end with a hyphen
+	if label[0] == '-' || label[len(label)-1] == '-' {
+		return false
+	}
+
+	for _, ch := range label {
+		if !((ch >= 'a' && ch <= 'z') ||
+			(ch >= 'A' && ch <= 'Z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '-' || ch == '_') {
+			return false
+		}
+	}
 	return true
 }
 

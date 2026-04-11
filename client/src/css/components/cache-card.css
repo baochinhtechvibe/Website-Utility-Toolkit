@@ -1,0 +1,45 @@
+/* =======================================
+    src/css/components/cache-card.css
+    Cache/Refresh Notice Component
+========================================== */
+
+.cache-card {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--space-2);
+    background-color: var(--color-surface-muted);
+    border: var(--border-subtle);
+    border-left: var(--border-width-4) solid var(--color-info);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    padding: var(--space-3) var(--space-4);
+}
+
+.cache-card span {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.cache-card b, .cache-card strong {
+    color: var(--color-info);
+    display: inline-flex;
+}
+
+.cache-card__btn {
+    min-height: unset;
+    padding: var(--space-1) var(--space-3);
+    margin-left: auto;
+}
+
+.cache-card .fa-bolt {
+    color: var(--color-warning);
+}
+
+.cache-card .fa-clock {
+    color: var(--color-info);
+}

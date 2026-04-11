@@ -48,6 +48,7 @@ var RootServerNames = map[string]string{
 
 type TraceResolver struct {
 	Timeout         time.Duration
+	BypassCache     bool
 	cacheMu         sync.RWMutex
 	delegationCache map[string][]models.NameserverInfo
 }
@@ -225,15 +226,17 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		var startingZone string
 
 		labels := dns.SplitDomainName(currentQName)
-		for i := 0; i < len(labels); i++ {
-			zone := strings.Join(labels[i:], ".") + "."
-			tr.cacheMu.RLock()
-			cached, exists := tr.delegationCache[zone]
-			tr.cacheMu.RUnlock()
-			if exists {
-				currentNS = cached
-				startingZone = zone
-				break
+		if !tr.BypassCache {
+			for i := 0; i < len(labels); i++ {
+				zone := strings.Join(labels[i:], ".") + "."
+				tr.cacheMu.RLock()
+				cached, exists := tr.delegationCache[zone]
+				tr.cacheMu.RUnlock()
+				if exists {
+					currentNS = cached
+					startingZone = zone
+					break
+				}
 			}
 		}
 
@@ -498,15 +501,17 @@ func (tr *TraceResolver) DiscoverAuthorities(domain string) ([]models.Nameserver
 
 	// Try to find the closest ancestor in the cache
 	var currentNS []models.NameserverInfo
-	labels := dns.SplitDomainName(domain)
-	for i := 0; i < len(labels); i++ {
-		zone := strings.Join(labels[i:], ".") + "."
-		tr.cacheMu.RLock()
-		cached, exists := tr.delegationCache[zone]
-		tr.cacheMu.RUnlock()
-		if exists {
-			currentNS = cached
-			break
+	if !tr.BypassCache {
+		labels := dns.SplitDomainName(domain)
+		for i := 0; i < len(labels); i++ {
+			zone := strings.Join(labels[i:], ".") + "."
+			tr.cacheMu.RLock()
+			cached, exists := tr.delegationCache[zone]
+			tr.cacheMu.RUnlock()
+			if exists {
+				currentNS = cached
+				break
+			}
 		}
 	}
 

@@ -218,6 +218,7 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 
 	// Task 7: Initialize tracer once to reuse delegation cache
 	tracer := dns.NewTraceResolver(20 * time.Second)
+	tracer.BypassCache = true // Đảm bảo luôn tra từ Root để hiện log đầy đủ
 
 	// Always seed Nameservers for better UX (NS always at top)
 	// EXCEPT if the user specifically asked for NS only (in which case it goes to Records)
@@ -353,12 +354,23 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	wg.Wait()
 
 	var apiRecords []interface{}
+	// Local cache để tránh query trùng lặp geoip trong cùng 1 request
+	geoCache := make(map[string]models.DNSRecord)
+
 	for i := range allRecords {
 		rec := allRecords[i]
 		// Normalize for UI consistency
 		rec.Domain = strings.TrimSuffix(rec.Domain, ".")
 		if rec.Type == "A" || rec.Type == "AAAA" {
-			dns.EnrichIPInfoByString(&rec, rec.Address)
+			if cached, ok := geoCache[rec.Address]; ok {
+				rec.Country = cached.Country
+				rec.CountryCode = cached.CountryCode
+				rec.ISP = cached.ISP
+				rec.Org = cached.Org
+			} else {
+				dns.EnrichIPInfoByString(&rec, rec.Address)
+				geoCache[rec.Address] = rec
+			}
 		}
 		apiRecords = append(apiRecords, rec)
 	}

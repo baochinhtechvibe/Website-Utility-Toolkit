@@ -1275,7 +1275,6 @@ function updateTraceVisibility() {
         traceRootCheckbox.checked = false;
     } else {
         setDisplay(traceRootContainer, "block");
-        traceRootCheckbox.checked = true;
     }
 }
 
