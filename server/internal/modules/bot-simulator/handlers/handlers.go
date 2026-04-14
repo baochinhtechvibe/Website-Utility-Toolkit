@@ -71,8 +71,6 @@ func HandleAnalyze(c *gin.Context) {
 }
 
 // runAnalysis điều phối toàn bộ luồng phân tích.
-// TODO: FetchAndParseRobots, FetchPage, CheckSitemap chưa nhận ctx.
-// Timeout hiện tại dựa vào http.Client.Timeout nội bộ của từng hàm.
 func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL string, profile service.BotProfile) (*models.AnalyzeData, error) {
 	data := &models.AnalyzeData{
 		Target:      targetURL,
@@ -88,11 +86,11 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 	}
 
 	// ─── Bước 1: Fetch robots.txt ─────────────────────────────────────
-	robotsResult, _ := service.FetchAndParseRobots(targetURL, profile.UserAgent, req.IgnoreTLSErrors)
+	robotsResult, _ := service.FetchAndParseRobots(ctx, targetURL, profile.UserAgent, req.IgnoreTLSErrors)
 	decision := service.CheckRobotsAccess(robotsResult, profile.RobotsToken, targetURL)
 
 	// ─── Bước 2: Fetch trang chính ────────────────────────────────────
-	httpResult, fetchErr := service.FetchPage(targetURL, fetchOpts)
+	httpResult, fetchErr := service.FetchPage(ctx, targetURL, fetchOpts)
 	if fetchErr != nil && httpResult == nil {
 		// Wrap lỗi network vào serving
 		httpResult = &service.HTTPResult{
@@ -125,14 +123,14 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 		InitialStatusText:    httpResult.StatusText,
 		ContentType:          httpResult.ContentType,
 		PayloadBytes:         httpResult.PayloadBytes,
-		RedirectCount:        len(redirectChain) - 1,
+		RedirectCount:        0,
 		RedirectChainSummary: redirectChain,
 		ResponseHeaders:      httpResult.Headers,
 		BodySnippet:          httpResult.BodySnippet,
 		Title:                meta.Title,
 	}
-	if serving.RedirectCount < 0 {
-		serving.RedirectCount = 0
+	if len(redirectChain) > 0 {
+		serving.RedirectCount = len(redirectChain) - 1
 	}
 
 	// ─── Bước 5: Đánh giá verdict ────────────────────────────────────
@@ -144,7 +142,7 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 
 	// ─── Bước 6: Kiểm tra sitemap (nếu được yêu cầu) ─────────────────
 	if req.CheckSitemap {
-		sitemapResult := service.CheckSitemap(targetURL, robotsResult, profile.UserAgent, req.IgnoreTLSErrors)
+		sitemapResult := service.CheckSitemap(ctx, targetURL, robotsResult, profile.UserAgent, req.IgnoreTLSErrors)
 		if sitemapResult != nil {
 			data.Sitemap = &models.SitemapResult{
 				Checked:       true,
@@ -176,6 +174,7 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 			TargetURL:       targetURL,
 			CheckSitemap:    req.CheckSitemap,
 			IgnoreTLSErrors: req.IgnoreTLSErrors,
+			SharedRobots:    robotsResult,
 		})
 		data.Compare = compareResults
 	}

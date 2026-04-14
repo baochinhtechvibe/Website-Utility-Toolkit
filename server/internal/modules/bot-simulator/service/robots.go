@@ -3,15 +3,13 @@ package service
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 // RobotsAccessStatus biểu diễn kết quả fetch /robots.txt theo RFC 9309.
@@ -36,9 +34,8 @@ type RobotsRule struct {
 
 // RobotsGroup là group user-agent trong robots.txt.
 type RobotsGroup struct {
-	Agents   []string
-	Rules    []RobotsRule
-	CrawlDelay float64
+	Agents []string
+	Rules  []RobotsRule
 }
 
 // RobotsParseResult chứa toàn bộ kết quả parse và fetch robots.txt.
@@ -61,7 +58,7 @@ type RobotsDecision struct {
 
 // FetchAndParseRobots fetch /robots.txt và parse theo RFC 9309.
 // Xử lý đúng các HTTP status code: 2xx/3xx/4xx/5xx/timeout/unreachable.
-func FetchAndParseRobots(targetURL string, botUA string, ignoreTLS bool) (*RobotsParseResult, error) {
+func FetchAndParseRobots(ctx context.Context, targetURL string, botUA string, ignoreTLS bool) (*RobotsParseResult, error) {
 	robotsURL, err := RobotsURL(targetURL)
 	if err != nil {
 		return nil, fmt.Errorf("không thể tạo URL robots.txt: %w", err)
@@ -76,34 +73,15 @@ func FetchAndParseRobots(targetURL string, botUA string, ignoreTLS bool) (*Robot
 
 	// Build client riêng cho robots.txt — không follow redirect để đọc status chính xác
 	client := &http.Client{
-		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 		Transport: &http.Transport{
 			DisableKeepAlives: true,
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				host, port, splitErr := net.SplitHostPort(addr)
-				if splitErr != nil {
-					return nil, splitErr
-				}
-				ips, lookupErr := net.LookupIP(host)
-				if lookupErr != nil {
-					return nil, lookupErr
-				}
-				var safeIP net.IP
-				for _, ip := range ips {
-					if validator.IsSafeIP(ip) {
-						safeIP = ip
-						break
-					}
-				}
-				if safeIP == nil {
-					return nil, fmt.Errorf("SSRF Protection: không tìm thấy IP an toàn cho %s", host)
-				}
-				return (&net.Dialer{Timeout: DialTimeout}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
-			},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: ignoreTLS}, //nolint:gosec
+			DialContext:       SafeDialContext,
 		},
+		Timeout: RequestTimeout,
 	}
 
 	req, err := http.NewRequest("GET", robotsURL, nil)
@@ -114,7 +92,7 @@ func FetchAndParseRobots(targetURL string, botUA string, ignoreTLS bool) (*Robot
 	req.Header.Set("User-Agent", sanitizeHeaderValue(botUA))
 	req.Header.Set("Accept", "text/plain, text/*, */*;q=0.8")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		if TimeoutError(err) {
 			// RFC 9309: timeout → treat như 5xx → hoãn crawl
@@ -137,22 +115,28 @@ func FetchAndParseRobots(targetURL string, botUA string, ignoreTLS bool) (*Robot
 		} else {
 			result.RawContent = string(bodyBytes)
 		}
-		parseRobotsContent(result, string(bodyBytes))
+		
+		parsed := ParseRobotsContent(string(bodyBytes))
+		result.Groups = parsed.Groups
+		result.SitemapURLs = parsed.SitemapURLs
 
 	case resp.StatusCode >= 300 && resp.StatusCode < 400:
-		// 3xx: theo redirect rồi parse — thực tế client.Do đã dừng ở đây
-		// Theo RFC 9309 §2.3.1: follow redirect nhưng tránh vòng lặp
+		// 3xx: Theo RFC 9309 §2.3.1.2: Follow redirect tối đa 5 lần
 		loc := resp.Header.Get("Location")
 		if loc != "" {
 			result.FetchStatus = RobotsStatus3xx
-			// Lần 2: follow redirect một lần duy nhất
-			result2, err2 := fetchRobotsFollowOne(loc, botUA, ignoreTLS)
-			if result2 != nil {
-				result.Groups = result2.Groups
-				result.SitemapURLs = result2.SitemapURLs
-				result.RawContent = result2.RawContent
+			parsedBase, _ := url.Parse(robotsURL)
+			parsedLoc, err := url.Parse(loc)
+			if err == nil && parsedBase != nil {
+				nextURL := parsedBase.ResolveReference(parsedLoc).String()
+				result2, err2 := fetchRobotsWithRedirects(ctx, nextURL, botUA, ignoreTLS, 1)
+				if result2 != nil {
+					result.Groups = result2.Groups
+					result.SitemapURLs = result2.SitemapURLs
+					result.RawContent = result2.RawContent
+				}
+				_ = err2
 			}
-			_ = err2
 		} else {
 			result.FetchStatus = RobotsStatus3xx
 		}
@@ -172,16 +156,23 @@ func FetchAndParseRobots(targetURL string, botUA string, ignoreTLS bool) (*Robot
 	return result, nil
 }
 
-// fetchRobotsFollowOne follow redirect 1 lần rồi parse.
-func fetchRobotsFollowOne(loc string, ua string, ignoreTLS bool) (*RobotsParseResult, error) {
+// fetchRobotsWithRedirects thực hiện loop đệ quy follow redirect cho robots.txt (tối đa 5 lần).
+func fetchRobotsWithRedirects(ctx context.Context, targetURL string, ua string, ignoreTLS bool, depth int) (*RobotsParseResult, error) {
 	result := &RobotsParseResult{
 		SitemapURLs: []string{},
 		Groups:      []RobotsGroup{},
 	}
-	resp, body, err := FetchRaw(loc, ua, ignoreTLS)
+	
+	if depth > 5 {
+		return result, fmt.Errorf("robots.txt redirect vượt giới hạn (5)")
+	}
+
+	resp, body, err := FetchRaw(ctx, targetURL, ua, ignoreTLS)
 	if err != nil || resp == nil {
 		return result, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		content := string(body)
 		if len(content) > 10*1024 {
@@ -189,14 +180,31 @@ func fetchRobotsFollowOne(loc string, ua string, ignoreTLS bool) (*RobotsParseRe
 		} else {
 			result.RawContent = content
 		}
-		parseRobotsContent(result, content)
+		parsed := ParseRobotsContent(content)
+		result.Groups = parsed.Groups
+		result.SitemapURLs = parsed.SitemapURLs
+	} else if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		loc := resp.Header.Get("Location")
+		if loc != "" {
+			parsedBase, _ := url.Parse(targetURL)
+			parsedLoc, err := url.Parse(loc)
+			if err == nil && parsedBase != nil {
+				nextURL := parsedBase.ResolveReference(parsedLoc).String()
+				return fetchRobotsWithRedirects(ctx, nextURL, ua, ignoreTLS, depth+1)
+			}
+		}
 	}
+	
 	return result, nil
 }
 
-// parseRobotsContent parse nội dung file robots.txt theo RFC 9309.
+// ParseRobotsContent parse nội dung file robots.txt theo RFC 9309.
 // Hỗ trợ: nhiều group, wildcard *, $, Sitemap directive.
-func parseRobotsContent(result *RobotsParseResult, content string) {
+func ParseRobotsContent(content string) *RobotsParseResult {
+	result := &RobotsParseResult{
+		Groups:      []RobotsGroup{},
+		SitemapURLs: []string{},
+	}
 	scanner := bufio.NewScanner(strings.NewReader(content))
 
 	var currentAgents []string
@@ -285,6 +293,8 @@ func parseRobotsContent(result *RobotsParseResult, content string) {
 	if inGroup {
 		flushGroup()
 	}
+
+	return result
 }
 
 // CheckRobotsAccess quyết định một bot có được phép crawl một path không.

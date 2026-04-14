@@ -28,6 +28,7 @@ const errorMessage    = $('#errorMessage');
 const resultSection   = $('#resultSection');
 const shareLink       = $('#shareLink');
 const btnCopyLink     = $('#btnCopyLink');
+let isProcessing      = false;
 
 // Verdict Banner
 const verdictBanner     = $('#verdictBanner');
@@ -87,11 +88,14 @@ form?.addEventListener('submit', async (e) => {
 
 // ─── Main Analyze Flow ───────────────────────────────────────────
 async function runAnalyze(url, forcedBypassCache = false) {
+    if (isProcessing) return;
+    
+    isProcessing = true;
     setLoading(true);
     hideError();
     hideResult();
 
-    const bot          = botSelect.value;
+    const bot          = botSelect?.value || 'googlebot-desktop';
     const ignoreTLS    = $('#ignoreTLSErrors').checked;
     const checkSitemap = $('#checkSitemap').checked;
     const compareMode  = $('#compareMode').checked;
@@ -126,6 +130,7 @@ async function runAnalyze(url, forcedBypassCache = false) {
         console.error(err);
     } finally {
         setLoading(false);
+        isProcessing = false;
     }
 }
 
@@ -394,6 +399,14 @@ function renderSitemap(sitemap) {
         ? '<span class="badge badge-success">Có trong sitemap</span>'
         : '<span class="badge badge-warning">Không có trong sitemap</span>';
 
+    const sitemapUrl = sitemap.sitemap_url || '';
+    const safeSitemapUrl = isValidHttpUrl(sitemapUrl) ? escapeHTML(sitemapUrl) : '#';
+    const sitemapLink = sitemapUrl ? `
+        <div class="bs-evidence-row">
+            <span class="bs-evidence-label">Sitemap URL</span>
+            <a href="${safeSitemapUrl}" target="_blank" rel="noopener noreferrer" class="bs-evidence-value text-truncate-url" title="${escapeHTML(sitemapUrl)}">${escapeHTML(truncateUrl(sitemapUrl, 50))}</a>
+        </div>` : '';
+
     sitemapContent.innerHTML = `
         <div class="bs-evidence-row">
             <span class="bs-evidence-label">Tìm thấy qua</span>
@@ -407,11 +420,7 @@ function renderSitemap(sitemap) {
             <span class="bs-evidence-label">Files quét</span>
             <span class="bs-evidence-value">${sitemap.files_scanned} / URLs đã kiểm tra: ${sitemap.urls_checked}</span>
         </div>
-        ${sitemap.sitemap_url ? `
-        <div class="bs-evidence-row">
-            <span class="bs-evidence-label">Sitemap URL</span>
-            <a href="${escapeHTML(sitemap.sitemap_url)}" target="_blank" class="bs-evidence-value text-truncate-url" title="${escapeHTML(sitemap.sitemap_url)}">${escapeHTML(truncateUrl(sitemap.sitemap_url, 50))}</a>
-        </div>` : ''}
+        ${sitemapLink}
     `;
 }
 
@@ -538,8 +547,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 const opt = botSelect.querySelector(`option[value="${pBot}"]`);
                 if (opt) botSelect.value = pBot;
             }
+            // Reset trạng thái xử lý cũ để không bị block bởi isProcessing
+            isProcessing = false;
             // Force submit nếu có URL hợp lệ
-            form?.dispatchEvent(new Event('submit'));
+            form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
         } else {
             urlInput.value = "";
             hideResult();
@@ -575,6 +586,15 @@ btnBypassCache?.addEventListener('click', () => {
 });
 
 // ─── UI Helpers ───────────────────────────────────────────────────
+function isValidHttpUrl(string) {
+    try {
+        const url = new URL(string);
+        return url.protocol === "http:" || url.protocol === "https:";
+    } catch (_) {
+        return false;
+    }
+}
+
 function setLoading(on) {
     toggleLoading(btnAnalyze, analyzeIcon, analyzeLoading, on);
     setElementsEnabled([urlInput, btnAnalyze], !on);

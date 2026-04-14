@@ -141,17 +141,18 @@ func EvaluateAccess(
 
 	// ─── Bước 3: HTTP serving signals ──────────────────────────────────
 	if serving.InitialStatusCode == 404 {
+		indexability.Status = IndexStatusBlocked
 		reasons = append(reasons, "HTTP_404")
-		suggestions = append(suggestions, "Trang trả về 404 - sẽ bị loại khỏi index.")
+		suggestions = append(suggestions, "Trang trả về 404 - nội dung này sẽ không được search engine index.")
 	} else if serving.InitialStatusCode >= 500 {
 		reasons = append(reasons, "HTTP_5XX")
 		suggestions = append(suggestions, "Máy chủ đang lỗi. Bot thường hoãn xử lý khi nhận 5xx.")
 	}
 
 	// ─── Bước 4: Cảnh báo đặc biệt cho AI bots ────────────────────────
-	if botFamily == "user_fetcher" {
-		reasons = append(reasons, "UA_USER_FETCHER")
-		suggestions = append(suggestions, "Bot này là user-triggered fetcher. Robots Exclusion Protocol không ràng buộc hoàn toàn loại bot này.")
+	if botFamily == "user_fetcher" && (crawlAccess.Status == CrawlBlocked || indexability.Status == IndexStatusBlocked) {
+		reasons = append(reasons, "UA_USER_FETCHER_BLOCKED")
+		suggestions = append(suggestions, "Bot này là user-triggered fetcher. Mặc dù có tín hiệu chặn, search engine thường vẫn cho phép bot này fetch theo yêu cầu trực tiếp từ người dùng (semantics khác với search crawler).")
 	}
 
 	// ─── Bước 5: Suy ra Verdict cuối cùng ──────────────────────────────
@@ -177,7 +178,11 @@ func EvaluateAccess(
 	case indexability.Status == IndexStatusBlocked:
 		verdictResult = VerdictBlocked
 		if crawlAccess.Status == CrawlAllowed {
-			summaryParts = append(summaryParts, "Bot có thể crawl nhưng trang có tín hiệu noindex.")
+			if serving.InitialStatusCode == 404 {
+				summaryParts = append(summaryParts, "Trang không tồn tại (HTTP 404).")
+			} else {
+				summaryParts = append(summaryParts, "Bot có thể crawl nhưng trang có tín hiệu noindex.")
+			}
 		}
 
 	case indexability.Status == IndexStatusAllowed && len(findRiskyReasons(reasons)) > 0:
@@ -188,6 +193,9 @@ func EvaluateAccess(
 	case indexability.Status == IndexStatusAllowed:
 		verdictResult = VerdictIndexable
 		summaryParts = append(summaryParts, "Trang có thể được crawl và index bình thường.")
+		if botFamily == "user_fetcher" {
+			summaryParts = append(summaryParts, "Lưu ý: Bot này là user-triggered fetcher, thường không bị ràng buộc khắt khe bởi robots.txt như search crawlers.")
+		}
 
 	default:
 		verdictResult = VerdictUnknown
@@ -207,10 +215,10 @@ func EvaluateAccess(
 // findRiskyReasons lọc các reason codes cần cảnh báo (nhưng chưa block hoàn toàn).
 func findRiskyReasons(reasons []string) []string {
 	riskySet := map[string]bool{
-		"CANONICAL_MISSING":   true,
-		"CANONICAL_MISMATCH":  true,
-		"UA_USER_FETCHER":     true,
-		"HTTP_5XX":            true,
+		"CANONICAL_MISSING":  true,
+		"CANONICAL_MISMATCH": true,
+		"HTTP_5XX":           true,
+		"HTTP_404":           true,
 	}
 	out := []string{}
 	for _, r := range reasons {

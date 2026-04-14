@@ -81,7 +81,7 @@
 }
 
 /* Nút Share */
-.btn-share {
+.btn-share, .btn-info {
     --btn-bg: var(--overlay-blue);
     --btn-border: var(--blue-500);
     --btn-text: var(--blue-900);

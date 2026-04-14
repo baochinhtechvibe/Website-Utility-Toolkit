@@ -8,7 +8,6 @@
         content="Kiểm tra chuỗi chuyển hướng (redirect chain) đầy đủ với Visual Path, Security Audit và Performance Metrics.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../src/css/tools/redirect-checker.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
@@ -23,7 +22,7 @@
 <body>
     <div class="wrapper page--redirect">
         <!-- Begin: Header -->
-        <header id="header" class="header header--redirect py-10 mb-4 text-center">
+        <header id="header" class="header">
             <div class="container">
                 <div class="header__wrapper relative d-flex flex-col justify-center items-center">
                     <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
@@ -52,14 +51,14 @@
         </header>
         <!-- End: Header -->
 
-        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+        <main id="main" class="main mt-4 mb-4">
             <div class="container">
 
                 <!-- ===================== CARD: FORM NHẬP LIỆU ===================== -->
                 <div class="card">
                     <div class="card__header">
-                        <h2 class="card__title text-xl font-bold text-center">
-                            <i class="fa-solid fa-route"></i>
+                        <h2 class="card__title text-center">
+                            <i class="fa-solid fa-route mr-2"></i>
                             Redirect Analyzer
                         </h2>
                     </div>
@@ -67,51 +66,53 @@
                     <div class="card__body">
                         <form id="redirectForm" action="" method="post" class="form form--redirect">
 
-                            <!-- Hàng 1: URL input -->
-                            <div class="form-field mb-4">
+                            <!-- URL input -->
+                            <div class="form-field">
                                 <label class="form-label" for="redirectUrl">URL cần kiểm tra</label>
                                 <input type="text" id="redirectUrl" name="url" class="form-input"
                                     placeholder="Ví dụ: https://bit.ly/example hoặc http://your-site.com">
-                                <div id="urlValidationError" class="error-card mt-2 d-none">
-                                    <div class="error-card__header">
-                                        <h3 class="error-card__title"><i class="fa-solid fa-triangle-exclamation"></i>
-                                            URL không hợp lệ</h3>
+                                <div id="urlValidationError" class="message-card message-card--error mt-2 d-none">
+                                    <div class="message-card__header">
+                                        <h4 class="message-card__title">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            URL không hợp lệ
+                                        </h4>
                                     </div>
-                                    <div class="error-card__body">
-                                        <p class="error-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
+                                    <div class="message-card__body">
+                                        <p class="message-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
                                             <code>http://</code> hoặc <code>https://</code>.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Hàng 2: User-Agent + Nút Analyze -->
-                            <div class="form-inline">
+                            <!-- User-Agent + Nút Analyze -->
+                            <div class="form-inline mt-4">
                                 <div class="form-field form-field--wide">
                                     <label class="form-label" for="userAgent">User-Agent</label>
                                     <select id="userAgent" name="userAgent" class="form-input form-select">
                                         <optgroup label="🖥️ Trình duyệt - Desktop">
                                             <option
-                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
                                                 selected>
                                                 Chrome Desktop (Mặc định)
                                             </option>
                                             <option
-                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0">
+                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0">
                                                 Firefox Desktop
                                             </option>
                                             <option
-                                                value="Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15">
+                                                value="Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15">
                                                 Safari Desktop (macOS)
                                             </option>
                                         </optgroup>
                                         <optgroup label="📱 Trình duyệt - Mobile">
                                             <option
-                                                value="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1">
+                                                value="Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1">
                                                 iPhone Safari
                                             </option>
                                             <option
-                                                value="Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36">
+                                                value="Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36">
                                                 Android Chrome
                                             </option>
                                         </optgroup>
@@ -128,13 +129,6 @@
                                                 value="Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)">
                                                 Bingbot
                                             </option>
-                                            <option value="DuckDuckBot/1.0; (+http://duckduckgo.com/duckduckbot.html)">
-                                                DuckDuckBot
-                                            </option>
-                                            <option
-                                                value="Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)">
-                                                YandexBot
-                                            </option>
                                         </optgroup>
                                         <optgroup label="📲 Social Preview Bots">
                                             <option
@@ -144,24 +138,9 @@
                                             <option value="Twitterbot/1.0">
                                                 Twitterbot
                                             </option>
-                                            <option
-                                                value="Mozilla/5.0 (compatible; LinkedInBot/1.0; +http://www.linkedin.com)">
-                                                LinkedInBot
-                                            </option>
-                                            <option value="Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)">
-                                                Slackbot
-                                            </option>
-                                            <option
-                                                value="Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)">
-                                                Discordbot
-                                            </option>
                                         </optgroup>
                                         <optgroup label="🛠️ Tools / Debug">
-                                            <option value="curl/7.88.1">curl (Tối giản)</option>
-                                            <option value="Wget/1.21.3">Wget</option>
-                                            <option value="Mozilla/5.0 (compatible; bot/1.0)">Generic Bot</option>
-                                        </optgroup>
-                                        <optgroup label="⚙️ Tùy chỉnh">
+                                            <option value="curl/8.7.1">curl (Tối giản)</option>
                                             <option value="custom">Nhập thủ công...</option>
                                         </optgroup>
                                     </select>
@@ -205,218 +184,217 @@
                 </div>
                 <!-- End: Card Form -->
 
-                <!-- ===================== CARD: KẾT QUẢ PHÂN TÍCH ===================== -->
-                <!-- CACHE BANNER (Premium Refresh) -->
-                <div id="cacheNoticeRedirect"
-                    class="result-card__cache-notice mt-4 mb-4 p-2 flex-row justify-between items-center d-none">
-                    <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b
-                            id="cacheTimeRedirect"></b>.</span>
-                    <button type="button" id="btnBypassCacheRedirect"
-                        class="btn btn-sm btn-outline cache-notice__btn-refresh">
-                        <i class="fa-solid fa-arrows-rotate"></i> Làm mới
-                    </button>
-                </div>
-
-                <!-- Result Section -->
-                <div id="resultSection" class="d-none mt-4">
-
-                    <!-- REDIRECT SCORE -->
-                    <div id="scoreCard" class="card mb-4">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-gauge-high"></i>
-                                Redirect Score
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <div class="redirect-score d-flex flex-row items-center gap-4 flex-wrap">
-                                <div id="scoreBadge" class="redirect-score__badge">
-                                    <span id="scoreValue">--</span>
-                                    <small>/100</small>
-                                </div>
-                                <div id="scoreBreakdown" class="redirect-score__breakdown flex-1">
-                                    <!-- JS render danh sách điểm trừ -->
-                                </div>
-                            </div>
+                <!-- ===================== UNIFIED RESULT CARD ===================== -->
+                <div id="resultSection" class="result-card mt-6 d-none">
+                    <div class="result-card__header d-flex flex-row justify-between items-center">
+                        <h3 id="resultsTitle" class="result-card__title">
+                            <i class="fa-solid fa-circle-check mr-2"></i>
+                            Kết quả phân tích chuyển hướng
+                        </h3>
+                        <div class="result-card__actions d-flex gap-2">
+                            <button id="btnCopyChain" type="button" class="btn btn-sm btn-outline">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                            <button id="btnExportJson" type="button" class="btn btn-sm btn-outline">
+                                <i class="fa-solid fa-file-code"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- VISUAL REDIRECT PATH -->
-                    <div id="pathCard" class="card mb-4">
-                        <div class="card__header d-flex flex-row justify-between items-center">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-route"></i>
-                                Chuỗi Chuyển Hướng
-                            </h3>
-                            <div class="d-flex gap-2">
-                                <button id="btnCopyChain" type="button" class="btn btn-sm btn-outline">
-                                    <i class="fa-solid fa-copy"></i> Copy Chain
-                                </button>
-                                <button id="btnExportJson" type="button" class="btn btn-sm btn-outline">
-                                    <i class="fa-solid fa-file-code"></i> JSON
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card__body">
-                            <div id="redirectChain" class="redirect-chain">
-                                <!-- JS render từng step -->
-                            </div>
-                            <div id="penaltySummary" class="redirect-penalty mt-4 d-none">
-                                <i class="fa-solid fa-stopwatch"></i>
-                                Tổng thời gian bị cộng thêm do redirect: <strong id="totalPenalty">--ms</strong>
-                            </div>
-                        </div>
+                    <!-- CACHE NOTICE -->
+                    <div id="cacheNotice"
+                        class="cache-card mt-4 mb-4 d-flex flex-row justify-between items-center d-none">
+                        <span><i class="fa-solid fa-clock"></i> <span id="cacheText">Kết quả tra cứu mới nhất lúc</span>
+                            <b id="cacheTime"></b>.</span>
+                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"
+                            aria-label="Làm mới thông tin tra cứu">
+                            <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                        </button>
                     </div>
 
-                    <!-- SECURITY AUDIT -->
-                    <div id="securityCard" class="card mb-4">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-shield-halved"></i>
-                                Security Audit
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="securityResults" class="security-results">
-                                <!-- JS render kết quả check bảo mật -->
+                    <div class="result-card__body">
+                        <!-- REDIRECT SCORE -->
+                        <div id="scoreCard" class="card card--flat mb-6">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-gauge-high mr-2"></i>
+                                    Redirect Score
+                                </h4>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- PERFORMANCE WATERFALL -->
-                    <div id="perfCard" class="card mb-4">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-chart-gantt"></i>
-                                Performance Latency
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="perfTable" class="table-wrapper w-full overflow-x-auto">
-                                <table class="results-table w-full">
-                                    <thead>
-                                        <tr>
-                                            <th>Bước</th>
-                                            <th>URL</th>
-                                            <th>DNS</th>
-                                            <th>TCP</th>
-                                            <th>TLS</th>
-                                            <th>TTFB</th>
-                                            <th>Tổng</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="perfTableBody">
+                            <div class="card__body">
+                                <div class="redirect-score d-flex flex-row items-center flex-wrap">
+                                    <div id="scoreBadge" class="redirect-score__badge">
+                                        <span id="scoreValue">--</span>
+                                        <small>/100</small>
+                                    </div>
+                                    <div id="scoreBreakdown" class="redirect-score__breakdown flex-1">
                                         <!-- JS render -->
-                                    </tbody>
-                                </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- SEO & SOCIAL META AUDIT -->
-                    <div id="seoCard" class="card mb-4">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-magnifying-glass-chart"></i>
-                                SEO & Social Meta Audit
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="seoResults" class="seo-results">
-                                <!-- JS render -->
+                        <!-- VISUAL REDIRECT PATH -->
+                        <div id="pathCard" class="card card--flat mb-6">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-route mr-2"></i>
+                                    Chuỗi Chuyển Hướng
+                                </h4>
+                            </div>
+                            <div class="card__body">
+                                <div id="redirectChain" class="redirect-chain">
+                                    <!-- JS render -->
+                                </div>
+                                <div id="penaltySummary" class="redirect-penalty mt-4 d-none">
+                                    <i class="fa-solid fa-stopwatch"></i>
+                                    Tổng thời gian bị cộng thêm do redirect: <strong id="totalPenalty">--ms</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- CURL OUTPUT -->
-                    <div id="curlCard" class="card mb-4">
-                        <div class="card__header d-flex flex-row justify-between items-center">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-terminal"></i>
-                                cURL Output
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <p class="text-sm font-medium text-gray-700 mb-2">
-                                Kiểm tra redirect bằng curl:
-                            </p>
-                            <div class="code-block mb-6">
-                                <div class="code-block__header">
-                                    <span class="code-block__lang">
-                                        <i class="fa-solid fa-code"></i> Bash
-                                    </span>
-                                    <button class="code-block__btn-copy js-copy-code" data-clipboard-target="#curlOutput">
-                                        <i class="fa-regular fa-clone"></i>
-                                    </button>
-                                </div>
-                                <div class="code-block__body">
-                                    <code id="curlOutput" class="code-block__text"></code>
+                        <!-- SECURITY AUDIT -->
+                        <div id="securityCard" class="card card--flat mb-6">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-shield-halved mr-2"></i>
+                                    Security Audit
+                                </h4>
+                            </div>
+                            <div class="card__body">
+                                <div id="securityResults" class="security-results">
+                                    <!-- JS render -->
                                 </div>
                             </div>
+                        </div>
 
-                            <p class="text-sm font-medium text-gray-700 mb-2">
-                                Lộ trình được phân tích:
-                            </p>
-                            <div class="code-block mb-4">
-                                <div class="code-block__header">
-                                    <span class="code-block__lang">
-                                        <i class="fa-solid fa-list-ol"></i> Path Steps
-                                    </span>
-                                    <button class="code-block__btn-copy js-copy-code" data-clipboard-target="#pathOutput">
-                                        <i class="fa-regular fa-clone"></i>
-                                    </button>
-                                </div>
-                                <div class="code-block__body">
-                                    <code id="pathOutput" class="code-block__text"></code>
+                        <!-- PERFORMANCE WATERFALL -->
+                        <div id="perfCard" class="card card--flat mb-6">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-chart-gantt mr-2"></i>
+                                    Performance Latency
+                                </h4>
+                            </div>
+                            <div class="card__body">
+                                <div id="perfTable" class="table-wrapper">
+                                    <table class="results-table w-full">
+                                        <thead>
+                                            <tr>
+                                                <th>Bước</th>
+                                                <th>URL</th>
+                                                <th>DNS</th>
+                                                <th>TCP</th>
+                                                <th>TLS</th>
+                                                <th>TTFB</th>
+                                                <th>Tổng</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="perfTableBody"></tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- UA COMPARISON (ẩn mặc định) -->
-                    <div id="compareCard" class="card mb-4 d-none">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-code-compare"></i>
-                                So sánh User-Agent
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="compareWarning" class="warning-card d-none">
-                                <div class="warning-card__header">
-                                    <h3 class="warning-card__title"><i class="fa-solid fa-triangle-exclamation"></i>
-                                        Phát hiện: Redirect khác nhau theo User-Agent</h3>
-                                </div>
-                                <div class="warning-card__body">
-                                    <p class="warning-card__message" id="compareWarningMsg"></p>
+                        <!-- SEO & SOCIAL META AUDIT -->
+                        <div id="seoCard" class="card card--flat mb-6">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>
+                                    SEO & Social Meta Audit
+                                </h4>
+                            </div>
+                            <div class="card__body">
+                                <div id="seoResults" class="seo-results">
+                                    <!-- JS render -->
                                 </div>
                             </div>
-                            <div id="compareTable" class="table-wrapper w-full overflow-x-auto mt-4">
-                                <table class="results-table w-full">
-                                    <thead>
-                                        <tr>
-                                            <th>User-Agent</th>
-                                            <th>Bước</th>
-                                            <th>URL Cuối</th>
-                                            <th>Status Cuối</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="compareTableBody"></tbody>
-                                </table>
+                        </div>
+
+                        <!-- cURL OUTPUT -->
+                        <div id="curlCard" class="card card--flat mb-6">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-terminal mr-2"></i>
+                                    cURL Output
+                                </h4>
+                            </div>
+                            <div class="card__body">
+                                <div class="code-block mb-4">
+                                    <div class="code-block__header">
+                                        <span class="code-block__lang">Kiểm tra qua curl (Lệnh gợi ý)</span>
+                                        <button class="code-block__btn-copy js-copy-code"
+                                            data-clipboard-target="#curlOutput">
+                                            <i class="fa-regular fa-clone"></i>
+                                        </button>
+                                    </div>
+                                    <div class="code-block__body">
+                                        <code id="curlOutput" class="code-block__text"></code>
+                                    </div>
+                                </div>
+
+                                <div class="code-block">
+                                    <div class="code-block__header">
+                                        <span class="code-block__lang">Lộ trình Path Steps</span>
+                                        <button class="code-block__btn-copy js-copy-code"
+                                            data-clipboard-target="#pathOutput">
+                                            <i class="fa-regular fa-clone"></i>
+                                        </button>
+                                    </div>
+                                    <div class="code-block__body">
+                                        <code id="pathOutput" class="code-block__text"></code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- UA COMPARISON (ẩn mặc định) -->
+                        <div id="compareCard" class="card card--flat d-none">
+                            <div class="card__header">
+                                <h4 class="card__title font-bold">
+                                    <i class="fa-solid fa-code-compare mr-2"></i>
+                                    So sánh User-Agent
+                                </h4>
+                            </div>
+                            <div class="card__body">
+                                <div id="compareWarning" class="message-card message-card--warning mb-4 d-none">
+                                    <div class="message-card__header">
+                                        <h4 class="message-card__title">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Redirect khác nhau theo User-Agent
+                                        </h4>
+                                    </div>
+                                    <div class="message-card__body">
+                                        <p class="message-card__message" id="compareWarningMsg"></p>
+                                    </div>
+                                </div>
+                                <div id="compareTable" class="table-wrapper">
+                                    <table class="results-table w-full">
+                                        <thead>
+                                            <tr>
+                                                <th>User-Agent</th>
+                                                <th>Bước</th>
+                                                <th>URL Cuối</th>
+                                                <th>Status Cuối</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="compareTableBody"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- SHARE CARD -->
-                    <div id="shareCard" class="share-card mt-4">
+                    <div id="shareCard" class="share-card border-top-subtle">
                         <div class="share-card__header">
-                            <h4 class="share-card__title text-xl font-bold">
+                            <h4 class="share-card__title">
                                 <i class="fa-solid fa-share-nodes"></i>
                                 Chia sẻ kết quả:
                             </h4>
                         </div>
                         <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                            <input type="text" id="shareLink" readonly class="share-card__input" value="" />
+                            <input type="text" id="shareLink" readonly class="share-card__input" />
                             <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
                                 <i class="fas fa-copy"></i>
                                 <span>Copy</span>
@@ -424,18 +402,18 @@
                         </div>
                     </div>
                 </div>
-                <!-- End: Result Section -->
+                <!-- End: Unified Result Card -->
 
                 <!-- Error Card -->
-                <div id="errorCard" class="error-card mt-6 d-none">
-                    <div class="error-card__header">
-                        <h3 class="error-card__title text-xl font-bold">
+                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                    <div class="message-card__header">
+                        <h4 class="message-card__title">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             Phân tích thất bại
-                        </h3>
+                        </h4>
                     </div>
-                    <div class="error-card__body">
-                        <p id="errorMessage" class="error-card__message">
+                    <div class="message-card__body">
+                        <p id="errorMessage" class="message-card__message">
                             Không thể kết nối tới URL. Vui lòng kiểm tra lại địa chỉ và thử lại.
                         </p>
                     </div>
@@ -444,8 +422,7 @@
             </div>
         </main>
 
-        <!-- Begin: Footer -->
-        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+        <footer id="footer" class="footer mt-4">
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
                     <div class="footer__stat footer__stat--total">
@@ -465,10 +442,10 @@
                 </div>
             </div>
         </footer>
-        <!-- End: Footer -->
     </div>
     <script type="module" src="../../src/js/main.js"></script>
     <script type="module" src="../../src/js/tools/redirect-checker/redirect-checker.js"></script>
 </body>
+
 
 </html>

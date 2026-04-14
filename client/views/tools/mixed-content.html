@@ -70,15 +70,15 @@
                                         placeholder="Ví dụ: https://example.com"
                                         autocomplete="off"
                                     >
-                                    <div id="urlValidationError" class="error-card mt-2 d-none">
-                                        <div class="error-card__header">
-                                            <h3 class="error-card__title">
+                                    <div id="urlValidationError" class="message-card message-card--error mt-2 d-none">
+                                        <div class="message-card__header">
+                                            <h4 class="message-card__title">
                                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                                 URL không hợp lệ
-                                            </h3>
+                                            </h4>
                                         </div>
-                                        <div class="error-card__body">
-                                            <p class="error-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng <code>http://</code> hoặc <code>https://</code>.</p>
+                                        <div class="message-card__body">
+                                            <p class="message-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng <code>http://</code> hoặc <code>https://</code>.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -103,15 +103,15 @@
                 </div>
 
                 <!-- ========== ERROR CARD ========== -->
-                <div id="errorCard" class="error-card mt-6 d-none">
-                    <div class="error-card__header">
-                        <h3 class="error-card__title text-xl font-bold">
+                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                    <div class="message-card__header">
+                        <h4 class="message-card__title text-xl font-bold">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             Scan thất bại
-                        </h3>
+                        </h4>
                     </div>
-                    <div class="error-card__body">
-                        <p id="errorMessage" class="error-card__message">
+                    <div class="message-card__body">
+                        <p id="errorMessage" class="message-card__message">
                             Không thể kết nối tới URL. Vui lòng kiểm tra lại và thử lại.
                         </p>
                     </div>

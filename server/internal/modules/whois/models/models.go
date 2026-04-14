@@ -27,6 +27,13 @@ type WhoisMeta struct {
 	Cached    bool   `json:"cached"`
 }
 
+// WhoisCacheEntry gộp WhoisResponse + WhoisMeta vào 1 struct duy nhất.
+// Tránh race condition khi 2 LRU cache riêng biệt evict entry không đồng bộ.
+type WhoisCacheEntry struct {
+	Response *WhoisResponse
+	Meta     *WhoisMeta
+}
+
 // APIResponse là format chuẩn trả về cho toàn bộ toolkit
 type APIResponse struct {
 	Success bool           `json:"success"`
@@ -64,8 +71,11 @@ type RDAPEvent struct {
 
 // RDAPEntity holds registrar/registrant info for RDAP response
 type RDAPEntity struct {
+	Handle     string        `json:"handle"`
 	Roles      []string      `json:"roles"`
 	VCardArray []interface{} `json:"vcardArray"`
+	Links      []RDAPLink    `json:"links"`
+	Entities   []RDAPEntity  `json:"entities"`
 }
 
 // RDAPResponse is the structure returned by RDAP servers

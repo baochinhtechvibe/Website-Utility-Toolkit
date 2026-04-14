@@ -107,8 +107,8 @@ var BotCatalog = map[string]BotProfile{
 	"claudebot": {
 		Key:         "claudebot",
 		Label:       "ClaudeBot (Anthropic Training)",
-		UserAgent:   "Claude-Web/1.0 (+https://support.claude.ai/en/articles/8896518)",
-		RobotsToken: "claudebot",
+		UserAgent:   "Mozilla/5.0 (compatible; ClaudeBot/1.0; +https://www.anthropic.com/claudebot)",
+		RobotsToken: "ClaudeBot",
 		Family:      "ai_training",
 		DocsURL:     "https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
 		DefaultHeaders: map[string]string{
@@ -118,7 +118,7 @@ var BotCatalog = map[string]BotProfile{
 	"claude-searchbot": {
 		Key:         "claude-searchbot",
 		Label:       "Claude-SearchBot (Anthropic Search)",
-		UserAgent:   "Claude-SearchBot/1.0 (+https://support.anthropic.com)",
+		UserAgent:   "Claude-SearchBot/1.0 (+https://support.anthropic.com)", // Unofficial UA: Anthropic chưa công bố chính thức nhưng đã xuất hiện trong log
 		RobotsToken: "claude-searchbot",
 		Family:      "ai_search",
 		DocsURL:     "https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
@@ -133,7 +133,7 @@ var BotCatalog = map[string]BotProfile{
 	"chatgpt-user": {
 		Key:         "chatgpt-user",
 		Label:       "ChatGPT-User (User-Triggered)",
-		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+		UserAgent:   "Mozilla/5.0 (compatible; ChatGPT-User/1.0; +https://openai.com/bot) AppleWebKit/537.36 (KHTML, like Gecko)",
 		RobotsToken: "chatgpt-user",
 		Family:      "user_fetcher",
 		DocsURL:     "https://platform.openai.com/docs/bots",
@@ -144,7 +144,7 @@ var BotCatalog = map[string]BotProfile{
 	"perplexity-user": {
 		Key:         "perplexity-user",
 		Label:       "Perplexity-User (User-Triggered)",
-		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot",
+		UserAgent:   "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot) AppleWebKit/537.36 (KHTML, like Gecko)",
 		RobotsToken: "perplexity-user",
 		Family:      "user_fetcher",
 		DocsURL:     "https://docs.perplexity.ai/docs/resources/perplexity-crawlers",
@@ -155,7 +155,7 @@ var BotCatalog = map[string]BotProfile{
 	"claude-user": {
 		Key:         "claude-user",
 		Label:       "Claude-User (User-Triggered)",
-		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Claude-User/1.0",
+		UserAgent:   "Mozilla/5.0 (compatible; Claude-User/1.0) AppleWebKit/537.36 (KHTML, like Gecko)",
 		RobotsToken: "claude-user",
 		Family:      "user_fetcher",
 		DocsURL:     "https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
@@ -199,6 +199,7 @@ var DefaultCompareMatrix = []string{
 }
 
 // MaxCompareProfiles là số bot profile chạy song song tối đa trong compare mode.
+// CHÚ Ý: Luôn đồng bộ giá trị này với số lượng phần tử trong DefaultCompareMatrix bên dưới.
 const MaxCompareProfiles = 6
 
 // GetProfile trả về profile theo key.

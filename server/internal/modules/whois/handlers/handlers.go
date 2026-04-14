@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 	"tools.bctechvibe.com/server/internal/modules/whois/models"
 	"tools.bctechvibe.com/server/internal/modules/whois/service"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 // HandleWhoisLookup xử lý GET /api/whois/lookup?domain=...&bypassCache=true
@@ -34,6 +35,15 @@ func HandleWhoisLookup(c *gin.Context) {
 	}
 	domain = strings.ToLower(strings.TrimSpace(domain))
 
+	// ✅ Validate domain syntax
+	if !validator.IsValidDomain(domain) {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Message: "Định dạng tên miền không hợp lệ. Vui lòng kiểm tra lại.",
+		})
+		return
+	}
+
 	// Extract apex domain (eTLD+1) từ subdomain
 	// VD: subdomain.bctechvibe.com → bctechvibe.com
 	//     subdomain.bctechvibe.io.vn → bctechvibe.io.vn
@@ -51,12 +61,19 @@ func HandleWhoisLookup(c *gin.Context) {
 
 	log.Info().Str("domain", domain).Bool("bypassCache", bypassCache).Msg("WHOIS lookup request")
 
-	resp, meta, err := service.LookupWhois(domain, bypassCache)
+	resp, meta, err := service.LookupWhois(c.Request.Context(), domain, bypassCache)
 	if err != nil {
 		log.Error().Err(err).Str("domain", domain).Msg("WHOIS lookup error")
+		
+		// Mask internal errors, show only friendly messages
+		msg := "Không thể tra cứu thông tin tên miền này. Vui lòng thử lại sau."
+		if whoisErr, ok := err.(*service.WhoisError); ok {
+			msg = whoisErr.Message
+		}
+
 		c.JSON(http.StatusOK, models.APIResponse{
 			Success: false,
-			Message: err.Error(),
+			Message: msg,
 		})
 		return
 	}

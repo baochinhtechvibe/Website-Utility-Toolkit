@@ -18,12 +18,12 @@ type MetaParseResult struct {
 
 var (
 	reTitle       = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
-	reMetaRobots  = regexp.MustCompile(`(?i)<meta[^>]+name=["']?robots["']?[^>]+content=["']([^"'>]+)["']`)
-	reMetaRobots2 = regexp.MustCompile(`(?i)<meta[^>]+content=["']([^"'>]+)["'][^>]+name=["']?robots["']?`)
-	reCanonical   = regexp.MustCompile(`(?i)<link[^>]+rel=["']canonical["'][^>]+href=["']([^"'>]+)["']`)
-	reCanonical2  = regexp.MustCompile(`(?i)<link[^>]+href=["']([^"'>]+)["'][^>]+rel=["']canonical["']`)
-	reMetaDesc    = regexp.MustCompile(`(?i)<meta[^>]+name=["']?description["']?[^>]+content=["']([^"'>]+)["']`)
-	reMetaDesc2   = regexp.MustCompile(`(?i)<meta[^>]+content=["']([^"'>]+)["'][^>]+name=["']?description["']?`)
+	reMetaRobots  = regexp.MustCompile(`(?i)<meta[^>]+name=["']?robots["']?[^>]+content=["']?([^"'>]+)["']?`)
+	reMetaRobots2 = regexp.MustCompile(`(?i)<meta[^>]+content=["']?([^"'>]+)["']?[^>]+name=["']?robots["']?`)
+	reCanonical   = regexp.MustCompile(`(?i)<link[^>]+rel=["']?canonical["']?[^>]+href=["']?([^"'>]+)["']?`)
+	reCanonical2  = regexp.MustCompile(`(?i)<link[^>]+href=["']?([^"'>]+)["']?[^>]+rel=["']?canonical["']?`)
+	reMetaDesc    = regexp.MustCompile(`(?i)<meta[^>]+name=["']?description["']?[^>]+content=["']?([^"'>]+)["']?`)
+	reMetaDesc2   = regexp.MustCompile(`(?i)<meta[^>]+content=["']?([^"'>]+)["']?[^>]+name=["']?description["']?`)
 	reBodyText    = regexp.MustCompile(`(?is)<body[^>]*>(.*?)</body>`)
 	reHTMLTags    = regexp.MustCompile(`<[^>]+>`)
 )
@@ -137,8 +137,12 @@ func ParseXRobotsTag(headers map[string]string) string {
 	return ""
 }
 
-// normalizeURLForCompare chuẩn hóa URL để so sánh (bỏ trailing slash, lowercase scheme+host).
+// normalizeURLForCompare chuẩn hóa URL để so sánh (bỏ fragment, bỏ trailing slash, lowercase scheme+host).
 func normalizeURLForCompare(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if idx := strings.Index(rawURL, "#"); idx >= 0 {
+		rawURL = rawURL[:idx]
+	}
 	rawURL = strings.TrimRight(rawURL, "/")
 	rawURL = strings.ToLower(rawURL)
 	return rawURL

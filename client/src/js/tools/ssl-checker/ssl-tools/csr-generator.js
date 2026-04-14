@@ -190,10 +190,10 @@ function init() {
                 
                 <div class="message-card message-card--warning mt-4">
                     <div class="message-card__header">
-                        <h3 class="message-card__title">
+                        <h4 class="message-card__title">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             Lưu ý bảo mật
-                        </h3>
+                        </h4>
                     </div>
                     <div class="message-card__body">
                         <p class="message-card__message">

@@ -201,21 +201,21 @@
 }
 
 .json-tools__diff-line--added {
-    background-color: color-mix(in srgb, var(--green-500) 12%, transparent);
-    border-left-color: var(--green-500);
-    color: var(--green-700);
+    background-color: var(--color-success-bg);
+    border-left-color: var(--color-success-border);
+    color: var(--color-success-text);
 }
 
 .json-tools__diff-line--removed {
-    background-color: color-mix(in srgb, var(--red-500) 12%, transparent);
-    border-left-color: var(--red-500);
-    color: var(--red-700);
+    background-color: var(--color-error-bg);
+    border-left-color: var(--color-error-border);
+    color: var(--color-error-text);
 }
 
 .json-tools__diff-line--modified {
-    background-color: color-mix(in srgb, var(--yellow-500) 12%, transparent);
-    border-left-color: var(--yellow-500);
-    color: var(--yellow-800);
+    background-color: var(--color-warning-bg);
+    border-left-color: var(--color-warning-border);
+    color: var(--color-warning-text);
 }
 
 .json-tools__diff-line--unchanged {
@@ -223,18 +223,18 @@
 }
 
 [data-theme="dark"] .json-tools__diff-line--added {
-    background-color: color-mix(in srgb, var(--green-500) 10%, transparent);
-    color: var(--green-300);
+    background-color: var(--color-success-bg);
+    color: var(--color-success-text);
 }
 
 [data-theme="dark"] .json-tools__diff-line--removed {
-    background-color: color-mix(in srgb, var(--red-500) 10%, transparent);
-    color: var(--red-300);
+    background-color: var(--color-error-bg);
+    color: var(--color-error-text);
 }
 
 [data-theme="dark"] .json-tools__diff-line--modified {
-    background-color: color-mix(in srgb, var(--yellow-500) 10%, transparent);
-    color: var(--yellow-300);
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
 }
 
 /* ===== Diff Split View ===== */

@@ -13,7 +13,7 @@ func RateLimitMiddleware(max float64) gin.HandlerFunc {
 		if httpError != nil {
 			c.AbortWithStatusJSON(httpError.StatusCode, gin.H{
 				"success": false,
-				"error": httpError.Message,
+				"message": "Thao tác quá nhanh, vui lòng chờ một chút rồi thử lại.",
 			})
 			return
 		}
@@ -31,7 +31,7 @@ func RateLimitMiddlewareWithBurst(max float64, burst int) gin.HandlerFunc {
 		if httpError != nil {
 			c.AbortWithStatusJSON(httpError.StatusCode, gin.H{
 				"success": false,
-				"error": httpError.Message,
+				"message": "Thao tác quá nhanh, vui lòng chờ một chút rồi thử lại.",
 			})
 			return
 		}

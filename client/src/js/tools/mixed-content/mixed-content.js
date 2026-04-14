@@ -41,6 +41,7 @@ const btnCopyFixes   = document.getElementById("btnCopyFixes");
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let lastItems = [];
+let isScanning = false;
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 function validateURL(url) {
@@ -229,6 +230,8 @@ urlInput?.addEventListener("input", () => {
 // ─── Form Submit ──────────────────────────────────────────────────────────────
 form?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (isScanning) return;
+    
     resetUI();
 
     const rawUrl = urlInput.value.trim();
@@ -238,10 +241,11 @@ form?.addEventListener("submit", async (e) => {
         return;
     }
 
-    setElementsEnabled([urlInput, btnScan], false);
-    toggleLoading(btnScan, scanIcon, scanLoading, true);
-
     try {
+        isScanning = true;
+        setElementsEnabled([urlInput, btnScan], false);
+        toggleLoading(btnScan, scanIcon, scanLoading, true);
+
         const response = await fetch(`${API_BASE_URL}/mixed-content/scan`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -264,6 +268,7 @@ form?.addEventListener("submit", async (e) => {
         errorMessage.textContent = "Không thể kết nối tới server. Vui lòng thử lại sau.";
         setDisplay(errorCard, "block");
     } finally {
+        isScanning = false;
         toggleLoading(btnScan, scanIcon, scanLoading, false);
         setElementsEnabled([urlInput, btnScan], true);
     }
@@ -273,12 +278,23 @@ form?.addEventListener("submit", async (e) => {
 function initFromURL() {
     createRealtimeURLValidator(urlInput, urlError, btnScan);
 
-    const params = new URLSearchParams(window.location.search);
-    const url = params.get("url");
     if (url) {
         urlInput.value = url;
         form.dispatchEvent(new Event("submit"));
     }
+
+    // Popstate handling (Rule 4)
+    window.addEventListener("popstate", () => {
+        const p = new URLSearchParams(window.location.search);
+        const u = p.get("url");
+        if (u) {
+            urlInput.value = u;
+            form.dispatchEvent(new Event("submit"));
+        } else {
+            urlInput.value = "";
+            resetUI();
+        }
+    });
 }
 
 initFromURL();

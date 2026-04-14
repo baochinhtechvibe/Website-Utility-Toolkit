@@ -1,5 +1,5 @@
 /* =======================================
-    src/css/tools/redirect.css
+    src/css/tools/redirect-checker.css
     Styling cho Redirect Analyzer Tool
 ========================================== */
 
@@ -23,10 +23,10 @@
 .redirect-step:not(:last-child)::after {
     content: '';
     position: absolute;
-    left: calc(var(--space-4) + 1.5px);
-    top: calc(var(--space-5) + 3rem);
-    width: 2px;
-    height: calc(100% - 3rem);
+    left: calc(var(--space-4) + 1.5px); /* Adjusted for visual centering of the line */
+    top: calc(var(--space-5) + var(--space-12));
+    width: var(--border-width-2);
+    height: calc(100% - var(--space-12));
     background: var(--color-border);
 }
 
@@ -35,7 +35,7 @@
     flex-shrink: 0;
     width: var(--space-9);
     height: var(--space-9);
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -43,14 +43,14 @@
     color: var(--white);
     z-index: var(--z-elevated);
     margin-top: var(--space-1);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-1);
 }
 
-.redirect-step__node--2xx   { background-color: var(--green-600); }
-.redirect-step__node--301   { background-color: var(--yellow-500); color: var(--slate-900); }
-.redirect-step__node--302   { background-color: var(--orange-500); }
-.redirect-step__node--3xx   { background-color: var(--orange-400); }
-.redirect-step__node--4xx   { background-color: var(--red-600); }
+.redirect-step__node--2xx   { background-color: var(--color-success); }
+.redirect-step__node--301   { background-color: var(--color-info); }
+.redirect-step__node--302   { background-color: var(--color-warning); color: var(--color-warning-text); }
+.redirect-step__node--3xx   { background-color: var(--color-warning); color: var(--color-warning-text); }
+.redirect-step__node--4xx   { background-color: var(--color-error); }
 .redirect-step__node--5xx   { background-color: var(--red-800); }
 .redirect-step__node--loop  { background-color: var(--purple-600); }
 .redirect-step__node--final { background-color: var(--color-brand); }
@@ -59,25 +59,25 @@
 .redirect-step__content {
     flex: 1;
     background: var(--color-surface);
-    border: var(--border-subtle);
+    border: var(--color-border-subtle);
     border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);
     margin-bottom: var(--space-3);
-    transition: box-shadow var(--transition-base);
+    transition: box-shadow var(--transition-base), border-color var(--transition-base);
 }
 
 .redirect-step__content:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-2);
 }
 
 .redirect-step__content--slowest {
     border-color: var(--orange-500);
-    background: color-mix(in srgb, var(--orange-500) 10%, var(--color-surface));
+    background: color-mix(in srgb, var(--orange-500) 5%, var(--color-surface));
 }
 
 .redirect-step__content--loop {
     border-color: var(--purple-500);
-    background: color-mix(in srgb, var(--purple-500) 10%, var(--color-surface));
+    background: color-mix(in srgb, var(--purple-500) 5%, var(--color-surface));
 }
 
 .redirect-step__header {
@@ -107,18 +107,22 @@
     font-family: var(--font-family-mono);
 }
 
-.redirect-step__badge {
-    font-weight: var(--font-weight-semibold);
-    padding: var(--space-half) var(--space-2);
-    border-radius: var(--radius-full);
-    white-space: nowrap;
-}
-
 .redirect-step__badge--location {
     color: var(--color-text-muted);
     margin-top: var(--space-1);
     font-family: var(--font-family-mono);
     display: block;
+}
+
+.redirect-step__error {
+    color: var(--color-error-text);
+    font-size: var(--text-xs);
+    background-color: var(--color-error-bg);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    border: var(--border-width-1) solid var(--color-error-border);
 }
 
 /* Penalty notice */
@@ -127,38 +131,42 @@
     padding: var(--space-2) var(--space-3);
     background: var(--color-surface-muted);
     border-radius: var(--radius-md);
-    border: var(--border-default);
-    border-left: 4px solid var(--color-warning);
+    border: var(--color-border);
+    border-left: var(--border-width-4) solid var(--color-warning);
 }
 
 /* =========================================
    2. REDIRECT SCORE BADGE
 ========================================== */
 .redirect-score {
+    display: flex;
     flex-wrap: wrap;
+    gap: var(--space-6);
 }
 
 .redirect-score__badge {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
+    --score-badge-size: 5rem;
+    width: var(--score-badge-size);
+    height: var(--score-badge-size);
+    border-radius: var(--radius-full);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     font-weight: var(--font-weight-bold);
     flex-shrink: 0;
-    border: 4px solid;
+    border: var(--border-width-4) solid transparent;
     color: var(--white);
+    padding: var(--space-2);
 }
 
-.redirect-score__badge--great { border-color: var(--green-500);  background: var(--green-600); }
-.redirect-score__badge--good  { border-color: var(--yellow-400); background: var(--yellow-500); color: var(--slate-900); }
-.redirect-score__badge--warn  { border-color: var(--orange-400); background: var(--orange-500); }
-.redirect-score__badge--bad   { border-color: var(--red-500);    background: var(--red-600); }
+.redirect-score__badge--great { border-color: var(--green-200); background: var(--color-success); }
+.redirect-score__badge--good  { border-color: var(--yellow-200); background: var(--color-warning); color: var(--color-warning-text); }
+.redirect-score__badge--warn  { border-color: var(--yellow-200); background: var(--color-warning); color: var(--color-warning-text); }
+.redirect-score__badge--bad   { border-color: var(--red-200);   background: var(--color-error); }
 
 .redirect-score__badge small {
-    font-weight: var(--font-normal);
+    font-weight: var(--font-weight-normal);
     opacity: 0.8;
 }
 
@@ -176,7 +184,7 @@
 }
 
 .redirect-score__item--deduct { color: var(--color-error); }
-.redirect-score__item--ok     { color: var(--color-success); }
+.redirect-score__item--ok     { color: var(--color-success-text); }
 
 /* =========================================
    3. SECURITY AUDIT
@@ -193,18 +201,18 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
-    border: var(--border-subtle);
+    border: var(--color-border-subtle);
     background: var(--color-surface);
 }
 
-.security-item--pass { border-left: 4px solid var(--color-success); }
+.security-item--pass { border-left: var(--border-width-4) solid var(--color-success-border); }
 .security-item--warn {
-    border-left: 4px solid var(--color-warning);
-    background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+    border-left: var(--border-width-4) solid var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 5%, var(--color-surface));
 }
 .security-item--fail {
-    border-left: 4px solid var(--color-error);
-    background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+    border-left: var(--border-width-4) solid var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface));
 }
 
 .security-item__icon {
@@ -212,7 +220,7 @@
     margin-top: var(--space-half);
 }
 
-.security-item--pass .security-item__icon { color: var(--color-success); }
+.security-item--pass .security-item__icon { color: var(--color-success-text); }
 .security-item--warn .security-item__icon { color: var(--color-warning); }
 .security-item--fail .security-item__icon { color: var(--color-error); }
 
@@ -232,31 +240,35 @@
 ========================================== */
 .seo-results {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-4);
 }
 
 .seo-item {
+    height: 100%;
+    margin-bottom: 0 !important; /* Overriding table margin if any */
+}
+
+.seo-item__body {
+    padding: var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    border: var(--border-subtle);
-    background: var(--color-surface);
+    gap: var(--space-2);
+}
+
+.seo-item__value {
+    color: var(--color-text-primary);
+    /* word-break: break-all; */
+    font-family: var(--font-family-sans);
+    line-height: var(--line-height-base);
 }
 
 .seo-item__label {
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-muted);
     text-transform: uppercase;
+    font-size: var(--text-xs);
     letter-spacing: var(--letter-spacing-wider);
-}
-
-.seo-item__value {
-    color: var(--color-text-primary);
-    word-break: break-all;
-    font-family: var(--font-family-mono);
 }
 
 .seo-item__value--missing {
@@ -265,21 +277,21 @@
     font-family: var(--font-family-sans);
 }
 
-.seo-item__value--ok { color: var(--color-success); }
+.seo-item__value--ok { color: var(--color-success-text); }
 
 /* =========================================
    5. CURL OUTPUT
 ========================================== */
 .redirect-curl-output {
-    background: var(--code-bg);
-    border: var(--border-width-1) solid var(--code-border);
+    background: var(--color-surface-muted);
+    border: var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-4);
     overflow-x: auto;
     font-family: var(--font-family-mono);
-    color: var(--code-text);
+    color: var(--color-text-primary);
     line-height: var(--line-height-relaxed);
-    white-space: pre;
+    white-space: pre-wrap;
     margin: 0;
 }
 
@@ -289,7 +301,7 @@
 .table-wrapper {
     width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch; /* Hỗ trợ scroll mượt trên iOS */
+    -webkit-overflow-scrolling: touch;
 }
 
 .results-table th,
@@ -306,44 +318,31 @@
 }
 
 /* ================== PERFORMANCE TABLE ================== */
-/* 2 cột đầu (Bước, URL) căn trái */
-#perfTable .results-table th:nth-child(1),
-#perfTable .results-table td:nth-child(1),
-#perfTable .results-table th:nth-child(2),
-#perfTable .results-table td:nth-child(2) {
-    text-align: left;
-}
-
-/* Cột 2 (URL) tự do mở rộng ngang */
-#perfTable .results-table th:nth-child(2),
-#perfTable .results-table td:nth-child(2) {
-    min-width: 250px;
-    white-space: nowrap !important;
-}
-
-/* Các cột thời gian (DNS, TCP, TLS, TTFB, Tổng) căn phải */
-#perfTable .results-table th:nth-child(n+3),
-#perfTable .results-table td:nth-child(n+3) {
-    text-align: right;
-}
-
-/* ================== COMPARE TABLE ================== */
-/* Cột 1,2,3,4 giãn trái/phải hợp lý */
-#compareTable .results-table th,
-#compareTable .results-table td {
-    text-align: left;
-}
-
-#compareTable .results-table th:nth-child(4),
-#compareTable .results-table td:nth-child(4) {
+#perfTable .results-table th {
     text-align: center;
 }
 
-/* Cột 3 (URL Cuối) tự do mở rộng ngang */
-#compareTable .results-table th:nth-child(3),
-#compareTable .results-table td:nth-child(3) {
+#perfTable .results-table td {
+    text-align: center;
+}
+
+#perfTable .results-table td:nth-child(2) {
+    text-align: left;
     min-width: 250px;
-    white-space: nowrap !important;
+}
+
+/* ================== COMPARE TABLE ================== */
+#compareTable .results-table th {
+    text-align: center;
+}
+
+#compareTable .results-table td {
+    text-align: center;
+}
+
+#compareTable .results-table td:nth-child(3) {
+    text-align: left;
+    min-width: 250px;
 }
 
 .perf-cell--slow {
@@ -354,7 +353,7 @@
 /* =========================================
    7. RESPONSIVE
 ========================================== */
-@media (max-width: 600px) {
+@media (max-width: 639px) { /* Using 640px break (sm) */
     .redirect-step__header {
         flex-direction: column;
         align-items: flex-start;

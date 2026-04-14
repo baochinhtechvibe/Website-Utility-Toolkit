@@ -16,18 +16,18 @@
 }
 
 .bs-verdict-banner.bs-verdict--indexable {
-    background-color: var(--green-50, #f0fdf4);
-    border-color: var(--green-300);
+    background-color: var(--color-success-bg);
+    border-color: var(--color-success-border);
 }
 
 .bs-verdict-banner.bs-verdict--blocked {
-    background-color: var(--red-50, #fef2f2);
-    border-color: var(--red-300);
+    background-color: var(--color-error-bg);
+    border-color: var(--color-error-border);
 }
 
 .bs-verdict-banner.bs-verdict--risky {
-    background-color: var(--yellow-50, #fefce8);
-    border-color: var(--yellow-300);
+    background-color: var(--color-warning-bg);
+    border-color: var(--color-warning-border);
 }
 
 .bs-verdict-banner.bs-verdict--unknown {
@@ -36,27 +36,27 @@
 }
 
 [data-theme="dark"] .bs-verdict-banner.bs-verdict--indexable {
-    background-color: color-mix(in srgb, var(--green-900) 60%, transparent);
-    border-color: var(--green-600);
+    background-color: var(--color-success-bg);
+    border-color: var(--color-success-border);
 }
 
 [data-theme="dark"] .bs-verdict-banner.bs-verdict--blocked {
-    background-color: color-mix(in srgb, var(--red-900) 60%, transparent);
-    border-color: var(--red-600);
+    background-color: var(--color-error-bg);
+    border-color: var(--color-error-border);
 }
 
 [data-theme="dark"] .bs-verdict-banner.bs-verdict--risky {
-    background-color: color-mix(in srgb, var(--yellow-900) 60%, transparent);
-    border-color: var(--yellow-600);
+    background-color: var(--color-warning-bg);
+    border-color: var(--color-warning-border);
 }
 
 .bs-verdict-banner__icon {
     flex-shrink: 0;
 }
 
-.bs-verdict--indexable .bs-verdict-banner__icon { color: var(--color-success); }
-.bs-verdict--blocked   .bs-verdict-banner__icon { color: var(--color-error); }
-.bs-verdict--risky     .bs-verdict-banner__icon { color: var(--color-warning); }
+.bs-verdict--indexable .bs-verdict-banner__icon { color: var(--color-success-text); }
+.bs-verdict--blocked   .bs-verdict-banner__icon { color: var(--color-error-text); }
+.bs-verdict--risky     .bs-verdict-banner__icon { color: var(--color-warning-text); }
 .bs-verdict--unknown   .bs-verdict-banner__icon { color: var(--color-text-muted); }
 
 .bs-verdict-banner__content {
@@ -73,9 +73,9 @@
     font-weight: var(--font-weight-bold, 700);
 }
 
-.bs-verdict--indexable .bs-verdict-label { color: var(--color-success); }
-.bs-verdict--blocked   .bs-verdict-label { color: var(--color-error); }
-.bs-verdict--risky     .bs-verdict-label { color: var(--color-warning); }
+.bs-verdict--indexable .bs-verdict-label { color: var(--color-success-text); }
+.bs-verdict--blocked   .bs-verdict-label { color: var(--color-error-text); }
+.bs-verdict--risky     .bs-verdict-label { color: var(--color-warning-text); }
 .bs-verdict--unknown   .bs-verdict-label { color: var(--color-text-muted); }
 
 .bs-verdict-summary {
@@ -116,10 +116,10 @@
     margin: 0;
 }
 
-.bs-summary-cell__value.status--allowed   { color: var(--color-success); }
-.bs-summary-cell__value.status--blocked   { color: var(--color-error); }
+.bs-summary-cell__value.status--allowed   { color: var(--color-success-text); }
+.bs-summary-cell__value.status--blocked   { color: var(--color-error-text); }
 .bs-summary-cell__value.status--risky,
-.bs-summary-cell__value.status--deferred  { color: var(--color-warning); }
+.bs-summary-cell__value.status--deferred  { color: var(--color-warning-text); }
 .bs-summary-cell__value.status--unknown   { color: var(--color-text-muted); }
 
 
@@ -284,7 +284,7 @@
 }
 
 .bs-compare-table td.has-diff {
-    background-color: color-mix(in srgb, var(--yellow-300) 20%, transparent);
+    background-color: var(--color-warning-bg);
 }
 
 .bs-diff-badge {

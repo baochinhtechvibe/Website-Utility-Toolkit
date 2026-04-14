@@ -13,6 +13,7 @@ type CompareOptions struct {
 	TargetURL       string
 	CheckSitemap    bool
 	IgnoreTLSErrors bool
+	SharedRobots    *RobotsParseResult // Optional: robots result đã fetch sẵn từ handler
 }
 
 // RunCompare chạy phân tích đồng thời cho nhiều bot profile.
@@ -29,6 +30,21 @@ func RunCompare(ctx context.Context, opts CompareOptions) []models.BotCompareRes
 		if len(keys) > MaxCompareProfiles {
 			keys = keys[:MaxCompareProfiles]
 		}
+	}
+
+	// Tối ưu: Sử dụng robots.txt đã fetch sẵn nếu có (từ handler)
+	// Tránh fetch lại robots.txt cho cùng một target URL khi bật compare mode.
+	sharedRobots := opts.SharedRobots
+	if sharedRobots == nil {
+		// Dùng User-Agent của bot đầu tiên làm proxy để fetch robots.txt dùng chung.
+		// Trade-off: Giả định server trả về robots.txt giống nhau cho mọi bot (thông lệ phổ biến).
+		sharedUA := "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+		if len(keys) > 0 {
+			if p, ok := GetProfile(keys[0]); ok {
+				sharedUA = p.UserAgent
+			}
+		}
+		sharedRobots, _ = FetchAndParseRobots(ctx, opts.TargetURL, sharedUA, opts.IgnoreTLSErrors)
 	}
 
 	results := make([]models.BotCompareResult, len(keys))
@@ -61,7 +77,10 @@ func RunCompare(ctx context.Context, opts CompareOptions) []models.BotCompareRes
 				return
 			}
 
-			result := analyzeSingleBot(ctx, profile, opts.TargetURL, opts.CheckSitemap, opts.IgnoreTLSErrors)
+			result := analyzeSingleBot(ctx, profile, opts.TargetURL, opts.CheckSitemap, opts.IgnoreTLSErrors, sharedRobots)
+			
+			// Safety: Mỗi goroutine ghi vào một index kết quả (idx) độc lập, 
+			// đồng bộ hóa sau wg.Wait() nên không cần Mutex.
 			results[idx] = result
 		}(i, key)
 	}
@@ -80,7 +99,7 @@ func RunCompare(ctx context.Context, opts CompareOptions) []models.BotCompareRes
 }
 
 // analyzeSingleBot chạy phân tích đầy đủ cho một bot, dùng trong compare mode.
-func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string, checkSitemap bool, ignoreTLS bool) models.BotCompareResult {
+func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string, checkSitemap bool, ignoreTLS bool, sharedRobots *RobotsParseResult) models.BotCompareResult {
 	result := models.BotCompareResult{
 		Bot:      profile.Key,
 		BotLabel: profile.Label,
@@ -115,8 +134,13 @@ func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string,
 	result.Canonical = meta.Canonical
 	result.MetaRobots = meta.MetaRobots
 
-	// Kiểm tra robots.txt
-	robotsResult, _ := FetchAndParseRobots(targetURL, profile.UserAgent, ignoreTLS)
+	// Kiểm tra robots.txt - Sử dụng shared results nếu có
+	var robotsResult *RobotsParseResult
+	if sharedRobots != nil {
+		robotsResult = sharedRobots
+	} else {
+		robotsResult, _ = FetchAndParseRobots(ctx, targetURL, profile.UserAgent, ignoreTLS)
+	}
 	decision := CheckRobotsAccess(robotsResult, profile.RobotsToken, targetURL)
 
 	// Đánh giá
@@ -134,22 +158,7 @@ func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string,
 
 // fetchWithContext wrap FetchPage để trả về sớm khi context bị cancel.
 func fetchWithContext(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResult, error) {
-	type fetchDone struct {
-		result *HTTPResult
-		err    error
-	}
-	ch := make(chan fetchDone, 1)
-	go func() {
-		r, e := FetchPage(rawURL, opts)
-		ch <- fetchDone{r, e}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case done := <-ch:
-		return done.result, done.err
-	}
+	return FetchPage(ctx, rawURL, opts)
 }
 
 // diffResults so sánh 2 kết quả bot và trả về danh sách điểm khác biệt.

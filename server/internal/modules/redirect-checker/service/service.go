@@ -23,7 +23,7 @@ const MaxRedirects = 10
 
 var (
 	reMetaRefresh = regexp.MustCompile(`(?i)<meta[^>]+http-equiv=['"]?refresh['"]?[^>]+content=['"]?\d+;\s*url=['"]?([^'">\s]+)['"]?[^>]*>`)
-	reJSRedirect  = regexp.MustCompile(`(?i)window\.location\.(href|replace)\s*=?\s*['"]([^'"]+)['"]`)
+	reJSRedirect  = regexp.MustCompile(`(?i)window\.location(?:\.(?:href|replace))?\s*(?:=|\()\s*['"]([^'"]+)['"]`)
 	reTitle       = regexp.MustCompile(`(?i)<title>(.*?)</title>`)
 	reCanonical   = regexp.MustCompile(`(?i)<link[^>]+rel=['"]canonical['"][^>]+href=['"]([^'"]+)['"]`)
 	reOGTitle     = regexp.MustCompile(`(?i)<meta[^>]+property=['"]og:title['"][^>]+content=['"]([^'"]+)['"]`)
@@ -79,7 +79,7 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 				}
 				
 				if safeIP == nil {
-					return nil, fmt.Errorf("SSRF Protection: no safe IP found for %s", host)
+					return nil, fmt.Errorf("bảo vệ SSRF: không tìm thấy IP an toàn cho %s", host)
 				}
 
 				// Pin the safe IP to avoid DNS Rebinding race conditions
@@ -186,7 +186,7 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 func performHop(ctx context.Context, client *http.Client, targetURL string, userAgent string, step int) (*models.RedirectHop, string, string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("invalid URL: %v", err)
+		return nil, "", "", fmt.Errorf("URL không hợp lệ: %v", err)
 	}
 
 	// Sanitize User-Agent to prevent header injection

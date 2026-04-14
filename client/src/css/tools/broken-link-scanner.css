@@ -11,10 +11,10 @@
     --bls-text-base:      var(--color-text-primary);
 
     /* Status colors */
-    --bls-color-ok:       var(--green-600);
-    --bls-color-redirect: var(--yellow-600);
-    --bls-color-broken:   var(--red-600);
-    --bls-color-blocked:  var(--orange-600);
+    --bls-color-ok:       var(--color-success-text);
+    --bls-color-redirect: var(--color-warning-text);
+    --bls-color-broken:   var(--color-error-text);
+    --bls-color-blocked:  var(--color-error);
     --bls-color-timeout:  var(--color-text-muted);
 
     /* Stat box */
@@ -28,12 +28,8 @@
     --bls-table-text:     var(--color-text-primary);
 }
 
-/* Dark mode overrides */
+/* Dark mode overrides (Reduced as tokens are standardized) */
 [data-theme="dark"] .page--broken-link {
-    --bls-color-ok:       var(--green-400);
-    --bls-color-redirect: var(--yellow-400);
-    --bls-color-broken:   var(--red-400);
-    --bls-color-blocked:  var(--orange-400);
     --bls-table-head-text: var(--white);
 }
 
@@ -283,27 +279,27 @@
 
 /* ─── 7. Status Badges (tool-scoped, map qua badge component) ── */
 .page--broken-link .bls-badge--ok {
-    --badge-bg:     var(--green-100);
-    --badge-border: var(--green-300);
-    --badge-text:   var(--green-700);
+    --badge-bg:     var(--color-success-bg);
+    --badge-border: var(--color-success-border);
+    --badge-text:   var(--color-success-text);
 }
 
 .page--broken-link .bls-badge--redirect {
-    --badge-bg:     var(--yellow-100);
-    --badge-border: var(--yellow-300);
-    --badge-text:   var(--yellow-800);
+    --badge-bg:     var(--color-warning-bg);
+    --badge-border: var(--color-warning-border);
+    --badge-text:   var(--color-warning-text);
 }
 
 .page--broken-link .bls-badge--broken {
-    --badge-bg:     var(--red-100);
-    --badge-border: var(--red-300);
-    --badge-text:   var(--red-700);
+    --badge-bg:     var(--color-error-bg);
+    --badge-border: var(--color-error-border);
+    --badge-text:   var(--color-error-text);
 }
 
 .page--broken-link .bls-badge--blocked {
-    --badge-bg:     color-mix(in srgb, var(--orange-500) 15%, transparent);
-    --badge-border: var(--orange-300);
-    --badge-text:   var(--orange-800);
+    --badge-bg:     var(--color-error-bg);
+    --badge-border: var(--color-error-border);
+    --badge-text:   var(--color-error-text);
 }
 
 .page--broken-link .bls-badge--timeout {
@@ -312,29 +308,7 @@
     --badge-text:   var(--color-text-muted);
 }
 
-[data-theme="dark"] .page--broken-link .bls-badge--ok {
-    --badge-bg:     color-mix(in srgb, var(--green-500) 20%, transparent);
-    --badge-text:   var(--green-300);
-    --badge-border: var(--green-700);
-}
-
-[data-theme="dark"] .page--broken-link .bls-badge--redirect {
-    --badge-bg:     color-mix(in srgb, var(--yellow-500) 15%, transparent);
-    --badge-text:   var(--yellow-300);
-    --badge-border: var(--yellow-600);
-}
-
-[data-theme="dark"] .page--broken-link .bls-badge--broken {
-    --badge-bg:     color-mix(in srgb, var(--red-500) 20%, transparent);
-    --badge-text:   var(--red-300);
-    --badge-border: var(--red-700);
-}
-
-[data-theme="dark"] .page--broken-link .bls-badge--blocked {
-    --badge-bg:     color-mix(in srgb, var(--orange-500) 15%, transparent);
-    --badge-text:   var(--orange-300);
-    --badge-border: var(--orange-700);
-}
+/* Dark mode badge overrides removed as they are handled by semantic tokens */
 
 /* ─── 8. Tag Type Badges (a, img, script, link...) ──── */
 .page--broken-link .bls-tag-badge {
@@ -369,7 +343,7 @@
 
 .page--broken-link .bls-empty__icon {
     font-size: var(--icon-size-200);
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .page--broken-link .bls-empty__title {

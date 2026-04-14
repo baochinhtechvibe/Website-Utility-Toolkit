@@ -88,7 +88,7 @@ function init() {
                     <i class="${iconClass} text-success mr-2"></i>
                     ${label}:
                 </div>
-                <div class="ssl-checker__result-value ${isBold ? 'font-bold text-primary' : ''} ${isCode ? 'font-mono text-secondary' : ''}">
+                <div class="ssl-checker__result-value ${isBold ? 'font-bold text-primary' : ''} ${isCode ? 'text-secondary' : ''}">
                     ${escapeHTML(displayValue)}
                 </div>
             </div>

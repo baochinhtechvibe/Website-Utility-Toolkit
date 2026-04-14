@@ -125,15 +125,15 @@
                                 </label>
                             </div>
 
-                            <div id="urlValidationError" class="error-card mt-2 d-none">
-                                <div class="error-card__header">
-                                    <h3 class="error-card__title">
+                            <div id="urlValidationError" class="message-card message-card--error mt-2 d-none">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title">
                                         <i class="fa-solid fa-triangle-exclamation"></i>
                                         URL không hợp lệ
-                                    </h3>
+                                    </h4>
                                 </div>
-                                <div class="error-card__body">
-                                    <p class="error-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
+                                <div class="message-card__body">
+                                    <p class="message-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
                                         <code>http://</code> hoặc <code>https://</code>.</p>
                                 </div>
                             </div>
@@ -142,15 +142,15 @@
                 </div>
 
                 <!-- ========== ERROR CARD ========== -->
-                <div id="errorCard" class="error-card mt-6 d-none">
-                    <div class="error-card__header">
-                        <h3 class="error-card__title text-xl font-bold">
+                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                    <div class="message-card__header">
+                        <h4 class="message-card__title text-xl font-bold">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             Phân tích thất bại
-                        </h3>
+                        </h4>
                     </div>
-                    <div class="error-card__body">
-                        <p id="errorMessage" class="error-card__message">Không thể kết nối tới URL. Vui lòng kiểm tra và
+                    <div class="message-card__body">
+                        <p id="errorMessage" class="message-card__message">Không thể kết nối tới URL. Vui lòng kiểm tra và
                             thử lại.</p>
                     </div>
                 </div>
@@ -159,9 +159,9 @@
                 <div id="resultSection" class="d-none mt-6">
 
                     <!-- CACHE BANNER -->
-                    <div id="cacheNotice" class="result-card__cache-notice mb-4 flex-row justify-between items-center d-none">
+                    <div id="cacheNotice" class="cache-card mb-4 flex-row justify-between items-center d-none">
                         <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
-                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-notice__btn-refresh"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
                     </div>
 
                     <!-- Verdict Banner (live, thay thế nội dung bằng JS) -->
@@ -362,11 +362,14 @@
                     </div>
 
                     <!-- Limitations Card -->
-                    <div id="limitationsCard" class="warning-card mt-4">
-                        <div class="warning-card__header">
-                            <h3 class="warning-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Giới hạn của công cụ (UA Simulation)</h3>
+                    <div id="limitationsCard" class="message-card message-card--warning mt-4">
+                        <div class="message-card__header">
+                            <h4 class="message-card__title">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                Giới hạn của công cụ (UA Simulation)
+                            </h4>
                         </div>
-                        <div class="warning-card__body">
+                        <div class="message-card__body">
                             <ul id="limitationsList" class="bs-limitation-list"></ul>
                         </div>
                     </div>

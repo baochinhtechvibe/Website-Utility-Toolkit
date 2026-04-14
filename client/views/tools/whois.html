@@ -117,25 +117,29 @@
                             </div>
 
                             <!-- Cache Notice -->
-                            <div id="whoisCacheNotice" class="result-card__cache-notice mt-2 p-2 flex-row justify-between items-center d-none">
-                                <span id="whoisCacheText"><i class="fa-solid fa-clock"></i> Kết quả tra cứu từ cache.</span>
-                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-notice__btn-refresh">
+                            <div id="cacheNotice" class="cache-card mt-2 p-2 flex-row justify-between items-center d-none">
+                                <span><i class="fa-solid fa-clock"></i> <b id="cacheText"></b> <b id="cacheTime"></b></span>
+                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn">
                                     <i class="fa-solid fa-arrows-rotate"></i> Làm mới
                                 </button>
                             </div>
 
                             <div id="whoisResultBody" class="result-card__body">
+                                
+                                <!-- Available Message (Full width) -->
+                                <div id="whoisAvailableMsg" class="d-none mb-4"></div>
+
                                 <!-- 2-column layout -->
-                                <div class="whois__layout">
+                                <div id="whoisLayout" class="whois__layout">
                                     <!-- Left column: Domain info -->
                                     <div class="whois__col-info">
                                         <!-- Domain info card -->
                                         <div class="card card--flat">
                                             <div class="card__header">
-                                                <h4 class="card__title">
+                                                <h3 class="card__title d-flex flex-row justify-center items-center gap-2">
                                                     <i class="fa-solid fa-address-card"></i>
                                                     Thông tin đăng ký
-                                                </h4>
+                                                </h3>
                                             </div>
                                             <div class="card__body">
                                                 <dl class="whois__info-list" id="whoisInfoList">
@@ -144,13 +148,15 @@
                                             </div>
                                         </div>
 
+
+
                                         <!-- Raw text (parse failed fallback) -->
                                         <div class="card card--flat mt-4 d-none" id="whoisRawCard">
                                             <div class="card__header">
-                                                <h4 class="card__title">
+                                                <h3 class="card__title d-flex flex-row justify-center items-center gap-2">
                                                     <i class="fa-solid fa-code"></i>
                                                     Raw WHOIS Data
-                                                </h4>
+                                                </h3>
                                             </div>
                                             <div class="card__body">
                                                 <pre class="whois__raw-text" id="whoisRawText"></pre>
@@ -162,14 +168,14 @@
                                     <div class="whois__col-timeline">
                                         <div class="card card--flat">
                                             <div class="card__header">
-                                                <h4 class="card__title">
+                                                <h3 class="card__title d-flex flex-row justify-center items-center gap-2">
                                                     <i class="fa-solid fa-timeline"></i>
                                                     Vòng đời tên miền
-                                                </h4>
+                                                </h3>
                                             </div>
                                             <div class="card__body">
                                                 <small class="card__subtitle text-muted mb-2">* Thông tin chỉ mang tính chất tham khảo</small>
-                                                <div id="whoisTimelineBadge"></div>
+                                                <div id="whoisTimelineBadge" class="mb-4 whois__timeline-badge"></div>
                                                 <div id="whoisTimelineList" class="whois__timeline">
                                                     <!-- Dynamic timeline content -->
                                                 </div>

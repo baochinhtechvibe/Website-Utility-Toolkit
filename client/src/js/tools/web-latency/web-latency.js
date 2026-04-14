@@ -16,6 +16,7 @@ class AbortedError extends Error {
 
 let currentController = null;
 let currentRequestId = 0;
+let isAnalyzing = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Web Latency Inspector Initialized");
@@ -95,6 +96,8 @@ function loadFromURL() {
 }
 
 async function handleAnalyze(bypassCache = false) {
+    if (isAnalyzing) return;
+
     const urlInput = $('#url');
     let url = urlInput?.value.trim();
 
@@ -110,6 +113,7 @@ async function handleAnalyze(bypassCache = false) {
     const deepTest = $('#deepTest')?.checked ?? false;
     const requestId = ++currentRequestId;
 
+    isAnalyzing = true;
     setLoading(true);
     hideResults();
     hideError();
@@ -118,20 +122,24 @@ async function handleAnalyze(bypassCache = false) {
         const data = await fetchLatency(url, deepTest, bypassCache);
         renderResults(data.data);
         
-        // Handle Cache Banner
+        // Handle Cache Banner (Rule 11)
         const cacheNoticeBox = $('#cacheNotice');
-        if (data.meta) {
-            const timeStr = new Date(data.meta.fetched_at).toLocaleString('vi-VN');
-            const spanEl = cacheNoticeBox?.querySelector("span");
-            if (spanEl) {
-                if (data.meta.cached) {
-                    spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
-                } else {
-                    spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
-                }
+        if (cacheNoticeBox && data.meta && data.meta.fetched_at) {
+            const cacheTime = document.getElementById("cacheTime");
+            const cacheText = document.getElementById("cacheText");
+            
+            const date = new Date(data.meta.fetched_at);
+            const timeStr = date.toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + date.toLocaleDateString('vi-VN');
+            
+            if (cacheTime) cacheTime.textContent = timeStr;
+            if (cacheText) {
+                cacheText.textContent = data.meta.cached 
+                    ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc:" 
+                    : "Kết quả tra cứu mới nhất lúc:";
             }
-            cacheNoticeBox?.classList.remove('d-none');
-            cacheNoticeBox?.classList.add('d-flex');
+
+            cacheNoticeBox.classList.remove('d-none');
+            cacheNoticeBox.classList.add('d-flex');
         } else {
             cacheNoticeBox?.classList.add('d-none');
             cacheNoticeBox?.classList.remove('d-flex');
@@ -145,6 +153,7 @@ async function handleAnalyze(bypassCache = false) {
     } finally {
         // Chỉ tắt loading nếu đây là request cuối cùng
         if (requestId === currentRequestId) {
+            isAnalyzing = false;
             setLoading(false);
         }
     }
@@ -369,12 +378,12 @@ function renderRedirectHops(hops) {
 
     list.innerHTML = hops.map((h, idx) => {
         const isFinal = idx === hops.length - 1;
-        const color = isFinal ? 'var(--color-success)' : 'var(--orange-500)';
+        const badgeCls = isFinal ? 'badge-success' : 'badge-warning';
         return `
         <li class="d-flex flex-col gap-1 pb-2 mb-2" style="border-bottom: var(--border-subtle);">
             <div class="d-flex flex-row justify-between w-full">
                 <span class="font-bold text-truncate" title="${escHtml(h.url)}" style="max-width: 75%;">${escHtml(h.url)}</span>
-                <span class="badge" style="background-color: ${color}; color: white;">${h.statusCode}</span>
+                <span class="badge ${badgeCls}">${h.statusCode}</span>
             </div>
             <div class="text-secondary ml-2"><i class="fa-solid fa-clock"></i> Took ${formatDuration(h.metrics.total)}</div>
         </li>

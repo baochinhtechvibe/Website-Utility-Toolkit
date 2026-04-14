@@ -2,16 +2,14 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/xml"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 // Giới hạn bảo vệ chống fan-out sitemap index
@@ -55,7 +53,7 @@ type xmlSitemapIndex struct {
 
 // CheckSitemap kiểm tra sự xuất hiện của targetURL trong sitemap.
 // Discovery theo thứ tự: robots.txt Sitemap directive → fallback /sitemap.xml.
-func CheckSitemap(targetURL string, robotsResult *RobotsParseResult, ua string, ignoreTLS bool) *SitemapCheckResult {
+func CheckSitemap(ctx context.Context, targetURL string, robotsResult *RobotsParseResult, ua string, ignoreTLS bool) *SitemapCheckResult {
 	result := &SitemapCheckResult{
 		ParseErrors: []string{},
 	}
@@ -87,19 +85,22 @@ func CheckSitemap(targetURL string, robotsResult *RobotsParseResult, ua string, 
 	// Bước 3: Scan sitemap với giới hạn depth và file count
 	targetNorm := normalizeURLForCompare(strings.TrimRight(targetURL, "/"))
 	
-	found, inSitemap := scanSitemapURLs(sitemapURLs, targetNorm, ua, ignoreTLS, visited, result, 0)
+	accessible, inSitemap, foundURL := scanSitemapURLs(ctx, sitemapURLs, targetNorm, ua, ignoreTLS, visited, result, 0)
 
-	if found {
-		result.Found = true
+	result.Found = accessible
+	result.URLInSitemap = inSitemap
+	if inSitemap && foundURL != "" {
+		result.SitemapURL = foundURL
+	} else if accessible && result.SitemapURL == "" {
 		result.SitemapURL = sitemapURLs[0]
 	}
-	result.URLInSitemap = inSitemap
 
 	return result
 }
 
 // scanSitemapURLs đệ quy đọc các file sitemap với guardrails.
 func scanSitemapURLs(
+	ctx context.Context,
 	sitemapURLs []string,
 	targetNorm string,
 	ua string,
@@ -107,9 +108,9 @@ func scanSitemapURLs(
 	visited map[string]bool,
 	result *SitemapCheckResult,
 	depth int,
-) (found bool, inSitemap bool) {
+) (accessible bool, inSitemap bool, sitemapURL string) {
 	if depth > MaxSitemapDepth {
-		return false, false
+		return false, false, ""
 	}
 
 	for _, sUrl := range sitemapURLs {
@@ -121,14 +122,14 @@ func scanSitemapURLs(
 		}
 		visited[sUrl] = true
 
-		body, fetchErr := fetchSitemapFile(sUrl, ua, ignoreTLS)
+		body, fetchErr := fetchSitemapFile(ctx, sUrl, ua, ignoreTLS)
 		if fetchErr != nil {
 			result.ParseErrors = append(result.ParseErrors, fmt.Sprintf("%s: %s", sUrl, fetchErr.Error()))
 			continue
 		}
 
 		result.FilesScanned++
-		found = true
+		accessible = true
 
 		// Thử parse urlset trước
 		var urlSet xmlURLSet
@@ -141,7 +142,7 @@ func scanSitemapURLs(
 				norm := normalizeURLForCompare(strings.TrimRight(u.Loc, "/"))
 				if norm == targetNorm {
 					inSitemap = true
-					return found, inSitemap
+					return true, true, sUrl
 				}
 			}
 			continue
@@ -156,12 +157,12 @@ func scanSitemapURLs(
 					nestedURLs = append(nestedURLs, s.Loc)
 				}
 			}
-			nestedFound, nestedIn := scanSitemapURLs(nestedURLs, targetNorm, ua, ignoreTLS, visited, result, depth+1)
-			if nestedFound {
-				found = true
+			nestedAcc, nestedIn, nestedURL := scanSitemapURLs(ctx, nestedURLs, targetNorm, ua, ignoreTLS, visited, result, depth+1)
+			if nestedAcc {
+				accessible = true
 			}
 			if nestedIn {
-				return found, true
+				return true, true, nestedURL
 			}
 			continue
 		}
@@ -169,11 +170,11 @@ func scanSitemapURLs(
 		result.ParseErrors = append(result.ParseErrors, fmt.Sprintf("%s: không thể parse XML", sUrl))
 	}
 
-	return found, inSitemap
+	return accessible, inSitemap, ""
 }
 
 // fetchSitemapFile tải file sitemap với SSRF protection.
-func fetchSitemapFile(sitemapURL string, ua string, ignoreTLS bool) ([]byte, error) {
+func fetchSitemapFile(ctx context.Context, sitemapURL string, ua string, ignoreTLS bool) ([]byte, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -184,27 +185,8 @@ func fetchSitemapFile(sitemapURL string, ua string, ignoreTLS bool) ([]byte, err
 		},
 		Transport: &http.Transport{
 			DisableKeepAlives: true,
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				host, port, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
-				}
-				ips, err := net.LookupIP(host)
-				if err != nil {
-					return nil, err
-				}
-				var safeIP net.IP
-				for _, ip := range ips {
-					if validator.IsSafeIP(ip) {
-						safeIP = ip
-						break
-					}
-				}
-				if safeIP == nil {
-					return nil, fmt.Errorf("SSRF Protection: không tìm thấy IP an toàn cho host %s", host)
-				}
-				return (&net.Dialer{Timeout: DialTimeout}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
-			},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: ignoreTLS}, //nolint:gosec
+			DialContext:       SafeDialContext,
 		},
 	}
 
@@ -215,7 +197,7 @@ func fetchSitemapFile(sitemapURL string, ua string, ignoreTLS bool) ([]byte, err
 	req.Header.Set("User-Agent", sanitizeHeaderValue(ua))
 	req.Header.Set("Accept", "application/xml, text/xml, */*;q=0.8")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}

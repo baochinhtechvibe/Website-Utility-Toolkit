@@ -59,6 +59,7 @@ let abortController = null;
 let currentFilter = "all";
 let currentPage = 1;
 let pageSize = 10;
+let isScanning = false;
 
 // ==============================
 // Khởi tạo
@@ -103,8 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function performScan(isBypassCacheArg = false) {
+        if (isScanning) return;
+        
         const rawUrl = urlInput.value.trim();
         if (!rawUrl) return;
+
+        isScanning = true;
 
         updateURL(rawUrl);
 
@@ -172,20 +177,24 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = 1;
             renderTable("all");
             
-            // Handle Cache Banner
+            // Handle Cache Banner (Rule 11)
             const cacheNoticeBox = document.getElementById('cacheNotice');
-            if (data.meta) {
-                const timeStr = new Date(data.meta.fetched_at).toLocaleString('vi-VN');
-                const spanEl = cacheNoticeBox?.querySelector("span");
-                if (spanEl) {
-                    if (data.meta.cached) {
-                        spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
-                    } else {
-                        spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
-                    }
+            if (cacheNoticeBox && data.meta && data.meta.fetched_at) {
+                const cacheTime = document.getElementById("cacheTime");
+                const cacheText = document.getElementById("cacheText");
+                
+                const date = new Date(data.meta.fetched_at);
+                const timeStr = date.toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + date.toLocaleDateString('vi-VN');
+                
+                if (cacheTime) cacheTime.textContent = timeStr;
+                if (cacheText) {
+                    cacheText.textContent = data.meta.cached 
+                        ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc:" 
+                        : "Kết quả tra cứu mới nhất lúc:";
                 }
-                cacheNoticeBox?.classList.remove('d-none');
-                cacheNoticeBox?.classList.add('d-flex');
+
+                cacheNoticeBox.classList.remove('d-none');
+                cacheNoticeBox.classList.add('d-flex');
             } else {
                 cacheNoticeBox?.classList.add('d-none');
                 cacheNoticeBox?.classList.remove('d-flex');
@@ -209,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (errorCard) errorCard.classList.remove("d-none");
         } finally {
             if (progressBlock) progressBlock.classList.add("d-none");
+            isScanning = false;
             btnScan.disabled = false;
             if (scanIcon) scanIcon.classList.remove("d-none");
             if (scanLoadingState) scanLoadingState.classList.add("d-none");

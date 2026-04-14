@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"net"
 	"net/http"
@@ -62,30 +63,7 @@ func buildClient(opts FetchOptions) *http.Client {
 	transport := &http.Transport{
 		DisableKeepAlives: true,
 		TLSClientConfig:   &tls.Config{InsecureSkipVerify: opts.IgnoreTLSErrors}, //nolint:gosec
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, err
-			}
-			ips, err := net.LookupIP(host)
-			if err != nil {
-				return nil, err
-			}
-			var safeIP net.IP
-			for _, ip := range ips {
-				if validator.IsSafeIP(ip) {
-					safeIP = ip
-					break
-				}
-			}
-			if safeIP == nil {
-				return nil, fmt.Errorf("SSRF Protection: không tìm thấy IP an toàn cho %s", host)
-			}
-			return (&net.Dialer{
-				Timeout:   DialTimeout,
-				KeepAlive: 30 * time.Second,
-			}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
-		},
+		DialContext: SafeDialContext,
 	}
 
 	checkRedirect := func(req *http.Request, via []*http.Request) error {
@@ -154,7 +132,7 @@ func sanitizeHeaderValue(s string) string {
 
 // FetchPage thực hiện request HTTP hoàn chỉnh với capture redirect chain.
 // Dùng custom DialContext để SSRF check mọi hop.
-func FetchPage(rawURL string, opts FetchOptions) (*HTTPResult, error) {
+func FetchPage(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResult, error) {
 	result := &HTTPResult{}
 	chain := []HopSummary{}
 
@@ -164,39 +142,10 @@ func FetchPage(rawURL string, opts FetchOptions) (*HTTPResult, error) {
 	}
 
 	// Client không tự theo redirect — tao tự quản lý để capture chain
-	client := &http.Client{
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
-			TLSClientConfig:   &tls.Config{InsecureSkipVerify: opts.IgnoreTLSErrors}, //nolint:gosec
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				host, port, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
-				}
-				ips, err := net.LookupIP(host)
-				if err != nil {
-					return nil, err
-				}
-				var safeIP net.IP
-				for _, ip := range ips {
-					if validator.IsSafeIP(ip) {
-						safeIP = ip
-						break
-					}
-				}
-				if safeIP == nil {
-					return nil, fmt.Errorf("SSRF Protection: không tìm thấy IP an toàn cho %s", host)
-				}
-				return (&net.Dialer{
-					Timeout:   DialTimeout,
-					KeepAlive: 30 * time.Second,
-				}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
-			},
-		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Timeout: RequestTimeout,
+	client := buildClient(opts)
+	// Override CheckRedirect để tự quản lý chain trong vòng lặp bên dưới
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
 	}
 
 	for step := 1; step <= MaxRedirects+1; step++ {
@@ -205,6 +154,7 @@ func FetchPage(rawURL string, opts FetchOptions) (*HTTPResult, error) {
 			result.Error = err.Error()
 			break
 		}
+		req = req.WithContext(ctx)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -297,7 +247,7 @@ func filteredHeaders(h http.Header) map[string]string {
 
 // FetchRaw thực hiện request đơn (không theo redirect) trả về full response.
 // Dùng để fetch robots.txt với đầy đủ xử lý status code theo RFC 9309.
-func FetchRaw(rawURL string, ua string, ignoreTLS bool) (*http.Response, []byte, error) {
+func FetchRaw(ctx context.Context, rawURL string, ua string, ignoreTLS bool) (*http.Response, []byte, error) {
 	opts := FetchOptions{
 		UserAgent:       ua,
 		IgnoreTLSErrors: ignoreTLS,
@@ -309,6 +259,7 @@ func FetchRaw(rawURL string, ua string, ignoreTLS bool) (*http.Response, []byte,
 	if err != nil {
 		return nil, nil, err
 	}
+	req = req.WithContext(ctx)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -368,15 +319,33 @@ func HashBody(body string) string {
 	if body == "" {
 		return ""
 	}
-	// Simple djb2 hash cho mục đích so sánh nội dung
-	h := uint32(5381)
-	for _, c := range []byte(body) {
-		h = (h << 5) + h + uint32(c)
-	}
-	return fmt.Sprintf("%08x", h)
+	h := fnv.New32a()
+	h.Write([]byte(body))
+	return fmt.Sprintf("%08x", h.Sum32())
 }
 
-// safeTime tránh panic khi chia cho 0.
-func safeTime(d time.Duration) int64 {
-	return d.Milliseconds()
+// SafeDialContext là hàm dial tuỳ chỉnh hỗ trợ SSRF protection bằng cách chỉ kết nối tới IP an toàn.
+func SafeDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return nil, err
+	}
+	var safeIP net.IP
+	for _, ip := range ips {
+		if validator.IsSafeIP(ip) {
+			safeIP = ip
+			break
+		}
+	}
+	if safeIP == nil {
+		return nil, fmt.Errorf("SSRF Protection: không tìm thấy IP an toàn cho %s", host)
+	}
+	return (&net.Dialer{
+		Timeout:   DialTimeout,
+		KeepAlive: 30 * time.Second,
+	}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
 }

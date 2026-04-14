@@ -14,17 +14,17 @@ import { API_BASE_URL } from "../../config.js";
 //  TIMELINE CONSTANTS
 // =============================================
 const VN_TIMELINE = [
-    { days: 0,  label: "Hết hạn",            desc: "Tên miền chính thức hết hạn đăng ký.",                                   type: "expiry" },
-    { days: 1,  label: "Đình chỉ",            desc: "Tên miền bị tạm ngưng, DNS không còn hoạt động.",                       type: "warn" },
-    { days: 30, label: "Chờ thu hồi",         desc: "Hết thời gian gia hạn muộn, đang chờ quy trình thu hồi từ VNNIC.",      type: "warn" },
-    { days: 40, label: "Thu hồi / Xóa",       desc: "VNNIC hoàn tất thu hồi. Tên miền sẵn sàng cho đăng ký mới (~15 ngày).", type: "danger" },
+    { days: 0,  label: "Hết hạn",            desc: "Tên miền chính thức hết hạn đăng ký.",                                   type: "expiry",  icon: "fa-clock" },
+    { days: 1,  label: "Tên miền tạm ngưng hoạt động",            desc: "Tên miền bị tạm ngưng hoạt động nếu chủ thể không gia hạn tên miền.",     type: "danger",  icon: "fa-triangle-exclamation" },
+    { days: 30, label: "Ngày cuối cùng có thể gia hạn",         desc: "Tên miền chuyển sang trạng thái chờ thu hồi sau ngày này. Sau ngày này tên miền không thể thực hiện duy trì.",      type: "muted",   icon: "fa-hourglass-half" },
+    { days: 40, label: "Tên miền bị xóa",       desc: "VNNIC hoàn tất thu hồi. Tên miền sẵn sàng cho đăng ký mới (~15 ngày).", type: "muted",   icon: "fa-skull-crossbones" },
 ];
 
 const INTL_TIMELINE = [
-    { days: 0,  label: "Hết hạn",            desc: "Tên miền chính thức hết hạn đăng ký.",                                          type: "expiry" },
-    { days: 30, label: "Grace Period",        desc: "Thời gian gia hạn muộn. DNS thường bị đình chỉ trong giai đoạn này.",           type: "warn" },
-    { days: 60, label: "Redemption Period",   desc: "Chủ tên miền có thể chuộc lại với chi phí cao (Redemption Fee).",               type: "warn" },
-    { days: 65, label: "Pending Delete",      desc: "Tên miền chuẩn bị xóa hoàn toàn. Sau ~5 ngày bất kỳ ai có thể đăng ký lại.",  type: "danger" },
+    { days: 0,  label: "Hết hạn",            desc: "Tên miền đến ngày hết hạn sử dụng tên miền.",                                          type: "expiry",  icon: "fa-clock" },
+    { days: 1,  label: "Tên miền tạm ngưng hoạt động",  desc: "Ngày tên miền bị tạm ngưng hoạt động nếu chủ thể không gia hạn tên miền.",           type: "danger",  icon: "fa-triangle-exclamation" },
+    { days: 30, label: "Ngày cuối cùng có thể gia hạn",   desc: "Tên miền chuyển sang trạng thái chờ thu hồi sau ngày này. Sau ngày này tên miền không thể thực hiện duy trì.",               type: "muted",   icon: "fa-hourglass-half" },
+    { days: 65, label: "Pending Delete",      desc: "Tên miền chuẩn bị xóa hoàn toàn. Sau ~5 ngày bất kỳ ai có thể đăng ký lại.",  type: "muted",   icon: "fa-skull-crossbones" },
 ];
 
 // =============================================
@@ -44,8 +44,9 @@ function init() {
     const errorMessage   = document.getElementById("whoisErrorMessage");
 
 
-    const cacheNotice    = document.getElementById("whoisCacheNotice");
-    const cacheText      = document.getElementById("whoisCacheText");
+    const cacheNotice    = document.getElementById("cacheNotice");
+    const cacheText      = document.getElementById("cacheText");
+    const cacheTime      = document.getElementById("cacheTime");
     const btnBypass      = document.getElementById("btnBypassCache");
 
     const infoList       = document.getElementById("whoisInfoList");
@@ -58,16 +59,20 @@ function init() {
     const shareLink      = document.getElementById("whoisShareLink");
     const btnCopyLink    = document.getElementById("btnCopyWhoisLink");
 
+    const availableMsg   = document.getElementById("whoisAvailableMsg");
+    const whoisLayout    = document.getElementById("whoisLayout");
+
     let currentDomain = "";
+    let isProcessing = false;
 
     // -------- Realtime Validation --------
     createRealtimeDomainValidator(domainInput, validationError, btnLookup);
 
-    // -------- Ẩn error card khi user thay đổi input --------
+    // -------- Ẩn error/result card khi user thay đổi nhập liệu --------
     domainInput.addEventListener("input", () => {
-        if (errorCard && !errorCard.classList.contains("d-none")) {
-            errorCard.classList.add("d-none");
-        }
+        setDisplay(errorCard, "none");
+        setDisplay(resultCard, "none");
+        setDisplay(shareCard, "none");
     });
 
     // -------- URL Param: Pre-fill domain --------
@@ -76,12 +81,24 @@ function init() {
     if (domainParam) {
         domainInput.value = domainParam;
         domainInput.dispatchEvent(new Event("input"));
-        // Trigger lookup after short delay
-        setTimeout(() => {
+        // Đợi validation hoàn tất rồi mới gửi request (không dùng setTimeout mù)
+        const waitForValidation = () => {
             if (!btnLookup.disabled) {
                 performLookup(domainParam, false);
+                return;
             }
-        }, 300);
+            // Nếu button chưa enabled → theo dõi thay đổi disabled attribute
+            const observer = new MutationObserver(() => {
+                if (!btnLookup.disabled) {
+                    observer.disconnect();
+                    performLookup(domainParam, false);
+                }
+            });
+            observer.observe(btnLookup, { attributes: true, attributeFilter: ["disabled"] });
+            // Safety timeout: nếu sau 2s vẫn chưa valid → bỏ qua
+            setTimeout(() => observer.disconnect(), 2000);
+        };
+        waitForValidation();
     }
 
     // -------- Form Submit --------
@@ -118,7 +135,10 @@ function init() {
     //  CORE: Perform WHOIS Lookup
     // ============================================
     async function performLookup(domain, bypass) {
+        if (isProcessing) return;
+        
         currentDomain = domain;
+        isProcessing = true;
 
         // Reset UI
         showElements("none", resultCard, errorCard, shareCard, rawCard);
@@ -130,7 +150,7 @@ function init() {
         // Update URL
         const newURL = `${window.location.pathname}?domain=${encodeURIComponent(domain)}`;
         if (window.location.search !== `?domain=${encodeURIComponent(domain)}`) {
-            window.history.pushState({}, "", newURL);
+            window.history.pushState({ domain }, "", newURL);
         }
 
         try {
@@ -139,18 +159,26 @@ function init() {
             );
             const json = await res.json();
 
-            toggleLoading(btnLookup, lookupIcon, lookupLoading, false);
-
             if (!json.success || !json.data) {
                 showError(json.message || "Tra cứu WHOIS thất bại. Vui lòng thử lại sau.");
+                return;
+            }
+
+            // Kiểm tra tên miền chưa được đăng ký
+            const statuses = json.data.status || [];
+            const isAvailable = statuses.some(s => s.toLowerCase() === "available");
+            if (isAvailable) {
+                showAvailable(json.data.domain || domain);
                 return;
             }
 
             displayResult(json.data, json.meta);
         } catch (err) {
             console.error("WHOIS fetch error:", err);
-            toggleLoading(btnLookup, lookupIcon, lookupLoading, false);
             showError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại.");
+        } finally {
+            isProcessing = false;
+            toggleLoading(btnLookup, lookupIcon, lookupLoading, false);
         }
     }
 
@@ -165,19 +193,86 @@ function init() {
     }
 
     // ============================================
+    //  SHOW AVAILABLE (Domain not registered)
+    // ============================================
+    function showAvailable(domain) {
+        showElements("none", resultCard, shareCard);
+
+        // Reset title
+        resultTitle.innerHTML = `<i class="fa-solid fa-circle-check"></i> Kết quả tra cứu: <span class="">"${escapeHTML(domain)}"</span>`;
+        
+        // Ẩn layout chứa 2 cột thông tin đăng ký / vòng đời
+        if (whoisLayout) whoisLayout.classList.add("d-none");
+        
+        // Hiển thị thông báo "chưa đăng ký" kèm nút Mua full-width ở ngoài
+        availableMsg.innerHTML = `
+            <div class="message-card message-card--info">
+                <h4 class="message-card__title">
+                    <i class="fa-regular fa-flag"></i>
+                    Tên miền chưa được đăng ký
+                </h4>
+                <p class="message-card__message">
+                    Tên miền <strong>${escapeHTML(domain)}</strong> hiện chưa có người sở hữu. Bạn có thể đăng ký ngay để sở hữu tên miền này.
+                </p>
+                <div class="mt-4">
+                    <button id="btnBuyDomain" class="btn btn-action btn-sm">
+                        <i class="fa-solid fa-cart-shopping mr-1"></i> Mua tên miền này
+                    </button>
+                </div>
+            </div>
+        `;
+        setDisplay(availableMsg, "block");
+        
+        // Gán sự kiện cho nút Mua
+        const btnBuy = document.getElementById("btnBuyDomain");
+        if (btnBuy) {
+            btnBuy.onclick = () => {
+                const affUrl = "https://tino.vn/ten-mien?php=2925";
+                const cartUrl = `https://tino.vn/cart/domain?sld=${encodeURIComponent(domain)}`;
+                
+                // Bước 1: Mở tab mới truy cập link Affiliate để set cookie
+                const win = window.open(affUrl, "_blank");
+                
+                // Bước 2: Sau 1 giây, "lái" cái tab đó sang trang giỏ hàng
+                if (win) {
+                    setTimeout(() => {
+                        try {
+                            win.location.href = cartUrl;
+                        } catch (e) {
+                            // Phòng trường hợp trình duyệt chặn script can thiệp tab ngoài domain
+                            console.error("Redirect failed:", e);
+                        }
+                    }, 1000);
+                }
+            };
+        }
+        
+        // Ẩn các phần không cần thiết
+        setDisplay(rawCard, "none");
+        setDisplay(cacheNotice, "none");
+
+        setDisplay(resultCard, "block");
+        resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ============================================
     //  DISPLAY RESULT
     // ============================================
     function displayResult(data, meta) {
 
+        // Ẩn bảng message trống, hiện lại layout 2 cột
+        setDisplay(availableMsg, "none");
+        if (whoisLayout) whoisLayout.classList.remove("d-none");
 
         // Cache Notice
         if (meta && meta.fetched_at) {
             const timeStr = new Date(meta.fetched_at).toLocaleString("vi-VN");
-            if (meta.cached) {
-                cacheText.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b>${timeStr}</b>.`;
-            } else {
-                cacheText.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b>${timeStr}</b>.`;
+            if (cacheText) {
+                cacheText.textContent = meta.cached 
+                    ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc" 
+                    : "Kết quả tra cứu mới nhất lúc";
             }
+            if (cacheTime) cacheTime.textContent = timeStr;
             setDisplay(cacheNotice, "flex");
         }
 
@@ -186,6 +281,7 @@ function init() {
 
         // Render Info List
         renderInfoList(data, infoList);
+
 
         // Raw text (always show if present, including RDAP fallback data)
         if (data.raw_text) {
@@ -226,10 +322,15 @@ function init() {
     //  RENDER: Info List (DL)
     // ============================================
     function renderInfoList(data, container) {
+        let registrantDisplay = data.registrant || "";
+        if (!registrantDisplay || registrantDisplay.trim() === "" || registrantDisplay.trim() === "-") {
+            registrantDisplay = "Domain Admin";
+        }
+
         const fields = [
             { icon: "fa-globe", label: "Tên miền", value: data.domain || "-" },
             { icon: "fa-building", label: "Nhà đăng ký", value: data.registrar || "-" },
-            { icon: "fa-user", label: "Chủ sở hữu", value: data.registrant || "-" },
+            { icon: "fa-user", label: "Chủ sở hữu", value: registrantDisplay },
             { icon: "fa-calendar-plus", label: "Ngày đăng ký", value: formatDateTime(data.registered_on) },
             { icon: "fa-calendar-xmark", label: "Ngày hết hạn", value: data.expires_on, isExpiry: true },
             { icon: "fa-server", label: "Name Servers", value: (data.nameservers && data.nameservers.length) ? data.nameservers.map(ns => `<span>${escapeHTML(ns.toLowerCase())}</span>`).join("") : "-" },
@@ -303,17 +404,17 @@ function init() {
                 icannLink = ` <a href="${icannUrl}" target="_blank" rel="noopener" class="text-muted">[ICANN]</a>`;
             }
 
-            // Phân loại màu
+            // Phân loại màu theo mức độ nghiêm trọng
             const lcCode = code.toLowerCase();
             const isOk = ["ok", "active"].includes(lcCode) || lcCode.includes("prohibited");
-            const isWarn = lcCode.includes("delete") || lcCode.includes("hold") || lcCode.includes("pending") || lcCode.includes("redemption");
-            const colorCls = isOk ? "text-success" : isWarn ? "text-warning" : "text-secondary";
+            const isDanger = (lcCode.includes("delete") && !lcCode.includes("prohibited")) || lcCode.includes("redemption");
+            const isWarn = lcCode.includes("hold") || lcCode.includes("pending") || lcCode.includes("inactive");
+            const colorCls = isOk ? "text-success" : isDanger ? "text-error" : isWarn ? "text-warning" : "text-secondary";
 
             return `<span class="${colorCls}">${escapeHTML(code)}${icannLink}</span>`;
         }).join("");
     }
 
-    // Removed renderStatus and renderNameservers as they are now integrated into renderInfoList
 
     // ============================================
     //  RENDER: Domain Lifecycle Timeline
@@ -339,17 +440,17 @@ function init() {
         const isVN = data.is_vn_domain;
         const steps = isVN ? VN_TIMELINE : INTL_TIMELINE;
 
-        // "Còn X ngày" badge
+        // "Còn X ngày" badge — dùng badge.css component
         let daysBadgeHtml = "";
         if (diffDays > 90) {
-            daysBadgeHtml = `<div class="whois__days-badge whois__days-badge--safe"><i class="fa-solid fa-circle-check"></i> Còn ${diffDays} ngày</div>`;
+            daysBadgeHtml = `<span class="badge badge-success"><i class="fa-solid fa-circle-check mr-1"></i> Còn ${diffDays} ngày</span>`;
         } else if (diffDays > 30) {
-            daysBadgeHtml = `<div class="whois__days-badge whois__days-badge--warning"><i class="fa-solid fa-triangle-exclamation"></i> Còn ${diffDays} ngày</div>`;
+            daysBadgeHtml = `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Còn ${diffDays} ngày</span>`;
         } else if (diffDays > 0) {
-            daysBadgeHtml = `<div class="whois__days-badge whois__days-badge--danger"><i class="fa-solid fa-fire"></i> Còn ${diffDays} ngày — Gia hạn ngay!</div>`;
+            daysBadgeHtml = `<span class="badge badge-error"><i class="fa-solid fa-fire mr-1"></i> Còn ${diffDays} ngày — Gia hạn ngay!</span>`;
         } else {
             const expiredDays = Math.abs(diffDays);
-            daysBadgeHtml = `<div class="whois__days-badge whois__days-badge--expired"><i class="fa-solid fa-circle-xmark"></i> Đã hết hạn ${expiredDays} ngày trước</div>`;
+            daysBadgeHtml = `<span class="badge badge-error"><i class="fa-solid fa-circle-xmark mr-1"></i> Đã hết hạn ${expiredDays} ngày trước</span>`;
         }
 
         // Build timeline steps
@@ -359,7 +460,7 @@ function init() {
             registeredItems.push(renderTimelineItem({
                 icon: "fa-circle-plus",
                 iconClass: "whois__timeline-icon--done",
-                labelClass: "whois__timeline-label--done",
+                labelClass: "badge badge-success",
                 date: formatDateTime(data.registered_on),
                 label: "Đăng ký",
                 desc: "Tên miền được đăng ký thành công.",
@@ -367,12 +468,12 @@ function init() {
             }));
         }
 
-        // Step: Active (hiện tại - nếu chưa hết hạn)
+        // Nếu chưa hết hạn → thêm step "Đang hoạt động"
         if (diffDays > 0) {
             registeredItems.push(renderTimelineItem({
-                icon: "fa-circle-check",
+                icon: "fa-location-dot",
                 iconClass: "whois__timeline-icon--current",
-                labelClass: "whois__timeline-label--current",
+                labelClass: "badge badge-warning",
                 date: "Hiện tại",
                 label: "Đang hoạt động",
                 desc: "Tên miền đang hoạt động bình thường.",
@@ -385,22 +486,52 @@ function init() {
             const stepDate = new Date(expiryDate);
             stepDate.setDate(stepDate.getDate() + step.days);
             const isPast = now > stepDate;
-            const isCurrent = idx === 0 && diffDays <= 0 && diffDays > -(steps[1]?.days || 999);
+
+            // Tính isCurrent: step này là step mà "now" đang nằm trong phạm vi
+            const nextStep = steps[idx + 1];
+            const nextDate = nextStep ? new Date(expiryDate) : null;
+            if (nextDate) nextDate.setDate(nextDate.getDate() + nextStep.days);
+            const isCurrent = isPast && (!nextDate || now <= nextDate);
 
             let iconClass, labelClass, icon;
 
-            if (isPast) {
+            // Icon mặc định từ step definition
+            icon = step.icon || "fa-circle";
+
+            if (isCurrent) {
+                // ĐANG Ở giai đoạn này → icon gốc + animation theo type
+                if (step.type === "expiry") {
+                    iconClass = "whois__timeline-icon--warning";
+                    labelClass = "badge badge-warning";
+                } else if (step.type === "danger") {
+                    iconClass = "whois__timeline-icon--danger";
+                    labelClass = "badge badge-error";
+                } else {
+                    // Muted (chờ thu hồi) — ngày đã qua → dấu tích trầm
+                    icon = "fa-check";
+                    iconClass = "whois__timeline-icon--upcoming";
+                    labelClass = "badge badge-default";
+                }
+            } else if (isPast) {
+                // Đã qua → giữ nguyên màu theo type (như Tino), không pulse
                 icon = "fa-check";
-                iconClass = "whois__timeline-icon--done";
-                labelClass = "whois__timeline-label--done";
-            } else if (isCurrent) {
-                icon = step.type === "danger" ? "fa-circle-xmark" : "fa-circle-exclamation";
-                iconClass = (step.type === "danger") ? "whois__timeline-icon--danger" : "whois__timeline-icon--current";
-                labelClass = (step.type === "danger") ? "whois__timeline-label--danger" : "whois__timeline-label--current";
+                if (step.type === "expiry") {
+                    // Hết hạn đã qua → vàng tĩnh
+                    iconClass = "whois__timeline-icon--warning-static";
+                    labelClass = "badge badge-warning";
+                } else if (step.type === "danger") {
+                    // Đình chỉ đã qua → đỏ tĩnh
+                    iconClass = "whois__timeline-icon--danger-static";
+                    labelClass = "badge badge-error";
+                } else {
+                    // Muted đã qua → xanh (done)
+                    iconClass = "whois__timeline-icon--done";
+                    labelClass = "badge badge-success";
+                }
             } else {
-                icon = "fa-circle";
+                // Chưa đến → trầm
                 iconClass = "whois__timeline-icon--upcoming";
-                labelClass = "whois__timeline-label--upcoming";
+                labelClass = "badge badge-default";
             }
 
             return renderTimelineItem({
@@ -410,12 +541,51 @@ function init() {
                 date: formatDateTime(stepDate.toISOString()),
                 label: step.label,
                 desc: step.desc,
-                state: isPast ? "done" : isCurrent ? "current" : "upcoming",
+                state: isCurrent ? "current" : isPast ? "done" : "upcoming",
             });
         });
 
+        // Chèn marker "Ngày hiện tại" nếu domain đã hết hạn
+        let todayItem = "";
+        if (diffDays <= 0) {
+            const domainAgeDays = data.registered_on
+                ? Math.floor((now - new Date(data.registered_on)) / (1000 * 60 * 60 * 24))
+                : null;
+            const ageDesc = domainAgeDays !== null
+                ? `Tên miền được ${Math.floor(domainAgeDays / 365)} tuổi ${domainAgeDays % 365} ngày.`
+                : "";
+            todayItem = renderTimelineItem({
+                icon: "fa-location-dot",
+                iconClass: "whois__timeline-icon--current",
+                labelClass: "badge badge-warning",
+                date: formatDateTime(now.toISOString()),
+                label: "Ngày hiện tại",
+                desc: ageDesc,
+                state: "current",
+            });
+        }
+
+        // Tìm vị trí chèn marker "Ngày hiện tại" (sau step cuối cùng isPast, trước step đầu upcoming)
+        let insertIdx = lifecycleItems.length;
+        if (diffDays <= 0) {
+            for (let i = 0; i < steps.length; i++) {
+                const stepDate = new Date(expiryDate);
+                stepDate.setDate(stepDate.getDate() + steps[i].days);
+                if (now <= stepDate) {
+                    insertIdx = i;
+                    break;
+                }
+            }
+        }
+
+        const finalLifecycle = [
+            ...lifecycleItems.slice(0, insertIdx),
+            todayItem,
+            ...lifecycleItems.slice(insertIdx),
+        ].filter(Boolean);
+
         badgeContainer.innerHTML = daysBadgeHtml;
-        listContainer.innerHTML = registeredItems.join("") + lifecycleItems.join("");
+        listContainer.innerHTML = registeredItems.join("") + finalLifecycle.join("");
     }
 
     function renderTimelineItem({ icon, iconClass, labelClass, date, label, desc }) {
@@ -426,7 +596,7 @@ function init() {
                 </div>
                 <div class="whois__timeline-content">
                     <div class="whois__timeline-date">${escapeHTML(date)}</div>
-                    <div class="whois__timeline-label ${labelClass}">${escapeHTML(label)}</div>
+                    <div class="whois__timeline-label"><span class="${labelClass}">${escapeHTML(label)}</span></div>
                     <div class="whois__timeline-desc">${escapeHTML(desc)}</div>
                 </div>
             </div>
@@ -469,6 +639,19 @@ function init() {
         if (diffDays <= 90) return "whois__expiry--warning";
         return "whois__expiry--safe";
     }
+
+    // -------- Popstate: Handling browser navigation --------
+    window.addEventListener("popstate", (e) => {
+        const params = new URLSearchParams(window.location.search);
+        const domain = params.get("domain");
+        if (domain) {
+            domainInput.value = domain;
+            performLookup(domain, false);
+        } else {
+            domainInput.value = "";
+            showElements("none", resultCard, errorCard, shareCard, rawCard);
+        }
+    });
 }
 
 document.addEventListener("DOMContentLoaded", init);
