@@ -5,7 +5,15 @@
 
 import { API_BASE_URL } from "../../config.js";
 
-import { $, $$, escapeHTML, copyToClipboard } from "../../utils/index.js";
+import { 
+    $, 
+    $$, 
+    escapeHTML, 
+    copyToClipboard,
+    setDisplay,
+    showElements,
+    renderSuccessHeader
+} from "../../utils/index.js";
 
 
 // Khởi tạo bản đồ (biến toàn cục để cập nhật)
@@ -13,23 +21,27 @@ let ipMap = null;
 let mapMarker = null;
 let isRefreshing = false;
 
-document.addEventListener("DOMContentLoaded", () => {
+function init() {
     initMyIP();
     setupEventListeners();
     setupRefreshLogic();
-});
+}
+
+document.addEventListener("DOMContentLoaded", init);
 
 function setupRefreshLogic() {
-    $("#btnRefreshIP")?.addEventListener("click", async () => {
+    const btnRefreshIP = $("#btnRefreshIP");
+    if (!btnRefreshIP) return;
+
+    btnRefreshIP.addEventListener("click", async () => {
         if (isRefreshing) return;
         isRefreshing = true;
 
-        const btn = $("#btnRefreshIP");
-        const icon = btn.querySelector("i");
+        const icon = btnRefreshIP.querySelector("i");
         
         // 1. Hiệu ứng xoay icon
         icon?.classList.add("fa-spin");
-        btn.disabled = true;
+        btnRefreshIP.disabled = true;
         
         // 2. Reset các trường về trạng thái "Checking..."
         resetIPDisplayToLoading();
@@ -40,7 +52,7 @@ function setupRefreshLogic() {
         } finally {
             setTimeout(() => {
                 icon?.classList.remove("fa-spin");
-                btn.disabled = false;
+                btnRefreshIP.disabled = false;
                 isRefreshing = false;
             }, 500);
         }
@@ -62,7 +74,10 @@ function resetIPDisplayToLoading() {
 
     // Details Header
     const targetEl = $("#detailIPTarget");
-    if (targetEl) targetEl.innerHTML = loadingHtml;
+    if (targetEl) {
+        targetEl.innerHTML = loadingHtml;
+        targetEl.classList.add("loading-text");
+    }
 
     // Disable nút Check Blacklist khi đang load
     const btnBlacklist = $("#btnCheckBlacklist");
@@ -77,7 +92,10 @@ function resetIPDisplayToLoading() {
     
     detailIds.forEach(id => {
         const el = $(`#ip-detail-${id}`);
-        if (el) el.innerHTML = loadingHtml;
+        if (el) {
+            el.innerHTML = loadingHtml;
+            el.classList.add("loading-text");
+        }
     });
 }
 
@@ -133,7 +151,10 @@ function showFetchError(msg) {
     if (v6El) v6El.innerHTML = errorHtml;
     
     const targetEl = $("#detailIPTarget");
-    if (targetEl) targetEl.innerHTML = errorHtml;
+    if (targetEl) {
+        targetEl.innerHTML = errorHtml;
+        targetEl.classList.remove("loading-text");
+    }
 
     const detailIds = [
         "decimal", "hostname", "asn", "timezone", "isp", 
@@ -142,7 +163,10 @@ function showFetchError(msg) {
     ];
     detailIds.forEach(id => {
         const el = $(`#ip-detail-${id}`);
-        if (el) el.innerHTML = `<span class="text-na">N/A</span>`;
+        if (el) {
+            el.innerHTML = `<span class="text-na">N/A</span>`;
+            el.classList.remove("loading-text");
+        }
     });
 
     // Re-enable nút Check Blacklist khi có lỗi để user có thể tương tác lại
@@ -168,7 +192,12 @@ function renderIPData(data, meta = null) {
         if (v6El) v6El.textContent = data.ip;
     }
 
-    // 2. Phần chi tiết trong Card Title
+    // 2. Phần chi tiết trong Title
+    const summaryTitle = $(".ip-summary-section .card__title");
+    if (summaryTitle) {
+        renderSuccessHeader(summaryTitle, "Địa chỉ IP Công cộng của bạn");
+    }
+
     const targetEl = $("#detailIPTarget");
     if (targetEl) {
         targetEl.classList.remove("loading-text");
@@ -244,16 +273,16 @@ function renderIPData(data, meta = null) {
     // Cập nhật timestamp tra cứu và thông báo cache
     const cacheNotice = $("#cacheNotice");
     if (cacheNotice && meta) {
-        cacheNotice.classList.remove("d-none");
-        const spanEl = cacheNotice.querySelector("span");
+        setDisplay(cacheNotice, "flex");
+        const spanEl = cacheNotice.querySelector(".cache-card__text");
         const timeStr = meta.fetched_at 
             ? new Date(meta.fetched_at).toLocaleString('vi-VN') 
             : new Date().toLocaleString('vi-VN');
 
         if (meta.cached) {
-            spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
+            spanEl.innerHTML = `Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
         } else {
-            spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
+            spanEl.innerHTML = `Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
         }
     }
 }
@@ -346,7 +375,7 @@ function setupEventListeners() {
         btn.addEventListener("click", async () => {
             const targetId = btn.getAttribute("data-target");
             const text = $(targetId)?.textContent;
-            if (text && text !== "N/A") {
+            if (text && text !== "N/A" && text !== "Checking...") {
                 const success = await copyToClipboard(text);
                 if (success) {
                     const originalHtml = btn.innerHTML;
@@ -368,8 +397,7 @@ function setupEventListeners() {
     $("#btnCheckBlacklist")?.addEventListener("click", () => {
         const ip = $("#detailIPTarget")?.textContent;
         if (ip && ip !== "N/A" && ip !== "Checking...") {
-            window.location.href = `./dns.html?host=${encodeURIComponent(ip.trim())}&type=BLACKLIST`;
+            window.location.href = `../tools/dns.html?host=${encodeURIComponent(ip.trim())}&type=BLACKLIST`;
         }
     });
 }
-

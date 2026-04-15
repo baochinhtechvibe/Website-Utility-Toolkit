@@ -10,7 +10,7 @@
                    script-src 'self' 'unsafe-inline' https://unpkg.com; 
                    style-src 'self' 'unsafe-inline' https://unpkg.com; 
                    img-src 'self' https://flagcdn.com https://*.tile.openstreetmap.org data:; 
-                   connect-src 'self' http://127.0.0.1:3101 https://api.ipify.org https://api4.my-ip.io https://ipapi.co;">
+                   connect-src 'self' http://127.0.0.1:3101 https://api.ipify.org https://api4.my-ip.io https://ipapi.co https://unpkg.com;">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../src/css/tools/ip-lookup.css">
@@ -26,7 +26,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
-    <title>Website Utility Toolkit | Danh sách công cụ miễn phí cho Website Administrator</title>
+    <!-- SEO Meta Tags -->
+    <title>My IP Lookup | Kiểm tra địa chỉ IP công cộng và thông tin vị trí</title>
+    <meta name="description" content="Công cụ tra cứu địa chỉ IPv4, IPv6 công cộng của bạn, cung cấp thông tin chi tiết về nhà mạng (ISP), vị trí địa lý, bản đồ và phát hiện VPN/Proxy.">
 </head>
 
 <body>
@@ -96,13 +98,15 @@
                 <div class="ip-details-section mt-8">
                     <h3 id="detailIPTitle" class="ip-details-title font-bold">IP Details For <span id="detailIPTarget"
                             class="ip-detail-target loading-text">Checking...</span></h3>
-                    <div id="cacheNotice"
-                        class="cache-card mt-4 mb-4 p-2 d-flex flex-row justify-between items-center d-none">
-                        <span><i class="fa-solid fa-bolt" aria-hidden="true"></i> Kết quả tra cứu mới nhất lúc <b
-                                id="cacheTime"></b>.</span>
+                    <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
+                        <div class="cache-card__content">
+                            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                            <span class="cache-card__text">Kết quả tra cứu mới nhất lúc <b id="cacheTime"></b>.</span>
+                        </div>
                         <button type="button" id="btnRefreshIP" class="btn btn-sm btn-outline cache-card__btn"
-                            aria-label="Làm mới thông tin IP"><i class="fa-solid fa-arrows-rotate"
-                                aria-hidden="true"></i> Làm mới</button>
+                            aria-label="Làm mới thông tin IP">
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
+                        </button>
                     </div>
 
                     <div class="ip-details-grid">
