@@ -16,7 +16,8 @@
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
 
-    <title>Redirect Analyzer | Website Utility Toolkit</title>
+    <title>Redirect Analyzer | Website Utility Toolkit - Phân tích chuỗi chuyển hướng</title>
+    <meta name="description" content="Công cụ phân tích chuỗi chuyển hướng (Redirect Chain) chuyên sâu. Kiểm tra mã trạng thái HTTP, đo lường hiệu suất và phát hiện rủi ro bảo mật cho website của bạn.">
 </head>
 
 <body>
@@ -34,7 +35,7 @@
                                 REDIRECT ANALYZER
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                Comprehensive Redirect Analyzer
+                                Phân tích chuỗi chuyển hướng chuyên sâu
                             </p>
                         </div>
                     </div>
@@ -202,13 +203,14 @@
                     </div>
 
                     <!-- CACHE NOTICE -->
-                    <div id="cacheNotice"
-                        class="cache-card mt-4 mb-4 d-flex flex-row justify-between items-center d-none">
-                        <span><i class="fa-solid fa-bolt"></i> <span id="cacheText">Kết quả tra cứu mới nhất lúc</span>
-                            <b id="cacheTime"></b>.</span>
+                    <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
+                        <div class="cache-card__content">
+                            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                            <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất lúc</span> <b id="cacheTime"></b>.</span>
+                        </div>
                         <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"
                             aria-label="Làm mới thông tin tra cứu">
-                            <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
                         </button>
                     </div>
 
@@ -396,7 +398,7 @@
                         <div class="share-card__body d-flex flex-row items-stretch mt-2">
                             <input type="text" id="shareLink" readonly class="share-card__input" />
                             <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                <i class="fas fa-copy"></i>
+                                <i class="fa-solid fa-copy"></i>
                                 <span>Copy</span>
                             </button>
                         </div>
