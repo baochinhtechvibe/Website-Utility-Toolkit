@@ -13,7 +13,9 @@
 
 @media (max-width: 991px) {
     .whois__layout {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
     }
     
     .whois__col-info {
@@ -327,16 +329,6 @@
     font-size: 2rem;
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 900px) {
-    .whois__layout {
-        grid-template-columns: 1fr;
-    }
-
-    .whois__col-timeline {
-        order: -1;
-    }
-}
 
 @media (max-width: 640px) {
     .whois__info-list {
