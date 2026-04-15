@@ -62,12 +62,10 @@ function setupEventListeners() {
             $('#btnAnalyze')
         );
 
-        // Clear UI when user starts typing new URL
+        // Clear results when user starts typing new URL
         urlInput.addEventListener('input', () => {
-            hideError();
             hideResults();
-            const btn = $('#btnAnalyze');
-            if (btn) btn.disabled = !isValidURL(urlInput.value.trim());
+            $('#errorCard')?.classList.add('d-none');
         });
     }
 
@@ -303,9 +301,16 @@ function renderResults(res, url, meta) {
         
         if (cacheTime) cacheTime.textContent = timeStr;
         if (cacheText) {
-            cacheText.textContent = meta.cached 
+            const isCached = !!meta.cached;
+            cacheText.textContent = isCached 
                 ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc" 
                 : "Kết quả tra cứu mới nhất lúc";
+            
+            // Cập nhật icon: Đồng hồ (cached) vs Tia sét (fresh)
+            const icon = cacheNotice.querySelector('i');
+            if (icon) {
+                icon.className = isCached ? 'fa-solid fa-clock' : 'fa-solid fa-bolt';
+            }
         }
 
         cacheNotice.classList.remove('d-none');
@@ -674,7 +679,6 @@ function showError(m) {
 
 function hideError() {
     $('#errorCard')?.classList.add('d-none');
-    $('#urlValidationError')?.classList.add('d-none');
 }
 
 function showURLValidationError() {

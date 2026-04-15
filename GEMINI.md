@@ -156,10 +156,20 @@
   - **Thẻ chia sẻ URL (`share-card.css`):** Khối chia sẻ gắn class `.share-card`. Trong đó có input text readonly `.share-card__input` và nút copy `.share-card__button.share-card__button--copy`.
   - **Nhãn dán (`badge.css`):** Để ghi chú tĩnh, dùng `.badge.badge-default` (hoặc `.badge-success`, `.badge-warning`). Biến chữ in hoa `.uppercase`. Không dùng `font-size` để chỉnh.
 
-### 24. CẨN THẬN KHI XÓA COMMENT TRONG CSS LÀM MẤT NGOẶC NHỌN CỦA BLOCK
-- **Lỗi đã mắc:** Khi sửa CSS để gỡ bỏ một thuộc tính (như `overflow: hidden;`), đã comment out cả dấu đóng ngoặc nhọn `}` hoặc vô tình xóa mất dấu `}` của selector đó. Hậu quả là trình duyệt hiểu sai toàn bộ phần CSS bên dưới, làm vỡ khung giao diện, mất màu nền, ẩn hiện loạn xạ.
-- **Cách khắc phục đúng:** 
-  - Khi xóa hoặc comment bất kỳ dòng CSS nào, ĐẶC BIỆT chú ý đến các dấu ngoặc nhọn mở `{` và đóng `}`.
-  - Phải chắc chắn rằng mỗi block CSS đều có đủ các cặp dấu. Việc comment một thuộc tính không bao giờ được phép "nuốt" luôn vách ngăn của class đó.
+### 25. CÚ PHÁP BORDER BẮT BUỘC PHẢI ĐẦY ĐỦ (SHORTHAND)
+- **Lỗi đã mắc:** Viết kiểu `border: var(--color-border);` hoặc `border: var(--color-border-subtle);`. Trình duyệt sẽ không render border vì thiếu độ dày (width) và kiểu dáng (style).
+- **Cách khắc phục đúng:** LUÔN LUÔN viết đầy đủ 3 thành phần: `border: 1px solid var(--color-border);`. Nếu muốn dùng độ dày từ token thì: `border: var(--border-width-1) solid var(--color-border);`.
+
+### 26. TRÁNH XUNG ĐỘT EVENT LISTENER KHI DÙNG VALIDATOR CHUNG
+- **Lỗi đã mắc:** Gắn thêm listener `input` vào ô URL để `hideError()` nhưng lại vô tình ẩn luôn cả thông báo lỗi của `createRealtimeURLValidator` mỗi khi người dùng gõ phím.
+- **Cách khắc phục đúng:** Khi dùng các hàm Validator trong `utils/validation.js`, hãy để chúng tự quản lý việc hiện/ẩn lỗi validate. Logic riêng của tool chỉ nên can thiệp vào việc ẩn các Card kết quả cũ hoặc Card lỗi logic (lookup error), tránh đè lên element báo lỗi của Validator (`#urlValidationError`, v.v.).
+
+### 27. VẼ ĐƯỜNG NỐI (CONNECTOR LINE) TRONG UI DẠNG CHUỖI (CHAIN/TIMELINE)
+- **Lưu ý quan trọng:** Để các "nút" (nodes) trong chuỗi chuyển hướng hoặc timeline trông liền mạch, sợi dây nối không được phép bị đứt đoạn khi nội dung bước đó dài ra.
+- **Cách làm chuẩn:** 
+  - Sử dụng pseudo-element `::after` trên container của mỗi bước (`.step`).
+  - Thiết lập `height: 100%` (hoặc `calc(100% + gap)`) để sợi dây phủ hết chiều cao của bước đó, tự động chạm tới điểm bắt đầu của bước tiếp theo.
+  - Dùng `z-index` để đảm bảo hình tròn của node nằm đè lên trên sợi dây.
+  - Căn chỉnh `left` chính xác theo tâm của node (Ví dụ: `calc(var(--node-size) / 2 - var(--line-width) / 2)`).
 
 - **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"

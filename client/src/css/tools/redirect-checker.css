@@ -23,11 +23,13 @@
 .redirect-step:not(:last-child)::after {
     content: '';
     position: absolute;
-    left: calc(var(--space-4) + 1.5px); /* Adjusted for visual centering of the line */
-    top: calc(var(--space-5) + var(--space-12));
+    /* Center exactly relative to var(--space-9) node */
+    left: calc(var(--space-9) / 2 - var(--border-width-2) / 2);
+    top: calc(var(--space-5) + var(--space-1)); /* Start from center to bottom path */
     width: var(--border-width-2);
-    height: calc(100% - var(--space-12));
+    height: calc(100%);
     background: var(--color-border);
+    z-index: var(--z-small);
 }
 
 /* NODE: hình tròn màu theo status */
@@ -59,7 +61,7 @@
 .redirect-step__content {
     flex: 1;
     background: var(--color-surface);
-    border: var(--color-border-subtle);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);
     margin-bottom: var(--space-3);
@@ -131,7 +133,7 @@
     padding: var(--space-2) var(--space-3);
     background: var(--color-surface-muted);
     border-radius: var(--radius-md);
-    border: var(--color-border);
+    border: 1px solid var(--color-border);
     border-left: var(--border-width-4) solid var(--color-warning);
 }
 
@@ -201,7 +203,7 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
-    border: var(--color-border-subtle);
+    border: 1px solid var(--color-border);
     background: var(--color-surface);
 }
 
@@ -284,7 +286,7 @@
 ========================================== */
 .redirect-curl-output {
     background: var(--color-surface-muted);
-    border: var(--color-border);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-4);
     overflow-x: auto;
@@ -307,7 +309,7 @@
 .results-table th,
 .results-table td {
     padding: var(--space-3) var(--space-4);
-    border-bottom: var(--border-width-1) solid var(--color-border-subtle);
+    border-bottom: var(--border-width-1) solid var(--color-border);
 }
 
 .results-table th {
