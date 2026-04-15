@@ -6,7 +6,7 @@
 /* ===== LAYOUT: 2-COLUMN GRID ===== */
 .whois__layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     gap: var(--space-6);
     margin-top: var(--space-6);
 }
@@ -139,7 +139,7 @@
     font-weight: var(--font-weight-medium);
     background-color: var(--color-surface-muted);
     color: var(--color-text-secondary);
-    border: var(--border-subtle);
+    border: 1px solid var(--color-border-subtle);
     word-break: break-all;
     max-width: 100%;
 }
@@ -185,6 +185,11 @@
 }
 
 /* ===== TIMELINE ===== */
+:root {
+    --whois-node-size: 40px;
+    --whois-line-width: 2px;
+}
+
 .whois__timeline {
     position: relative;
     padding: 0;
@@ -201,11 +206,11 @@
 .whois__timeline-item:not(:last-child)::after {
     content: '';
     position: absolute;
-    left: 19px; /* Calc: (40px / 2) - (2px / 2) */
-    top: 40px; /* Bắt đầu ngay sau node icon */
-    height: calc(100% - 40px); /* Kéo dài hết phần padding còn lại tới node tiếp theo */
-    width: 2px;
-    z-index: var(--z-base); /* Stay behind contents */
+    left: calc(var(--whois-node-size) / 2 - var(--whois-line-width) / 2);
+    top: var(--whois-node-size);
+    height: calc(100% - var(--whois-node-size) + var(--space-6)); /* Extend to next node */
+    width: var(--whois-line-width);
+    z-index: var(--z-base);
     background: var(--color-border-subtle);
 }
 
@@ -216,14 +221,14 @@
 .whois__timeline-icon {
     position: relative;
     z-index: var(--z-elevated);
-    width: 40px;
-    height: 40px;
+    width: var(--whois-node-size);
+    height: var(--whois-node-size);
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border: 2px solid var(--color-border);
+    border: var(--border-width-2) solid var(--color-border);
     background-color: var(--color-surface); /* Solid background to hide line */
     transition: box-shadow var(--transition-base);
 }

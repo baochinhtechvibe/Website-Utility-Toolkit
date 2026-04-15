@@ -7,6 +7,7 @@ import {
     toggleLoading,
     escapeHTML,
     createRealtimeDomainValidator,
+    renderSuccessHeader,
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
@@ -198,7 +199,6 @@ function init() {
     function showError(msg) {
         showElements("none", resultCard, shareCard);
         errorMessage.textContent = msg;
-        errorCard.classList.remove("d-none");
         setDisplay(errorCard, "block");
     }
 
@@ -209,7 +209,7 @@ function init() {
         showElements("none", resultCard, shareCard);
 
         // Reset title
-        resultTitle.innerHTML = `<i class="fa-solid fa-circle-check"></i> Kết quả tra cứu: <span class="">"${escapeHTML(domain)}"</span>`;
+        renderSuccessHeader(resultTitle, `Kết quả tra cứu: <span class="">"${escapeHTML(domain)}"</span>`);
         
         // Ẩn layout chứa 2 cột thông tin đăng ký / vòng đời
         if (whoisLayout) whoisLayout.classList.add("d-none");
@@ -287,7 +287,7 @@ function init() {
         }
 
         // Result title
-        resultTitle.innerHTML = `<i class="fa-solid fa-circle-check"></i> Thông tin WHOIS: <span class="text-success">"${escapeHTML(data.domain || currentDomain)}"</span>`;
+        renderSuccessHeader(resultTitle, `Thông tin WHOIS: <span class="text-success">"${escapeHTML(data.domain || currentDomain)}"</span>`);
 
         // Render Info List
         renderInfoList(data, infoList);
