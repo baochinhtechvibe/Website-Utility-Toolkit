@@ -11,6 +11,20 @@
     margin-top: var(--space-6);
 }
 
+@media (max-width: 991px) {
+    .whois__layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .whois__col-info {
+        order: 1;
+    }
+    
+    .whois__col-timeline {
+        order: 2;
+    }
+}
+
 .card__header .card__subtitle {
     display: block;
     color: color-mix(in srgb, var(--white) 60%, transparent);
