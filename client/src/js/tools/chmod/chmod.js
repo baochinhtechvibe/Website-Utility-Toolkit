@@ -7,17 +7,15 @@ import {
     $, 
     $$, 
     escapeHTML,
+    copyToClipboard
 } from "../../utils/index.js";
 
-
-document.addEventListener("DOMContentLoaded", () => {
-    initChmod();
-});
-
-function initChmod() {
+function init() {
     setupEventListeners();
     syncFromOctal("644"); // Set default 644 on load
 }
+
+document.addEventListener("DOMContentLoaded", init);
 
 /**
  * Main update function to sync all UI elements
@@ -348,33 +346,38 @@ function setupEventListeners() {
 
     // 4. Copy buttons
     $$(".btn-copy-small").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", async () => {
             const targetId = btn.getAttribute("data-target");
             const text = $(targetId)?.value;
-            copyText(text, btn);
+            if (text) {
+                const success = await copyToClipboard(text);
+                if (success) {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = `<i class="fa-solid fa-check"></i>`;
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                    }, 1500);
+                }
+            }
         });
     });
 
-    $("#btnCopyCommand")?.addEventListener("click", () => {
+    $("#btnCopyCommand")?.addEventListener("click", async () => {
         const text = $("#generatedCommand")?.textContent;
-        copyText(text, $("#btnCopyCommand"));
+        const btn = $("#btnCopyCommand");
+        if (text) {
+            const success = await copyToClipboard(text);
+            if (success) {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied`;
+                btn.classList.add("btn-success");
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove("btn-success");
+                }, 1500);
+            }
+        }
     });
 }
 
-/**
- * Simple copy helper
- */
-async function copyText(text, btn) {
-    if (!text) return;
-    try {
-        await navigator.clipboard.writeText(text);
-        const originalHtml = btn.innerHTML;
-        // Only change the icon, no text
-        btn.innerHTML = `<i class="fa-solid fa-check"></i>`;
-        setTimeout(() => {
-            btn.innerHTML = originalHtml;
-        }, 1500);
-    } catch (err) {
-        console.error("Failed to copy", err);
-    }
-}
+

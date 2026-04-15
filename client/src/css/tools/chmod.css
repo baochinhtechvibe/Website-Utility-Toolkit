@@ -121,7 +121,7 @@
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     background-color: var(--color-surface);
-    border: var(--border-subtle);
+    border: var(--border-width-1) solid var(--color-border-subtle);
     transition: all var(--transition-base);
     user-select: none;
     width: 100%;
@@ -178,8 +178,8 @@
 
 /* 2. Terminal Preview */
 .terminal-card {
-    background-color: #1e1e1e; /* UI Terminal cố định tối */
-    color: #d4d4d4;
+    background-color: var(--gray-900); /* UI Terminal cố định tối */
+    color: var(--gray-300);
     border: none;
     overflow: hidden;
 }
@@ -189,14 +189,14 @@
 }
 
 .terminal-badge {
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--white) 10%, transparent);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
 }
 
 .terminal-body {
     padding: var(--space-6);
-    background: #000;
+    background-color: var(--black);
     font-family: var(--font-family-mono);
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     overflow-x: auto;
@@ -245,8 +245,8 @@
 
 .btn-copy-small {
     padding: 0 var(--space-4);
-    background: var(--color-surface-muted);
-    border: var(--border-default);
+    background-color: var(--color-surface-muted);
+    border: var(--border-width-1) solid var(--color-border-subtle);
     border-radius: var(--radius-md);
     white-space: nowrap;
     color: var(--color-text-primary);
