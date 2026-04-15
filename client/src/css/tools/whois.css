@@ -175,22 +175,22 @@
     isolation: isolate;
 }
 
-.whois__timeline::before {
-    content: '';
-    position: absolute;
-    left: 19px;
-    top: 5px; /* Start from top of first icon */
-    bottom: 5px; /* End at bottom of last icon */
-    width: 2px;
-    z-index: var(--z-base); /* Stay behind contents */
-    background: var(--color-border-subtle);
-}
-
 .whois__timeline-item {
     position: relative;
     display: flex;
     gap: var(--space-4);
     padding-bottom: var(--space-6);
+}
+
+.whois__timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 19px; /* Calc: (40px / 2) - (2px / 2) */
+    top: 40px; /* Bắt đầu ngay sau node icon */
+    height: calc(100% - 40px); /* Kéo dài hết phần padding còn lại tới node tiếp theo */
+    width: 2px;
+    z-index: var(--z-base); /* Stay behind contents */
+    background: var(--color-border-subtle);
 }
 
 .whois__timeline-item:last-child {

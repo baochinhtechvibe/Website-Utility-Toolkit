@@ -6,9 +6,9 @@
 ### 1. TUYỆT ĐỐI KHÔNG DÙNG THÓI QUEN TAILWIND CSS BỪA BÃI
 - **Lỗi đã mắc:** Tự ý gõ các class kiểu `text-xl`, `bg-gray-50`, `text-red-500`, `.hidden`, `break-all`... theo thói quen mặc dù project KHÔNG cài đặt framework Tailwind đầy đủ.
 - **Cách khắc phục đúng:**
-  - Về layout/display: Dùng các helper đã có (như `.d-none` thay cho `.hidden`, `.d-block`, `.d-flex`, v.v.).
+  - Về layout/display: Dùng các helper đã có (như `.d-none` thay cho `.hidden`, `.d-block`, `.d-flex`, `.justify-between`, v.v. trong `utilities/helper.css`).
   - Về typography: Kiểm tra trong `tokens/typography/semantic.css` (VD: dùng text-base, text-secondary).
-  - Về background: Check `utilities/colors.css` hoặc dùng trực tiếp file CSS của tool để mapping tới các biến Token hợp lệ.
+  - Về background/spacing: Sử dụng các class tiện ích trong `utilities/colors.css` và `utilities/spacing.css` (VD: `.py-10`, `.mb-4`). Tuyệt đối không tự chế class kiểu Tailwind nếu project chưa có.
 
 ### 2. SỬ DỤNG ĐÚNG VÀ ĐỦ CSS TOKENS, KHÔNG HARDCODE
 - **Lỗi đã mắc:** Hardcode các thông số như `border-radius: 4px;`, `box-shadow: 0 1px 3px rgba(...)`, `transition: 0.3s ease;` ngay trong các file `.css` của tool. Ngoài ra, tự bịa ra các biến color CSS mông lung (ví dụ: `var(--color-primary-600)`) làm vỡ hệ thống token.
@@ -71,7 +71,7 @@
 ### 11. XỬ LÝ CACHE NOTICE TRONG UI KẾT QUẢ
 - **Lưu ý quan trọng:** Với các tool mang tính chất "tra cứu" (lookup), tao yêu cầu LUÔN LUÔN có phần thông báo kết quả cache notice, bất kể kết quả đó là lấy dữ liệu mới (fresh) hay lấy từ cache ra.
 - **Cách khắc phục đúng:** 
-  - Trong HTML, chèn thêm khối `result-card__cache-notice` bên trong `result-card` (tham khảo cấu trúc của `dns.html`).
+  - Trong HTML, chèn thêm khối `cache-card` bên trong `result-card` (tham khảo cấu trúc của `dns.html`).
   - Trong JS, xử lý logic LUÔN hiển thị banner nếu có `meta.fetched_at`. Nếu `meta.cached = true` thì hiển thị: *"Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc..."*. Nếu `meta.cached = false` thì hiển thị: *"Kết quả tra cứu mới nhất lúc..."* (tham khảo logic trong `dns.js` hoặc `web-latency.js`).
   - Gắn sự kiện cho nút "Làm mới" gửi request kèm `bypassCache=true` lên backend để ép tải lại dữ liệu mới nhất. Trừ những tool đặc biệt không làm việc bằng cache (như chmod) thì mới bỏ qua bước này.
 
@@ -89,8 +89,8 @@
 - **Lỗi đã mắc:** Viết chèn trực tiếp các thuộc tính CSS vào thẻ HTML (ví dụ: `style="display: grid; gap: var(--space-4);"` hoặc `style="background-color: var(--color-surface);"`).
 - **Cách khắc phục đúng:** 
   - Đóng gói thuộc tính vào các class cục bộ bên trong file CSS của tool (VD: `.latency-grid`, `.latency-stat-box`).
-  - Sử dụng chung các CSS Helper/Utility đã cài đặt sẵn nếu có.
-  - Mã HTML phải sạch sẽ, chỉ chứa class name.
+  - Sử dụng chung các CSS Helper/Utility đã cài đặt sẵn trong thư mục `client/src/css/utilities/` (như `helper.css`, `spacing.css`, `colors.css`). Đây là các class "chuẩn" được phép dùng trực tiếp trong HTML để xử lý layout nhanh (d-flex, justify-center, py-*, v.v.).
+  - Mã HTML phải sạch sẽ, phối hợp giữa BEM cho component và Utility cho layout.
 
 ### 14. TÁI SỬ DỤNG COMPONENT CHO CÁC KHỐI KẾT QUẢ
 - **Lỗi đã mắc:** Tự ý chế ra các box bọc ngoài như `.info-card p-4 rounded border` cho các khối thông tin phụ. Ngoài ra ráp nhầm cấu trúc cho `.card__header` (quên dán chữ trắng/icon) làm layout bị ẩn hoặc vỡ.
@@ -152,7 +152,7 @@
   - **Nút bấm (`button.css`):** Mọi nút đều có gốc là `.btn`. Biến thể gồm: `.btn-action` (màu chính), `.btn-outline` (viền mỏng), `.btn-danger`, `.btn-warning`, `.btn-sm`, `.btn-block` (chiếm 100% width).
   - **Thông báo (`message-card.css`):** Dùng cho lỗi hoặc cảnh báo nổi bật. Cấu trúc `.message-card.message-card--error` > `.message-card__header` > `.message-card__title`. (Tuyệt đối không nhét thẻ này vào trong một div có `white-space: pre-wrap` để tránh bị lệch layout).
   - **Hiển thị code (`code-block.css`):** Khu vực in code phải bọc ngoài `.code-block`, phần header có class `.code-block__header` > `.code-block__lang` và nút copy `button.code-block__btn-copy`. Mã code in ra cần nhét vào `.code-block__body` > `code.code-block__text`.
-  - **Kết quả trả về (`result-card.css`):** Bất cứ tool nào cũng cần render kết quả trong `.result-card`. Tiêu đề nằm trong `.result-card__title`. Banner báo lấy từ cache bắt buộc nằm trong class `.result-card__cache-notice` > nút `.cache-notice__btn-refresh`.
+  - **Kết quả trả về (`result-card.css`):** Bất cứ tool nào cũng cần render kết quả trong `.result-card`. Tiêu đề nằm trong `.result-card__title`. Banner báo lấy từ cache bắt buộc nằm trong class `.cache-card` (Tham khảo `components/cache-card.css`) > nút `.cache-card__btn`.
   - **Thẻ chia sẻ URL (`share-card.css`):** Khối chia sẻ gắn class `.share-card`. Trong đó có input text readonly `.share-card__input` và nút copy `.share-card__button.share-card__button--copy`.
   - **Nhãn dán (`badge.css`):** Để ghi chú tĩnh, dùng `.badge.badge-default` (hoặc `.badge-success`, `.badge-warning`). Biến chữ in hoa `.uppercase`. Không dùng `font-size` để chỉnh.
 
@@ -171,5 +171,9 @@
   - Thiết lập `height: 100%` (hoặc `calc(100% + gap)`) để sợi dây phủ hết chiều cao của bước đó, tự động chạm tới điểm bắt đầu của bước tiếp theo.
   - Dùng `z-index` để đảm bảo hình tròn của node nằm đè lên trên sợi dây.
   - Căn chỉnh `left` chính xác theo tâm của node (Ví dụ: `calc(var(--node-size) / 2 - var(--line-width) / 2)`).
+
+### 28. NGÔN NGỮ GIAO TIẾP VÀ TÀI LIỆU
+- **Quy tắc bắt buộc:** Mọi giao tiếp giữa tao và mày, cũng như các tài liệu phụ trợ như `implementation_plan.md`, `task.md`, `walkthrough.md`... đều phải được viết bằng **Tiếng Việt**.
+- **Cách khắc phục đúng:** Không được dùng Tiếng Anh cho các tiêu đề task hay nội dung kế hoạch triển khai. Hãy dùng tiếng Việt rõ ràng, dễ hiểu và đúng tinh thần "Mày - Tao" thân mật.
 
 - **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"

@@ -64,6 +64,7 @@ function init() {
 
     let currentDomain = "";
     let isProcessing = false;
+    let currentAbortController = null;
 
     // -------- Realtime Validation --------
     createRealtimeDomainValidator(domainInput, validationError, btnLookup);
@@ -135,8 +136,12 @@ function init() {
     //  CORE: Perform WHOIS Lookup
     // ============================================
     async function performLookup(domain, bypass) {
-        if (isProcessing) return;
-        
+        if (currentAbortController) {
+            currentAbortController.abort();
+        }
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
+
         currentDomain = domain;
         isProcessing = true;
 
@@ -155,7 +160,8 @@ function init() {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/whois/lookup?domain=${encodeURIComponent(domain)}&bypassCache=${bypass}`
+                `${API_BASE_URL}/whois/lookup?domain=${encodeURIComponent(domain)}&bypassCache=${bypass}`,
+                { signal }
             );
             const json = await res.json();
 
@@ -174,6 +180,10 @@ function init() {
 
             displayResult(json.data, json.meta);
         } catch (err) {
+            if (err.name === 'AbortError') {
+                console.log("WHOIS request aborted");
+                return; // Thoát âm thầm nếu bị hủy
+            }
             console.error("WHOIS fetch error:", err);
             showError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại.");
         } finally {

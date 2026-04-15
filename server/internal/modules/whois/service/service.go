@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/go-pkgz/expirable-cache/v3"
+	cache "github.com/go-pkgz/expirable-cache/v3"
 	"github.com/likexian/whois"
 	whoisparser "github.com/likexian/whois-parser"
 	dnslib "github.com/miekg/dns"
@@ -19,6 +20,7 @@ import (
 	dnsModels "tools.bctechvibe.com/server/internal/modules/dns/models"
 	dnsservice "tools.bctechvibe.com/server/internal/modules/dns/service"
 	"tools.bctechvibe.com/server/internal/modules/whois/models"
+	"tools.bctechvibe.com/server/internal/pkg/iana"
 )
 
 const (
@@ -43,40 +45,18 @@ var (
 	// Cache hợp nhất: 1 LRU cache duy nhất chứa cả Response + Meta
 	whoisCache cache.Cache[string, *models.WhoisCacheEntry]
 
-	rdapBootstrap sync.Map // TLD → base RDAP server URL (ví dụ: "https://rdap.verisign.com/com/v1/")
-
-	// Bypass rate limiter: domain → thời điểm bypass gần nhất
-	// Giới hạn: chỉ cho bypass 1 lần / 2 phút / domain
-	bypassLimiter     sync.Map
-	bypassCooldown    = 2 * time.Minute
-
-	// IANA TLD NS Bootstrap: TLD → TLD Nameserver IP (cho discoverNSViaTLDDirect)
-	tldNSBootstrap sync.Map
+	// Limiter cho bypass cache: giới hạn bộ nhớ và thời gian (LRU)
+	bypassLimiter  cache.Cache[string, time.Time]
+	bypassCooldown = 2 * time.Minute
 )
 
 // init khởi tạo cache ở package level, đảm bảo chỉ chạy 1 lần khi import.
 func init() {
 	whoisCache = cache.NewCache[string, *models.WhoisCacheEntry]().WithLRU().WithTTL(cacheTTLDefault)
+	bypassLimiter = cache.NewCache[string, time.Time]().WithLRU().WithTTL(bypassCooldown)
 
-	// Tải IANA RDAP Bootstrap + TLD NS Bootstrap bất đồng bộ ngay khi khởi động
-	go func() {
-		if err := fetchAndCacheBootstrap(); err != nil {
-			log.Warn().Err(err).Msg("RDAP Bootstrap: initial load failed, will fallback to rdap.org")
-		}
-		if err := fetchAndCacheTLDNSBootstrap(); err != nil {
-			log.Warn().Err(err).Msg("TLD NS Bootstrap: initial load failed, will use hardcode fallback")
-		}
-		ticker := time.NewTicker(24 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := fetchAndCacheBootstrap(); err != nil {
-				log.Warn().Err(err).Msg("RDAP Bootstrap: periodic refresh failed")
-			}
-			if err := fetchAndCacheTLDNSBootstrap(); err != nil {
-				log.Warn().Err(err).Msg("TLD NS Bootstrap: periodic refresh failed")
-			}
-		}
-	}()
+	// Tải dữ liệu IANA dùng chung
+	iana.Init()
 }
 
 // isVNDomain kiểm tra tên miền có phải .vn không (bao gồm .com.vn, .net.vn, .io.vn, ...)
@@ -100,8 +80,8 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 
 	// Bypass rate limiting: chỉ cho phép bypass 1 lần / 2 phút / domain
 	if bypassCache {
-		if lastBypass, ok := bypassLimiter.Load(cacheKey); ok {
-			if time.Since(lastBypass.(time.Time)) < bypassCooldown {
+		if lastBypass, ok := bypassLimiter.Get(cacheKey); ok {
+			if time.Since(lastBypass) < bypassCooldown {
 				log.Info().Str("domain", domain).Msg("WHOIS: bypass cooldown active, serving from cache")
 				bypassCache = false
 			}
@@ -239,7 +219,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 
 	// Ghi nhận thời điểm bypass nếu có
 	if bypassCache {
-		bypassLimiter.Store(cacheKey, time.Now())
+		bypassLimiter.Set(cacheKey, time.Now(), bypassCooldown)
 	}
 
 	return resp, meta, nil
@@ -350,7 +330,7 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 				log.Info().Str("domain", domain).Msg("WHOIS VN: Deadline hit — using VNNIC")
 				return vnnicResult, nil
 			}
-			
+
 			log.Warn().Str("domain", domain).Msg("WHOIS VN: Deadline hit with no results. Falling back to Tier 3.")
 			return queryVNTier3Fallback(domain)
 
@@ -392,7 +372,7 @@ func queryVNTier3Fallback(domain string) (*models.WhoisResponse, error) {
 	log.Info().Str("domain", domain).Msg("WHOIS VN: Tier 1 & 2 failed — trying Tier 3 (Auto-Discover)")
 	client := whois.NewClient()
 	client.SetTimeout(4 * time.Second)
-	rawText, err := client.Whois(domain, "whois.vnnic.vn") 
+	rawText, err := client.Whois(domain, "whois.vnnic.vn")
 	if err != nil && rawText == "" {
 		return nil, &WhoisError{
 			Message: "Không thể tra cứu thông tin tên miền này. Tên miền chưa được đăng ký hoặc hệ thống WHOIS đang gián đoạn.",
@@ -441,7 +421,7 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 		return nil, fmt.Errorf("tino: non-200 status: %d", res.StatusCode)
 	}
 
-	body, err := io.ReadAll(res.Body)
+	body, err := io.ReadAll(io.LimitReader(res.Body, 1<<20)) // Giới hạn 1MB tránh cạn kiệt bộ nhớ
 	if err != nil {
 		return nil, fmt.Errorf("tino: read body failed: %w", err)
 	}
@@ -450,7 +430,7 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 	// Go struct *TinoWhoisData sẽ báo lỗi "cannot unmarshal array into Go struct".
 	bodyStr := string(body)
 	bodyStr = strings.ReplaceAll(bodyStr, `"whois":[]`, `"whois":null`)
-	
+
 	var tinoResp models.TinoAPIResponse
 	if err := json.Unmarshal([]byte(bodyStr), &tinoResp); err != nil {
 		return nil, fmt.Errorf("tino: json parse failed: %w", err)
@@ -593,14 +573,18 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 			}
 		case <-timer.C:
 			deadlineFired = true
-			if bestRes != nil { return bestRes, nil }
+			if bestRes != nil {
+				return bestRes, nil
+			}
 		case <-graceTimer:
 			if bestRes != nil {
 				log.Info().Str("domain", domain).Msg("WHOIS Generic: Grace period expired")
 				return bestRes, nil
 			}
 		case <-ctx.Done():
-			if bestRes != nil { return bestRes, nil }
+			if bestRes != nil {
+				return bestRes, nil
+			}
 			return nil, &WhoisError{Message: "Yêu cầu tra cứu quá hạn (timeout)."}
 		}
 	}
@@ -625,31 +609,47 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 
 // queryRDAP gọi rdap.org proxy để lấy dữ liệu json — nhận context để cancel khi cần
 func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error) {
-	// Dùng IANA RDAP Bootstrap để tìm đúng server authoritative cho mọi TLD
-	// Không còn hardcode — Bootstrap tự động trả .com → Verisign, .uk → Nominet, v.v.
-	url := getAuthoritativeRDAPServer(domain)
+	// Dùng IANA RDAP Bootstrap để tìm đúng server authoritative
+	url := iana.GetAuthoritativeRDAPServer(domain)
 	if url == "" {
-		// Fallback: rdap.org proxy nếu Bootstrap chưa tải hoặc TLD chưa có trong danh sách IANA
 		url = "https://rdap.org/domain/" + domain
 	}
 
 	httpClient := &http.Client{Timeout: 10 * time.Second}
-	
-	// Helper để fetch RDAP JSON
+
+	// Helper để fetch RDAP JSON với SSRF check
 	fetchRDAP := func(targetURL string) (*models.RDAPResponse, error) {
-		req, _ := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
+		if !isSafeURL(targetURL) {
+			return nil, fmt.Errorf("rdap: unsafe URL detected: %s", targetURL)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
+		if err != nil {
+			return nil, err
+		}
 		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; WUT-Whois/1.0)")
 		req.Header.Set("Accept", "application/rdap+json")
 		res, err := httpClient.Do(req)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		defer res.Body.Close()
-		if res.StatusCode != http.StatusOK { return nil, fmt.Errorf("status %d", res.StatusCode) }
+		if res.StatusCode != http.StatusOK {
+			// Trả về error cụ thể nếu RDAP server báo lỗi
+			var errResp models.RDAPResponse
+			_ = json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&errResp)
+			if errResp.ErrorCode != 0 || errResp.Title != "" {
+				return nil, fmt.Errorf("rdap error: %s (code %d)", errResp.Title, errResp.ErrorCode)
+			}
+			return nil, fmt.Errorf("status %d", res.StatusCode)
+		}
 		var r models.RDAPResponse
-		if err := json.NewDecoder(res.Body).Decode(&r); err != nil { return nil, err }
+		if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&r); err != nil {
+			return nil, err
+		}
 		return &r, nil
 	}
 
-	// 1. Truy vấn Registry RDAP (Tầng 1)
 	rdapResp, err := fetchRDAP(url)
 	if err != nil {
 		return nil, fmt.Errorf("rdap registry: %w", err)
@@ -668,7 +668,7 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 	// 2. Kiểm tra Referral tới Registrar (Tầng 2 - Thick RDAP)
 	if isPlaceholderRegistrant(resp.Registrant) {
 		referralURL := ""
-		
+
 		// Ưu tiên tìm trong top-level links (Verisign style)
 		for _, link := range rdapResp.Links {
 			if link.Rel == "related" && strings.Contains(link.Href, "http") {
@@ -695,7 +695,9 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 						}
 					}
 				}
-				if referralURL != "" { break }
+				if referralURL != "" {
+					break
+				}
 			}
 		}
 
@@ -703,7 +705,9 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 			log.Info().Str("domain", domain).Str("referral", referralURL).Msg("RDAP: Following referral to registrar server (Thick RDAP)")
 			fullURL := referralURL
 			if !strings.Contains(fullURL, "/domain/") && !strings.HasSuffix(fullURL, domain) {
-				if !strings.HasSuffix(fullURL, "/") { fullURL += "/" }
+				if !strings.HasSuffix(fullURL, "/") {
+					fullURL += "/"
+				}
 				fullURL += "domain/" + domain
 			}
 
@@ -751,7 +755,7 @@ func generateRichRDAPText(rdap models.RDAPResponse) string {
 	var b strings.Builder
 	b.WriteString("Data retrieved via RDAP (rdap.org)\n")
 	b.WriteString(fmt.Sprintf("Domain Name: %s\n", strings.ToUpper(rdap.LDHName)))
-	
+
 	if rdap.Handle != "" {
 		b.WriteString(fmt.Sprintf("Registry Domain ID: %s\n", rdap.Handle))
 	}
@@ -807,7 +811,7 @@ func extractNamesFromRDAP(entities []models.RDAPEntity, resp *models.WhoisRespon
 							continue
 						}
 						key = strings.ToLower(key)
-						
+
 						if key == "fn" {
 							if s, ok := row[3].(string); ok {
 								name = html.UnescapeString(s)
@@ -835,12 +839,12 @@ func extractNamesFromRDAP(entities []models.RDAPEntity, resp *models.WhoisRespon
 				roleLower := strings.ToLower(role)
 				switch roleLower {
 				case "registrar":
-					if resp.Registrar == "" || isPlaceholderRegistrant(resp.Registrar) { 
-						resp.Registrar = finalName 
+					if resp.Registrar == "" || isPlaceholderRegistrant(resp.Registrar) {
+						resp.Registrar = finalName
 					}
 				case "registrant":
-					if resp.Registrant == "" || isPlaceholderRegistrant(resp.Registrant) { 
-						resp.Registrant = finalName 
+					if resp.Registrant == "" || isPlaceholderRegistrant(resp.Registrant) {
+						resp.Registrant = finalName
 					}
 				}
 			}
@@ -860,11 +864,15 @@ func extractNamesFromRDAP(entities []models.RDAPEntity, resp *models.WhoisRespon
 // mergeWhoisResults gộp thông tin từ hai nguồn để có kết quả đầy đủ nhất
 func mergeWhoisResults(base, extra *models.WhoisResponse) *models.WhoisResponse {
 	if base == nil {
-		if extra != nil { extra.Status = deduplicateStatuses(extra.Status) }
+		if extra != nil {
+			extra.Status = deduplicateStatuses(extra.Status)
+		}
 		return extra
 	}
 	if extra == nil {
-		if base != nil { base.Status = deduplicateStatuses(base.Status) }
+		if base != nil {
+			base.Status = deduplicateStatuses(base.Status)
+		}
 		return base
 	}
 
@@ -874,15 +882,21 @@ func mergeWhoisResults(base, extra *models.WhoisResponse) *models.WhoisResponse 
 			base.Registrar = extra.Registrar
 		}
 	}
-	
+
 	if extra.Registrant != "" {
 		if base.Registrant == "" || isPlaceholderRegistrant(base.Registrant) {
 			base.Registrant = extra.Registrant
 		}
 	}
-	if base.RegisteredOn == "" { base.RegisteredOn = extra.RegisteredOn }
-	if base.ExpiresOn == "" { base.ExpiresOn = extra.ExpiresOn }
-	if base.UpdatedOn == "" { base.UpdatedOn = extra.UpdatedOn }
+	if base.RegisteredOn == "" {
+		base.RegisteredOn = extra.RegisteredOn
+	}
+	if base.ExpiresOn == "" {
+		base.ExpiresOn = extra.ExpiresOn
+	}
+	if base.UpdatedOn == "" {
+		base.UpdatedOn = extra.UpdatedOn
+	}
 	if len(base.Nameservers) == 0 {
 		base.Nameservers = extra.Nameservers
 	} else if len(extra.Nameservers) > 0 {
@@ -926,7 +940,7 @@ func deduplicateStatuses(statuses []string) []string {
 
 		// Chuẩn hóa: Một số WHOIS vứt kèm URL hoặc [ICANN] (e.g., "clientDeleteProhibited https://...")
 		cleanStatus := s
-		
+
 		// Cắt bỏ phần bắt đầu bằng " http"
 		if idx := strings.Index(cleanStatus, " http"); idx != -1 {
 			cleanStatus = cleanStatus[:idx]
@@ -997,7 +1011,7 @@ func parseWhoisRaw(domain, rawText string, isVN bool) *models.WhoisResponse {
 			resp.UpdatedOn = formatWhoisDate(result.Domain.UpdatedDate)
 		}
 	}
-	
+
 	// Fallback cho Status của .vn nếu parser mặc định bỏ lỡ
 	if isVN && len(resp.Status) == 0 {
 		// VNNIC thường dùng "Status: ..." hoặc "Domain Status: ..."
@@ -1071,11 +1085,11 @@ func parseWhoisRaw(domain, rawText string, isVN bool) *models.WhoisResponse {
 // Những NS này là server quản lý TLD, KHÔNG phải NS thực của domain.
 func isRegistryNS(ns string) bool {
 	registrySuffixes := []string{
-		".dns-servers.vn",     // VNNIC TLD NS
-		".gtld-servers.net",   // Verisign (.com/.net) TLD NS
-		".nstld.com",          // Verisign alternative
-		".nic.vn",             // VNNIC alternative
-		"dns1.vnnic.vn",       // VNNIC direct
+		".dns-servers.vn",   // VNNIC TLD NS
+		".gtld-servers.net", // Verisign (.com/.net) TLD NS
+		".nstld.com",        // Verisign alternative
+		".nic.vn",           // VNNIC alternative
+		"dns1.vnnic.vn",     // VNNIC direct
 		"dns2.vnnic.vn",
 	}
 	for _, suffix := range registrySuffixes {
@@ -1086,10 +1100,13 @@ func isRegistryNS(ns string) bool {
 	return false
 }
 
-// formatWhoisDate cố gắng parse và format lại ngày tháng từ WHOIS
 func formatWhoisDate(raw string) string {
+	// Early return cho RFC3339 (RDAP, hầu hết registry hiện đại)
+	if t, err := time.Parse(time.RFC3339, raw); err == nil {
+		return t.UTC().Format(time.RFC3339)
+	}
+
 	formats := []string{
-		time.RFC3339,
 		"2006-01-02T15:04:05Z07:00",
 		"2006-01-02T15:04:05Z",
 		"2006-01-02T15:04:05",
@@ -1169,11 +1186,11 @@ func discoverNameservers(ctx context.Context, domain string) []string {
 func discoverNSViaTLDDirect(domain string) []string {
 	// Hardcode fallback (dùng khi IANA Bootstrap chưa tải xong)
 	hardcodeFallback := map[string]string{
-		"com": "192.5.6.30",    // a.gtld-servers.net
-		"net": "192.5.6.30",    // a.gtld-servers.net (shared with .com)
-		"org": "199.19.56.1",   // a0.org.afilias-nst.info
-		"io":  "65.22.160.17",  // a0.nic.io
-		"vn":  "194.0.1.28",    // dns1.vnnic.vn
+		"com": "192.5.6.30",   // a.gtld-servers.net
+		"net": "192.5.6.30",   // a.gtld-servers.net (shared with .com)
+		"org": "199.19.56.1",  // a0.org.afilias-nst.info
+		"io":  "65.22.160.17", // a0.nic.io
+		"vn":  "194.0.1.28",   // dns1.vnnic.vn
 	}
 
 	// Xác định TLD
@@ -1184,17 +1201,17 @@ func discoverNSViaTLDDirect(domain string) []string {
 	tld := parts[len(parts)-1]
 
 	// Ưu tiên: IANA Bootstrap → Hardcode Fallback
-	var tldNS string
-	if bootstrapNS, ok := tldNSBootstrap.Load(tld); ok {
-		tldNS = bootstrapNS.(string)
-	} else if fallbackNS, ok := hardcodeFallback[tld]; ok {
-		tldNS = fallbackNS
-	} else {
-		// TLD không nằm trong cả bootstrap lẫn fallback → dùng root trace
+	tldNS := iana.GetTLDNS(tld)
+	if tldNS == "" {
+		if fallbackNS, ok := hardcodeFallback[tld]; ok {
+			tldNS = fallbackNS
+		}
+	}
+
+	if tldNS == "" {
 		return nil
 	}
 
-	// Query trực tiếp TLD NS: hỏi NS record cho domain, không bật recursion
 	c := new(dnslib.Client)
 	c.Timeout = 2 * time.Second
 
@@ -1360,144 +1377,23 @@ func capitalizeFirst(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// =============================================
-//  IANA RDAP BOOTSTRAP
-// =============================================
-
-// getAuthoritativeRDAPServer trả về URL RDAP query trực tiếp cho domain dựa trên IANA Bootstrap.
-// Ví dụ: "google.com" → "https://rdap.verisign.com/com/v1/domain/google.com"
-// Trả về "" nếu Bootstrap chưa tải hoặc TLD không có trong IANA.
-func getAuthoritativeRDAPServer(domain string) string {
-	parts := strings.Split(strings.ToLower(domain), ".")
-	if len(parts) < 2 {
-		return ""
-	}
-	tld := parts[len(parts)-1]
-	if baseURL, ok := rdapBootstrap.Load(tld); ok {
-		// baseURL đã có trailing slash: "https://rdap.verisign.com/com/v1/"
-		// Kết quả: "https://rdap.verisign.com/com/v1/domain/google.com"
-		return baseURL.(string) + "domain/" + domain
-	}
-	return ""
-}
-
-// ianaBootstrapFile là cấu trúc JSON của file IANA RDAP Bootstrap
-type ianaBootstrapFile struct {
-	Services [][]json.RawMessage `json:"services"`
-}
-
-// fetchAndCacheBootstrap tải file IANA RDAP Bootstrap và cache vào rdapBootstrap sync.Map.
-// File này chứa mapping TLD → RDAP server URL được IANA dụy trì, cập nhật định kỳ.
-func fetchAndCacheBootstrap() error {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get("https://data.iana.org/rdap/dns.json")
-	if err != nil {
-		return fmt.Errorf("bootstrap fetch: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var data ianaBootstrapFile
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return fmt.Errorf("bootstrap decode: %w", err)
+// isSafeURL kiểm tra URL để ngăn chặn SSRF
+func isSafeURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+		return false
 	}
 
-	count := 0
-	for _, service := range data.Services {
-		if len(service) < 2 {
-			continue
-		}
-		var tlds []string
-		if err := json.Unmarshal(service[0], &tlds); err != nil {
-			continue
-		}
-		var urls []string
-		if err := json.Unmarshal(service[1], &urls); err != nil || len(urls) == 0 {
-			continue
-		}
-		// Normalize: đảm bảo có trailing slash để nối "domain/{name}"
-		serverURL := urls[0]
-		if !strings.HasSuffix(serverURL, "/") {
-			serverURL += "/"
-		}
-		for _, tld := range tlds {
-			rdapBootstrap.Store(strings.ToLower(tld), serverURL)
-			count++
-		}
+	host := u.Hostname()
+	if host == "localhost" {
+		return false
 	}
 
-	log.Info().Int("tlds", count).Msg("RDAP Bootstrap: loaded from IANA")
-	return nil
-}
-
-// fetchAndCacheTLDNSBootstrap tải danh sách TLD nameserver từ IANA root zone.
-// Dùng để resolve IP của TLD nameservers cho discoverNSViaTLDDirect.
-// File root hints: https://www.internic.net/domain/named.root
-// Cách hoạt động: dùng RDAP Bootstrap đã có → lấy danh sách TLDs → resolve NS IP cho mỗi TLD.
-func fetchAndCacheTLDNSBootstrap() error {
-	// Lấy danh sách TLDs đã có trong RDAP Bootstrap
-	tlds := make([]string, 0, 200)
-	rdapBootstrap.Range(func(key, _ interface{}) bool {
-		tlds = append(tlds, key.(string))
-		return true
-	})
-
-	if len(tlds) == 0 {
-		return fmt.Errorf("TLD NS Bootstrap: no TLDs available from RDAP bootstrap")
-	}
-
-	// Resolve NS IP cho mỗi TLD bằng cách hỏi root nameserver
-	c := new(dnslib.Client)
-	c.Timeout = 2 * time.Second
-
-	count := 0
-	for _, tld := range tlds {
-		// Skip nếu đã có trong bootstrap (tránh resolve lại)
-		if _, ok := tldNSBootstrap.Load(tld); ok {
-			count++
-			continue
-		}
-
-		// Hỏi NS record cho TLD "com.", "net.", "vn." v.v.
-		msg := new(dnslib.Msg)
-		msg.SetQuestion(dnslib.Fqdn(tld), dnslib.TypeNS)
-		msg.RecursionDesired = true
-
-		// Dùng Google DNS để resolve NS name → IP
-		resp, _, err := c.Exchange(msg, "8.8.8.8:53")
-		if err != nil || resp == nil || len(resp.Answer) == 0 {
-			continue
-		}
-
-		// Lấy NS name đầu tiên
-		var nsName string
-		for _, rr := range resp.Answer {
-			if ns, ok := rr.(*dnslib.NS); ok {
-				nsName = ns.Ns
-				break
-			}
-		}
-		if nsName == "" {
-			continue
-		}
-
-		// Resolve NS name → IP (A record)
-		msgA := new(dnslib.Msg)
-		msgA.SetQuestion(nsName, dnslib.TypeA)
-		msgA.RecursionDesired = true
-		respA, _, errA := c.Exchange(msgA, "8.8.8.8:53")
-		if errA != nil || respA == nil {
-			continue
-		}
-
-		for _, rr := range respA.Answer {
-			if a, ok := rr.(*dnslib.A); ok {
-				tldNSBootstrap.Store(tld, a.A.String())
-				count++
-				break
-			}
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+			return false
 		}
 	}
-
-	log.Info().Int("tlds", count).Msg("TLD NS Bootstrap: loaded TLD nameserver IPs")
-	return nil
+	return true
 }
