@@ -9,6 +9,7 @@
     --bls-primary:        var(--color-brand);
     --bls-text-primary:   var(--color-text-inverse);
     --bls-text-base:      var(--color-text-primary);
+    --bls-text-secondary: var(--white);
 
     /* Status colors */
     --bls-color-ok:       var(--color-success-text);
@@ -222,7 +223,7 @@
     top: 0;
     z-index: var(--z-sticky);
     background-color: var(--color-brand);
-    color: var(--color-text-inverse);
+    color: var(--bls-text-secondary);
     padding: var(--space-4) var(--space-5);
     text-align: left;
     font-weight: var(--font-weight-bold);
@@ -286,7 +287,7 @@
 
 /* URL Typography */
 .page--broken-link .bls-url-main a {
-    color: var(--color-brand);
+    color: var(--color-text-primary);
     font-weight: var(--font-weight-medium);
     text-decoration: none;
 }

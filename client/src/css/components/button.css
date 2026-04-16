@@ -80,8 +80,17 @@
     --btn-shadow-hover: var(--shadow-accent-green);
 }
 
+/* Nút Info */
+.btn-info {
+    --btn-bg: var(--color-info);
+    --btn-border: var(--color-info-border);
+    --btn-text: var(--white);
+    --btn-hover-bg: var(--color-info-hover);
+    --btn-shadow-hover: var(--shadow-accent-blue);
+}
+
 /* Nút Share */
-.btn-share, .btn-info {
+.btn-share {
     --btn-bg: var(--overlay-blue);
     --btn-border: var(--blue-500);
     --btn-text: var(--blue-900);
@@ -161,19 +170,28 @@
     --btn-bg: var(--color-success-bg);
     --btn-border: var(--color-success-border);
     --btn-text: var(--color-success-text);
-    --btn-hover-bg: var(--color-success-hover);
+    --btn-hover-bg: color-mix(in srgb, var(--color-success-hover) 80%, transparent);
 }
 
 [data-theme="dark"] .btn-danger {
     --btn-bg: var(--color-error-bg);
     --btn-text: var(--color-error-text);
     --btn-border: var(--color-error-border);
+    --btn-hover-bg: color-mix(in srgb, var(--color-error-hover) 80%, transparent);
 }
 
 [data-theme="dark"] .btn-warning {
     --btn-bg: var(--color-warning-bg);
     --btn-text: var(--color-warning-text);
     --btn-border: var(--color-warning-border);
+    --btn-hover-bg: color-mix(in srgb, var(--color-warning-hover) 80%, transparent);
+}
+
+[data-theme="dark"] .btn-info {
+    --btn-bg: var(--color-info-bg);
+    --btn-text: var(--color-info-text);
+    --btn-border: var(--color-info-border);
+    --btn-hover-bg: color-mix(in srgb, var(--color-info-hover) 80%, transparent);
 }
 
 [data-theme="dark"] .btn-whois {
