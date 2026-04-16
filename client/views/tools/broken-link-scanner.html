@@ -14,14 +14,14 @@
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
 
-    <title>Broken Link & Asset Scanner | Website Utility Toolkit</title>
-    <meta name="description" content="Quét và phát hiện liên kết hỏng, redirect chain và lỗi asset trên trang web của bạn. Hỗ trợ đa luồng, lọc theo hostname và xuất kết quả CSV.">
+    <title>Broken Link Scanner | Website Utility Toolkit - Kiểm tra liên kết hỏng</title>
+    <meta name="description" content="Công cụ quét và phát hiện liên kết hỏng (broken links), asset lỗi (404) và chuỗi chuyển hướng trên website của bạn. Hỗ trợ đa luồng, báo cáo chi tiết và xuất dữ liệu CSV.">
 </head>
 
 <body>
     <div class="wrapper page--broken-link">
         <!-- Begin: Header Content -->
-        <header id="header" class="header header--broken-link py-10 mb-4 text-center">
+        <header id="header" class="header">
             <div class="container">
                 <div class="header__wrapper relative d-flex flex-col justify-center items-center">
                     <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
@@ -34,7 +34,7 @@
                                 BROKEN LINK SCANNER
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                Broken Link &amp; Asset Scanner
+                                Trình quét liên kết hỏng & Asset lỗi
                             </p>
                         </div>
                     </div>
@@ -102,10 +102,6 @@
                                     <label class="bls-advanced-option mr-4" for="bls-ignore-tls">
                                         <input type="checkbox" id="bls-ignore-tls" name="ignoreTLS" class="form-checkbox">
                                         <span>Bỏ qua lỗi SSL/TLS</span>
-                                    </label>
-                                    <label class="bls-advanced-option mr-4" for="bls-bypass-cache">
-                                        <input type="checkbox" id="bls-bypass-cache" name="bypassCache" class="form-checkbox">
-                                        <span>Bỏ qua Cache</span>
                                     </label>
                                 </div>
                             </div>
@@ -190,10 +186,12 @@
                         </h3>
                     </div>
 
-                    <!-- CACHE BANNER -->
-                    <div id="cacheNotice" class="cache-card mt-2 p-2 flex-row justify-between items-center d-none">
-                        <span><i class="fa-solid fa-clock"></i> <b id="cacheText"></b> <b id="cacheTime"></b></span>
-                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"><i class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                    <!-- CACHE NOTICE -->
+                    <div id="cacheNotice" class="cache-card mt-2 d-none">
+                        <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
+                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn">
+                            <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                        </button>
                     </div>
 
                     <div class="result-card__body mt-4">
@@ -228,13 +226,13 @@
                     <!-- Filter Bar -->
                     <div class="bls-filter-bar mb-4">
                         <div class="bls-filter-buttons">
-                            <button class="btn btn-sm btn-filter is-active" data-filter="all">Tất cả</button>
-                            <button class="btn btn-sm btn-filter" data-filter="broken">Lỗi 4xx/5xx</button>
-                            <button class="btn btn-sm btn-filter" data-filter="redirect">Redirect 3xx</button>
-                            <button class="btn btn-sm btn-filter" data-filter="ok">OK 2xx</button>
-                            <button class="btn btn-sm btn-filter" data-filter="timeout">Timeout</button>
+                            <button class="btn btn-sm btn-action btn-filter is-active" data-filter="all">Tất cả</button>
+                            <button class="btn btn-sm btn-danger btn-filter" data-filter="broken">Error 4xx/5xx</button>
+                            <button class="btn btn-sm btn-warning btn-filter" data-filter="redirect">Redirect 3xx</button>
+                            <button class="btn btn-sm btn-success btn-filter" data-filter="ok">OK 2xx</button>
+                            <button class="btn btn-sm btn-outline btn-filter" data-filter="timeout">Timeout</button>
                         </div>
-                        <button id="bls-btn-export-csv" class="btn btn-sm btn-action">
+                        <button id="bls-btn-export-csv" class="btn btn-sm btn-info">
                             <i class="fa-solid fa-file-csv"></i>
                             Xuất CSV
                         </button>
@@ -302,7 +300,7 @@
                             <div class="share-card__body d-flex flex-row items-stretch mt-2">
                                 <input type="text" id="shareLink" readonly class="share-card__input" value=""/>
                                 <button type="button" class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                    <i class="fas fa-copy"></i>
+                                    <i class="fa-solid fa-copy"></i>
                                     <span>Copy</span>
                                 </button>
                             </div>
@@ -316,28 +314,18 @@
         <!-- End: Main Content -->
 
         <!-- Begin: Footer Content -->
-        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+        <footer id="footer" class="footer mt-4">
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
-
                     <div class="footer__stat footer__stat--total">
-                        <span class="footer__stat-label">
-                            <i class="fa-solid fa-chart-line mr-1"></i>
-                            Tổng lượt truy cập:
-                        </span>
+                        <span class="footer__stat-label">Tổng lượt truy cập:</span>
                         <span id="visit-total" class="footer__stat-value">0</span>
                     </div>
-
                     <div class="footer__stat footer__stat--today">
-                        <span class="footer__stat-label">
-                            <i class="fa-regular fa-calendar-days mr-1"></i>
-                            Truy cập hôm nay:
-                        </span>
+                        <span class="footer__stat-label">Truy cập hôm nay:</span>
                         <span id="visit-today" class="footer__stat-value">0</span>
                     </div>
-
                 </div>
-
                 <div class="footer__copyright text-center">
                     <p>
                         © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
