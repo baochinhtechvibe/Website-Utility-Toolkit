@@ -67,6 +67,7 @@
 @import './tools/json-tools.css';
 @import './tools/encode-decode.css';
 @import './tools/whois.css';
+@import './tools/broken-link-scanner.css';
 @import './tools/admin-dashboard.css';
 
 

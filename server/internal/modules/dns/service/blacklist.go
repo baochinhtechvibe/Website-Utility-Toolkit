@@ -111,66 +111,6 @@ func queryRBL(qname, provider string) ([]dns.RR, error) {
 }
 
 // =======================
-// NON STREAM
-// =======================
-
-func CheckBlacklist(ip string) ([]models.BlacklistRecord, int, int) {
-	reversed := ReverseIP(ip)
-	if reversed == "" {
-		return nil, 0, 0
-	}
-
-	var (
-		wg      sync.WaitGroup
-		mu      sync.Mutex
-		records []models.BlacklistRecord
-		checked int
-		listed  int
-	)
-
-	sem := make(chan struct{}, rblMaxConcurrency)
-
-	for _, rbl := range RBLProviders {
-		wg.Add(1)
-		sem <- struct{}{}
-
-		go func(rbl models.RBLProvider) {
-			defer wg.Done()
-			defer func() { <-sem }()
-
-			query := fmt.Sprintf("%s.%s", reversed, rbl.Host)
-			recs, err := queryRBL(query, rbl.Host)
-
-			status := "OK"
-			if err != nil {
-				status = "TIMEOUT"
-			} else if len(recs) > 0 {
-				status = "LISTED"
-			}
-
-			mu.Lock()
-			if err == nil {
-				checked++
-				if status == "LISTED" {
-					listed++
-				}
-			}
-			records = append(records, models.BlacklistRecord{
-				Type:     "BLACKLIST",
-				Provider: rbl.Host,
-				Level:    rbl.Level,
-				Status:   status,
-				IP:       ip,
-			})
-			mu.Unlock()
-		}(rbl)
-	}
-
-	wg.Wait()
-	return records, checked, listed
-}
-
-// =======================
 // STREAM
 // =======================
 

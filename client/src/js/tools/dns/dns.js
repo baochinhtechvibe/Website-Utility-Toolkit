@@ -294,9 +294,11 @@ function performBlacklistStream(ip) {
             <th class= "results-table__cell results-table__cell--rbl-type">TYPE</th>
             <th class= "results-table__cell results-table__cell--rbl-level">LEVEL</th>
             <th class= "results-table__cell results-table__cell--rbl-status">STATUS</th>
-            <th class= "results-table__cell results-table__cell--isp-org">ISP / ORG</th>
         </tr>
     `;
+
+    // Gắn class riêng để áp dụng layout cột chuyên biệt cho Blacklist
+    resultsTableBody.parentElement.classList.add('results-table--blacklist');
 
     // Title ban đầu
     resultsTitle.innerHTML = `
@@ -332,7 +334,6 @@ function performBlacklistStream(ip) {
                         <i class="fas fa-spinner fa-spin"></i>
                         <span>Checking...</span>
                     </td>
-                    <td class="results-table__cell results-table__cell--rbl-isp">-</td>
                 `;
                 rowMap[rbl.host] = tr;
                 resultsTableBody.appendChild(tr);
@@ -369,7 +370,7 @@ function performBlacklistStream(ip) {
             Blacklist Check:
             <div class="results__section-title-rbl-realtime">
                 ${escapeHTML(data.ip)}
-                <span class="ml-1 ${data.listed > 0 ? "badge-error" : "badge-success"}">
+                <span class="ml-1 badge ${data.listed > 0 ? "badge-error" : "badge-success"}">
                     ${data.listed}/${data.total} blacklist
                 </span>
             </div>
@@ -505,6 +506,8 @@ function resetUI() {
     tableWrapper.style.removeProperty("max-height");
     tableWrapper.style.removeProperty("overflow-y");
 
+    // Xoá class layout Blacklist để không ảnh hưởng các bảng DNS thông thường
+    resultsTableBody.parentElement.classList.remove('results-table--blacklist');
 }
 
 
@@ -730,13 +733,67 @@ function displayResults(data) {
         let traceHtml = `<div class="trace-log__title">
             <i class="fa-solid fa-route"></i> DNS Trace từ Root Server:
         </div>`;
+        
         data.data.traceLogs.forEach(step => {
+            const hasEnrichment = !!step.enrichment;
             const safeMsg = escapeHTML(step.message);
             const boldedMessage = safeMsg.replace(/(\.\.\.took \d+ ms)/g, '<b>$1</b>');
-            traceHtml += `<div>${boldedMessage}</div>`;
+            
+            if (hasEnrichment) {
+                const en = step.enrichment;
+                const nodeTypeClass = `node-type--${en.nodeType.toLowerCase()}`;
+                
+                traceHtml += `
+                    <div class="trace-log__item trace-log__item--expandable">
+                        <div class="trace-log__header">
+                            <i class="fa-solid fa-chevron-right trace-log__chevron"></i>
+                            <div class="trace-log__content">${boldedMessage}</div>
+                        </div>
+                        <div class="trace-log__detail">
+                            <div class="trace-log__detail-card">
+                                <div class="detail-info__item">
+                                    <span class="detail-info__label">Phân quyền</span>
+                                    <span class="detail-info__value">
+                                        <span class="node-type-badge ${nodeTypeClass}">${en.nodeType}</span>
+                                    </span>
+                                </div>
+                                <div class="detail-info__item">
+                                    <span class="detail-info__label">Tổ chức vận hành</span>
+                                    <span class="detail-info__value">${escapeHTML(en.organization || "-")}</span>
+                                </div>
+                                ${en.location ? `
+                                <div class="detail-info__item">
+                                    <span class="detail-info__label">Vị trí</span>
+                                    <span class="detail-info__value">
+                                        ${en.countryCode ? `<span class="fi fi-${en.countryCode.toLowerCase()}"></span>` : ""}
+                                        ${escapeHTML(en.location)}
+                                    </span>
+                                </div>` : ""}
+
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                traceHtml += `
+                    <div class="trace-log__item">
+                        <div class="trace-log__header">
+                            <i class="fa-solid fa-circle-info trace-log__chevron text-info"></i>
+                            <div class="trace-log__content">${boldedMessage}</div>
+                        </div>
+                    </div>`;
+            }
         });
+        
         traceLogBox.innerHTML = traceHtml;
         setDisplay(traceLogBox, "block");
+
+        // Gắn sự kiện toggle
+        const expandableItems = traceLogBox.querySelectorAll(".trace-log__item--expandable");
+        expandableItems.forEach(item => {
+            item.addEventListener("click", () => {
+                item.classList.toggle("is-expanded");
+            });
+        });
     }
 
     hostnameInput.value = hostname;
@@ -1133,6 +1190,9 @@ function handleURLParams() {
     if (matchedOption) {
         recordTypeSelect.value = type;
     }
+
+    // Cập nhật lại hiển thị của Trace Root checkbox dựa trên Type vừa set từ URL
+    updateTraceVisibility();
 
     // Auto submit if all params present
     if (host && type) {

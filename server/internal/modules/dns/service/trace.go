@@ -51,6 +51,7 @@ type TraceResolver struct {
 	BypassCache     bool
 	cacheMu         sync.RWMutex
 	delegationCache map[string][]models.NameserverInfo
+	enricher        *EnrichmentManager
 }
 
 func NewTraceResolver(timeout time.Duration) *TraceResolver {
@@ -60,6 +61,7 @@ func NewTraceResolver(timeout time.Duration) *TraceResolver {
 	return &TraceResolver{
 		Timeout:         timeout,
 		delegationCache: make(map[string][]models.NameserverInfo),
+		enricher:        NewEnrichmentManager(),
 	}
 }
 
@@ -325,12 +327,14 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			domainNoDot := strings.TrimSuffix(currentQName, ".")
 			logMsg := fmt.Sprintf("Searching for %s. %s record at %s. [%s] ...took %d ms",
 				domainNoDot, targetTypeStr, lastNS.Nameserver, lastNS.IP, duration)
-			logs = append(logs, models.TraceStep{
+			newStep := models.TraceStep{
 				ServerName: lastNS.Nameserver,
 				ServerIP:   lastNS.IP,
 				DurationMs: duration,
 				Message:    logMsg,
-			})
+			}
+			tr.enricher.EnrichStep(&newStep, domain)
+			logs = append(logs, newStep)
 
 			// Priority 1: Có Answer
 			if len(resp.Answer) > 0 {

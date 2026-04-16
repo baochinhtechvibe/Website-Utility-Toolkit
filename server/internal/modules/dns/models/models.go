@@ -77,31 +77,6 @@ type NameserverInfo struct {
 // Blacklist
 // =======================
 
-type BlacklistRecord struct {
-	Provider string `json:"provider"`
-	Type     string `json:"type"` // BLACKLIST
-	Level    string `json:"level"`
-	Status   string `json:"status"` // OK | LISTED
-	IP       string `json:"ip"`
-}
-
-type BlacklistSummary struct {
-	Type    string `json:"type"` // BLACKLIST_SUMMARY
-	IP      string `json:"ip"`
-	Checked int    `json:"checked"`
-	Listed  int    `json:"listed"`
-	Total   int    `json:"total"`
-	Status  string `json:"status"` // OK | LISTED
-}
-
-type BlacklistEvent struct {
-	Record  *BlacklistRecord `json:"record,omitempty"`
-	Checked int              `json:"checked"`
-	Listed  int              `json:"listed"`
-	Total   int              `json:"total"`
-	Done    bool             `json:"done"`
-}
-
 type BlacklistStreamEvent struct {
 	Type      string        `json:"type"`      // BLACKLIST | BLACKLIST_SUMMARY | BLACKLIST_INIT
 	Provider  string        `json:"provider"`  // rbl host
@@ -122,11 +97,20 @@ type RBLProvider struct {
 // Root Trace
 // =======================
 
+type TraceEnrichment struct {
+	Organization string `json:"organization,omitempty"`
+	Location     string `json:"location,omitempty"`
+	CountryCode  string `json:"countryCode,omitempty"`
+	RegistryURL  string `json:"registryUrl,omitempty"`
+	NodeType     string `json:"nodeType,omitempty"` // ROOT, TLD, AUTHORITATIVE
+}
+
 type TraceStep struct {
-	ServerName string `json:"serverName"`
-	ServerIP   string `json:"serverIp"`
-	DurationMs int64  `json:"durationMs"`
-	Message    string `json:"message"`
+	ServerName string           `json:"serverName"`
+	ServerIP   string           `json:"serverIp"`
+	DurationMs int64            `json:"durationMs"`
+	Message    string           `json:"message"`
+	Enrichment *TraceEnrichment `json:"enrichment,omitempty"`
 }
 
 // =======================

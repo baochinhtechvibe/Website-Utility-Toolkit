@@ -461,7 +461,7 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "Failed to reverse IP address",
+			"message": "Không thể đảo ngược địa chỉ IP",
 		})
 		return
 	}
@@ -945,7 +945,7 @@ func HandleBlacklistStream(c *gin.Context) {
 	if parsedIP == nil || parsedIP.To4() == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Invalid IPv4 address.",
+			"message": "Địa chỉ IPv4 không hợp lệ.",
 		})
 		return
 	}
@@ -967,7 +967,7 @@ func HandleBlacklistStream(c *gin.Context) {
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Streaming unsupported",
+			"message": "Trình duyệt hoặc máy chủ không hỗ trợ streaming",
 		})
 		return
 	}

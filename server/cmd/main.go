@@ -12,6 +12,7 @@ import (
 	"tools.bctechvibe.com/server/internal/config"
 	"tools.bctechvibe.com/server/internal/logger"
 	"tools.bctechvibe.com/server/internal/modules/imap-migrator/service"
+	"tools.bctechvibe.com/server/internal/pkg/iana"
 	"tools.bctechvibe.com/server/internal/router"
 )
 
@@ -21,6 +22,9 @@ func main() {
 
 	// Dọn dẹp các file tạm của tiến trình IMAP Migrator nếu có từ trước
 	service.StartupCleanup()
+
+	// Khởi tạo IANA Bootstrap (RDAP & TLD Nameservers)
+	iana.Init()
 
 	r := router.SetupRouter()
 
