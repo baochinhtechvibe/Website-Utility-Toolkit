@@ -17,7 +17,8 @@
     <link rel="manifest" href="../../public/site.webmanifest" />
 
     <title>Redirect Analyzer | Website Utility Toolkit - Phân tích chuỗi chuyển hướng</title>
-    <meta name="description" content="Công cụ phân tích chuỗi chuyển hướng (Redirect Chain) chuyên sâu. Kiểm tra mã trạng thái HTTP, đo lường hiệu suất và phát hiện rủi ro bảo mật cho website của bạn.">
+    <meta name="description"
+        content="Công cụ phân tích chuỗi chuyển hướng (Redirect Chain) chuyên sâu. Kiểm tra mã trạng thái HTTP, đo lường hiệu suất và phát hiện rủi ro bảo mật cho website của bạn.">
 </head>
 
 <body>
@@ -35,7 +36,7 @@
                                 REDIRECT ANALYZER
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                Phân tích chuỗi chuyển hướng chuyên sâu
+                                Comprehensive Redirect Analyzer
                             </p>
                         </div>
                     </div>
@@ -172,7 +173,7 @@
                                 </label>
                                 <label class="form-checkbox-label" for="ignoreTLSErrors">
                                     <input type="checkbox" id="ignoreTLSErrors" name="ignoreTLSErrors"
-                                        class="form-checkbox" checked>
+                                        class="form-checkbox">
                                     <span><i class="fa-solid fa-ban"></i> Bỏ qua lỗi SSL</span>
                                 </label>
                                 <label class="form-checkbox-label" for="compareUAs">
@@ -193,28 +194,28 @@
                             Kết quả phân tích chuyển hướng
                         </h3>
                         <div class="result-card__actions d-flex gap-2">
-                            <button id="btnCopyChain" type="button" class="btn btn-sm btn-outline">
+                            <button id="btnCopyChain" type="button" class="btn btn-sm btn-action">
                                 <i class="fa-solid fa-copy"></i>
                             </button>
-                            <button id="btnExportJson" type="button" class="btn btn-sm btn-outline">
+                            <button id="btnExportJson" type="button" class="btn btn-sm btn-action">
                                 <i class="fa-solid fa-file-code"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- CACHE NOTICE -->
-                    <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
-                        <div class="cache-card__content">
-                            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
-                            <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất lúc</span> <b id="cacheTime"></b>.</span>
-                        </div>
-                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"
-                            aria-label="Làm mới thông tin tra cứu">
-                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
-                        </button>
-                    </div>
-
                     <div class="result-card__body">
+                        <!-- CACHE NOTICE -->
+                        <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
+                            <div class="cache-card__content">
+                                <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                                <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất lúc</span>
+                                    <b id="cacheTime"></b>.</span>
+                            </div>
+                            <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"
+                                aria-label="Làm mới thông tin tra cứu">
+                                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
+                            </button>
+                        </div>
                         <!-- REDIRECT SCORE -->
                         <div id="scoreCard" class="card card--flat mb-6">
                             <div class="card__header">
@@ -385,22 +386,21 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- SHARE CARD -->
-                    <div id="shareCard" class="share-card border-top-subtle">
-                        <div class="share-card__header">
-                            <h4 class="share-card__title">
-                                <i class="fa-solid fa-share-nodes"></i>
-                                Chia sẻ kết quả:
-                            </h4>
-                        </div>
-                        <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                            <input type="text" id="shareLink" readonly class="share-card__input" />
-                            <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                <i class="fa-solid fa-copy"></i>
-                                <span>Copy</span>
-                            </button>
+                        <!-- SHARE CARD -->
+                        <div id="shareCard" class="share-card border-top-subtle">
+                            <div class="share-card__header">
+                                <h4 class="share-card__title">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                    Chia sẻ kết quả:
+                                </h4>
+                            </div>
+                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                <input type="text" id="shareLink" readonly class="share-card__input" />
+                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                    <i class="fa-solid fa-copy"></i>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

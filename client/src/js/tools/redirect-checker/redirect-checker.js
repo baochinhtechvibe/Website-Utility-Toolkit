@@ -588,7 +588,7 @@ function renderSEO(seo, finalStatus) {
     container.innerHTML = fields.map(f => {
         const missing = !f.value;
         const display = missing ? 'Không phát hiện' : f.value;
-        const valClass = missing ? 'seo-item__value--missing' : (f.mono ? 'seo-item__value font-mono text-xs break-all' : 'seo-item__value');
+        const valClass = missing ? 'seo-item__value--missing' : (f.mono ? 'seo-item__value font-mono break-all' : 'seo-item__value');
         
         return `
         <div class="seo-item card card--flat">

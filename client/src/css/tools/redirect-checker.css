@@ -6,6 +6,15 @@
 /* =========================================
    1. REDIRECT CHAIN (Visual Path)
 ========================================== */
+
+.page--redirect .result-card__header {
+    padding: var(--space-4);
+}
+
+.page--redirect .result-card__body {
+    padding: 0 var(--space-4) var(--space-4);
+}
+
 .redirect-chain {
     display: flex;
     flex-direction: column;
@@ -50,8 +59,8 @@
 
 .redirect-step__node--2xx   { background-color: var(--color-success); }
 .redirect-step__node--301   { background-color: var(--color-info); }
-.redirect-step__node--302   { background-color: var(--color-warning); color: var(--color-warning-text); }
-.redirect-step__node--3xx   { background-color: var(--color-warning); color: var(--color-warning-text); }
+.redirect-step__node--302   { background-color: var(--color-warning); }
+.redirect-step__node--3xx   { background-color: var(--color-warning); }
 .redirect-step__node--4xx   { background-color: var(--color-error); }
 .redirect-step__node--5xx   { background-color: var(--red-800); }
 .redirect-step__node--loop  { background-color: var(--purple-600); }
@@ -163,8 +172,8 @@
 }
 
 .redirect-score__badge--great { border-color: var(--green-200); background: var(--color-success); }
-.redirect-score__badge--good  { border-color: var(--yellow-200); background: var(--color-warning); color: var(--color-warning-text); }
-.redirect-score__badge--warn  { border-color: var(--yellow-200); background: var(--color-warning); color: var(--color-warning-text); }
+.redirect-score__badge--good  { border-color: var(--blue-200);   background: var(--color-info); }
+.redirect-score__badge--warn  { border-color: var(--yellow-200); background: var(--color-warning); }
 .redirect-score__badge--bad   { border-color: var(--red-200);   background: var(--color-error); }
 
 .redirect-score__badge small {
