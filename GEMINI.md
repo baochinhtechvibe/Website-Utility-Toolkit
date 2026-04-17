@@ -153,6 +153,7 @@
   - **Thông báo (`message-card.css`):** Dùng cho lỗi hoặc cảnh báo nổi bật. Cấu trúc `.message-card.message-card--error` > `.message-card__header` > `.message-card__title`. (Tuyệt đối không nhét thẻ này vào trong một div có `white-space: pre-wrap` để tránh bị lệch layout).
   - **Hiển thị code (`code-block.css`):** Khu vực in code phải bọc ngoài `.code-block`, phần header có class `.code-block__header` > `.code-block__lang` và nút copy `button.code-block__btn-copy`. Mã code in ra cần nhét vào `.code-block__body` > `code.code-block__text`.
   - **Kết quả trả về (`result-card.css`):** Bất cứ tool nào cũng cần render kết quả trong `.result-card`. Tiêu đề nằm trong `.result-card__title`. Banner báo lấy từ cache bắt buộc nằm trong class `.cache-card` (Tham khảo `components/cache-card.css`) > nút `.cache-card__btn`.
+    - **Lưu ý cấu trúc:** Cụm `.result-card` phải được đặt bên trong `.card__body` của main card. Phần `.card__header` của main card phải có cấu trúc tương tự tool DNS (Tiêu đề căn giữa, có icon và text rõ ràng).
   - **Thẻ chia sẻ URL (`share-card.css`):** Khối chia sẻ gắn class `.share-card`. Trong đó có input text readonly `.share-card__input` và nút copy `.share-card__button.share-card__button--copy`.
   - **Nhãn dán (`badge.css`):** Để ghi chú tĩnh, dùng `.badge.badge-default` (hoặc `.badge-success`, `.badge-warning`). Biến chữ in hoa `.uppercase`. Không dùng `font-size` để chỉnh.
 
@@ -175,5 +176,9 @@
 ### 28. NGÔN NGỮ GIAO TIẾP VÀ TÀI LIỆU
 - **Quy tắc bắt buộc:** Mọi giao tiếp giữa tao và mày, cũng như các tài liệu phụ trợ như `implementation_plan.md`, `task.md`, `walkthrough.md`... đều phải được viết bằng **Tiếng Việt**.
 - **Cách khắc phục đúng:** Không được dùng Tiếng Anh cho các tiêu đề task hay nội dung kế hoạch triển khai. Hãy dùng tiếng Việt rõ ràng, dễ hiểu và đúng tinh thần "Mày - Tao" thân mật.
+
+### 29. TUYỆT ĐỐI ĐỒNG BỘ CLASS KHI REFACTOR
+- **Lưu ý quan trọng:** Việc đổi tên class cho "sang" hơn trong CSS mà quên cập nhật HTML/JS là lỗi sơ đẳng gây lãng phí Token và thời gian.
+- **Cách khắc phục đúng:** Khi rewrite một khối CSS, phải dùng chức năng Search toàn project để đảm bảo mọi nơi gọi tới class cũ đều đã được cập nhật sang class mới. Luôn kiểm tra lại giao diện thực tế ngay sau khi đổi tên.
 
 - **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"

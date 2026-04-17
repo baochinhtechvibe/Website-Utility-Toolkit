@@ -7,14 +7,6 @@
    1. REDIRECT CHAIN (Visual Path)
 ========================================== */
 
-.page--redirect .result-card__header {
-    padding: var(--space-4);
-}
-
-.page--redirect .result-card__body {
-    padding: 0 var(--space-4) var(--space-4);
-}
-
 .redirect-chain {
     display: flex;
     flex-direction: column;

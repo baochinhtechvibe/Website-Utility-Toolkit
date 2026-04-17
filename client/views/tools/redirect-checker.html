@@ -4,8 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Kiểm tra chuỗi chuyển hướng (redirect chain) đầy đủ với Visual Path, Security Audit và Performance Metrics.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
@@ -182,245 +180,247 @@
                                 </label>
                             </div>
                         </form>
-                    </div>
-                </div>
-                <!-- End: Card Form -->
-
-                <!-- ===================== UNIFIED RESULT CARD ===================== -->
-                <div id="resultSection" class="result-card mt-6 d-none">
-                    <div class="result-card__header d-flex flex-row justify-between items-center">
-                        <h3 id="resultsTitle" class="result-card__title">
-                            <i class="fa-solid fa-circle-check mr-2"></i>
-                            Kết quả phân tích chuyển hướng
-                        </h3>
-                        <div class="result-card__actions d-flex gap-2">
-                            <button id="btnCopyChain" type="button" class="btn btn-sm btn-action">
-                                <i class="fa-solid fa-copy"></i>
-                            </button>
-                            <button id="btnExportJson" type="button" class="btn btn-sm btn-action">
-                                <i class="fa-solid fa-file-code"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="result-card__body">
-                        <!-- CACHE NOTICE -->
-                        <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
-                            <div class="cache-card__content">
-                                <i class="fa-solid fa-bolt" aria-hidden="true"></i>
-                                <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất lúc</span>
-                                    <b id="cacheTime"></b>.</span>
+                        <!-- ===================== UNIFIED RESULT CARD ===================== -->
+                        <div id="resultSection" class="result-card mt-6 d-none">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 id="resultsTitle" class="result-card__title">
+                                    <i class="fa-solid fa-circle-check mr-2"></i>
+                                    Kết quả phân tích chuyển hướng
+                                </h3>
+                                <div class="result-card__actions d-flex gap-2">
+                                    <button id="btnCopyChain" type="button" class="btn btn-sm btn-action">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                    <button id="btnExportJson" type="button" class="btn btn-sm btn-action">
+                                        <i class="fa-solid fa-file-code"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"
-                                aria-label="Làm mới thông tin tra cứu">
-                                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
-                            </button>
-                        </div>
-                        <!-- REDIRECT SCORE -->
-                        <div id="scoreCard" class="card card--flat mb-6">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-gauge-high mr-2"></i>
-                                    Redirect Score
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div class="redirect-score d-flex flex-row items-center flex-wrap">
-                                    <div id="scoreBadge" class="redirect-score__badge">
-                                        <span id="scoreValue">--</span>
-                                        <small>/100</small>
+
+                            <div class="result-card__body">
+                                <!-- CACHE NOTICE -->
+                                <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
+                                    <div class="cache-card__content">
+                                        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                                        <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất
+                                                lúc</span>
+                                            <b id="cacheTime"></b>.</span>
                                     </div>
-                                    <div id="scoreBreakdown" class="redirect-score__breakdown flex-1">
-                                        <!-- JS render -->
+                                    <button type="button" id="btnBypassCache"
+                                        class="btn btn-sm btn-outline cache-card__btn"
+                                        aria-label="Làm mới thông tin tra cứu">
+                                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
+                                    </button>
+                                </div>
+                                <!-- REDIRECT SCORE -->
+                                <div id="scoreCard" class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-gauge-high mr-2"></i>
+                                            Redirect Score
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div class="redirect-score d-flex flex-row items-center flex-wrap">
+                                            <div id="scoreBadge" class="redirect-score__badge">
+                                                <span id="scoreValue">--</span>
+                                                <small>/100</small>
+                                            </div>
+                                            <div id="scoreBreakdown" class="redirect-score__breakdown flex-1">
+                                                <!-- JS render -->
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- VISUAL REDIRECT PATH -->
-                        <div id="pathCard" class="card card--flat mb-6">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-route mr-2"></i>
-                                    Chuỗi Chuyển Hướng
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div id="redirectChain" class="redirect-chain">
-                                    <!-- JS render -->
+                                <!-- VISUAL REDIRECT PATH -->
+                                <div id="pathCard" class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-route mr-2"></i>
+                                            Chuỗi Chuyển Hướng
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div id="redirectChain" class="redirect-chain">
+                                            <!-- JS render -->
+                                        </div>
+                                        <div id="penaltySummary" class="redirect-penalty mt-4 d-none">
+                                            <i class="fa-solid fa-stopwatch"></i>
+                                            Tổng thời gian bị cộng thêm do redirect: <strong
+                                                id="totalPenalty">--ms</strong>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div id="penaltySummary" class="redirect-penalty mt-4 d-none">
-                                    <i class="fa-solid fa-stopwatch"></i>
-                                    Tổng thời gian bị cộng thêm do redirect: <strong id="totalPenalty">--ms</strong>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- SECURITY AUDIT -->
-                        <div id="securityCard" class="card card--flat mb-6">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-shield-halved mr-2"></i>
-                                    Security Audit
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div id="securityResults" class="security-results">
-                                    <!-- JS render -->
+                                <!-- SECURITY AUDIT -->
+                                <div id="securityCard" class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-shield-halved mr-2"></i>
+                                            Security Audit
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div id="securityResults" class="security-results">
+                                            <!-- JS render -->
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- PERFORMANCE WATERFALL -->
-                        <div id="perfCard" class="card card--flat mb-6">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-chart-gantt mr-2"></i>
-                                    Performance Latency
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div id="perfTable" class="table-wrapper">
-                                    <table class="results-table w-full">
-                                        <thead>
-                                            <tr>
-                                                <th>Bước</th>
-                                                <th>URL</th>
-                                                <th>DNS</th>
-                                                <th>TCP</th>
-                                                <th>TLS</th>
-                                                <th>TTFB</th>
-                                                <th>Tổng</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="perfTableBody"></tbody>
-                                    </table>
+                                <!-- PERFORMANCE WATERFALL -->
+                                <div id="perfCard" class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-chart-gantt mr-2"></i>
+                                            Performance Latency
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div id="perfTable" class="table-wrapper">
+                                            <table class="results-table w-full">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Bước</th>
+                                                        <th>URL</th>
+                                                        <th>DNS</th>
+                                                        <th>TCP</th>
+                                                        <th>TLS</th>
+                                                        <th>TTFB</th>
+                                                        <th>Tổng</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="perfTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- SEO & SOCIAL META AUDIT -->
-                        <div id="seoCard" class="card card--flat mb-6">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>
-                                    SEO & Social Meta Audit
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div id="seoResults" class="seo-results">
-                                    <!-- JS render -->
+                                <!-- SEO & SOCIAL META AUDIT -->
+                                <div id="seoCard" class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>
+                                            SEO & Social Meta Audit
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div id="seoResults" class="seo-results">
+                                            <!-- JS render -->
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- cURL OUTPUT -->
-                        <div id="curlCard" class="card card--flat mb-6">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-terminal mr-2"></i>
-                                    cURL Output
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div class="code-block mb-4">
-                                    <div class="code-block__header">
-                                        <span class="code-block__lang">Kiểm tra qua curl (Lệnh gợi ý)</span>
-                                        <button class="code-block__btn-copy js-copy-code"
-                                            data-clipboard-target="#curlOutput">
-                                            <i class="fa-regular fa-clone"></i>
+                                <!-- cURL OUTPUT -->
+                                <div id="curlCard" class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-terminal mr-2"></i>
+                                            cURL Output
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div class="code-block mb-4">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">Kiểm tra qua curl (Lệnh gợi ý)</span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#curlOutput">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="curlOutput" class="code-block__text"></code>
+                                            </div>
+                                        </div>
+
+                                        <div class="code-block">
+                                            <div class="code-block__header">
+                                                <span class="code-block__lang">Lộ trình Path Steps</span>
+                                                <button class="code-block__btn-copy js-copy-code"
+                                                    data-clipboard-target="#pathOutput">
+                                                    <i class="fa-regular fa-clone"></i>
+                                                </button>
+                                            </div>
+                                            <div class="code-block__body">
+                                                <code id="pathOutput" class="code-block__text"></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- UA COMPARISON (ẩn mặc định) -->
+                                <div id="compareCard" class="card card--flat d-none">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-code-compare mr-2"></i>
+                                            So sánh User-Agent
+                                        </h4>
+                                    </div>
+                                    <div class="card__body">
+                                        <div id="compareWarning" class="message-card message-card--warning mb-4 d-none">
+                                            <div class="message-card__header">
+                                                <h4 class="message-card__title">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                                    Redirect khác nhau theo User-Agent
+                                                </h4>
+                                            </div>
+                                            <div class="message-card__body">
+                                                <p class="message-card__message" id="compareWarningMsg"></p>
+                                            </div>
+                                        </div>
+                                        <div id="compareTable" class="table-wrapper">
+                                            <table class="results-table w-full">
+                                                <thead>
+                                                    <tr>
+                                                        <th>User-Agent</th>
+                                                        <th>Bước</th>
+                                                        <th>URL Cuối</th>
+                                                        <th>Status Cuối</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="compareTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- SHARE CARD -->
+                                <div id="shareCard" class="share-card border-top-subtle">
+                                    <div class="share-card__header">
+                                        <h4 class="share-card__title">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                            Chia sẻ kết quả:
+                                        </h4>
+                                    </div>
+                                    <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                        <input type="text" id="shareLink" readonly class="share-card__input" />
+                                        <button class="share-card__button share-card__button--copy gap-1"
+                                            id="btnCopyLink">
+                                            <i class="fa-solid fa-copy"></i>
+                                            <span>Copy</span>
                                         </button>
                                     </div>
-                                    <div class="code-block__body">
-                                        <code id="curlOutput" class="code-block__text"></code>
-                                    </div>
                                 </div>
 
-                                <div class="code-block">
-                                    <div class="code-block__header">
-                                        <span class="code-block__lang">Lộ trình Path Steps</span>
-                                        <button class="code-block__btn-copy js-copy-code"
-                                            data-clipboard-target="#pathOutput">
-                                            <i class="fa-regular fa-clone"></i>
-                                        </button>
-                                    </div>
-                                    <div class="code-block__body">
-                                        <code id="pathOutput" class="code-block__text"></code>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- UA COMPARISON (ẩn mặc định) -->
-                        <div id="compareCard" class="card card--flat d-none">
-                            <div class="card__header">
-                                <h4 class="card__title font-bold">
-                                    <i class="fa-solid fa-code-compare mr-2"></i>
-                                    So sánh User-Agent
-                                </h4>
-                            </div>
-                            <div class="card__body">
-                                <div id="compareWarning" class="message-card message-card--warning mb-4 d-none">
+                                <!-- Error Card -->
+                                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
                                     <div class="message-card__header">
                                         <h4 class="message-card__title">
                                             <i class="fa-solid fa-triangle-exclamation"></i>
-                                            Redirect khác nhau theo User-Agent
+                                            Phân tích thất bại
                                         </h4>
                                     </div>
                                     <div class="message-card__body">
-                                        <p class="message-card__message" id="compareWarningMsg"></p>
+                                        <p id="errorMessage" class="message-card__message">
+                                            Không thể kết nối tới URL. Vui lòng kiểm tra lại địa chỉ và thử lại.
+                                        </p>
                                     </div>
                                 </div>
-                                <div id="compareTable" class="table-wrapper">
-                                    <table class="results-table w-full">
-                                        <thead>
-                                            <tr>
-                                                <th>User-Agent</th>
-                                                <th>Bước</th>
-                                                <th>URL Cuối</th>
-                                                <th>Status Cuối</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="compareTableBody"></tbody>
-                                    </table>
-                                </div>
                             </div>
                         </div>
-                        <!-- SHARE CARD -->
-                        <div id="shareCard" class="share-card border-top-subtle">
-                            <div class="share-card__header">
-                                <h4 class="share-card__title">
-                                    <i class="fa-solid fa-share-nodes"></i>
-                                    Chia sẻ kết quả:
-                                </h4>
-                            </div>
-                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                                <input type="text" id="shareLink" readonly class="share-card__input" />
-                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                    <i class="fa-solid fa-copy"></i>
-                                    <span>Copy</span>
-                                </button>
-                            </div>
-                        </div>
+                        <!-- End: Unified Result Card -->
                     </div>
                 </div>
-                <!-- End: Unified Result Card -->
-
-                <!-- Error Card -->
-                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
-                    <div class="message-card__header">
-                        <h4 class="message-card__title">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            Phân tích thất bại
-                        </h4>
-                    </div>
-                    <div class="message-card__body">
-                        <p id="errorMessage" class="message-card__message">
-                            Không thể kết nối tới URL. Vui lòng kiểm tra lại địa chỉ và thử lại.
-                        </p>
-                    </div>
-                </div>
-
+                <!-- End: Card Form -->
             </div>
         </main>
 
