@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Quét và phát hiện tài nguyên HTTP không an toàn (Mixed Content) trên website HTTPS của bạn.">
+    <meta name="description"
+        content="Quét và phát hiện tài nguyên HTTP không an toàn (Mixed Content) trên website HTTPS của bạn.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../src/css/tools/mixed-content.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
@@ -27,7 +27,8 @@
                 <div class="header__wrapper relative d-flex flex-col justify-center items-center">
                     <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
                         <div class="header__icon">
-                            <img src="../../public/assets/images/layout/header/mixed-content.png" alt="Mixed Content Scanner">
+                            <img src="../../public/assets/images/layout/header/mixed-content.png"
+                                alt="Mixed Content Scanner">
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">MIXED CONTENT SCANNER</h1>
@@ -52,9 +53,9 @@
                 <!-- ========== CARD: FORM ========== -->
                 <div class="card">
                     <div class="card__header">
-                        <h2 class="card__title text-xl font-bold text-center">
-                            <i class="fa-solid fa-shield-halved"></i>
-                            Mixed Content Scanner
+                        <h2 class="card__title text-center">
+                            <i class="fa-solid fa-shield-halved mr-2"></i>
+                            Trình Phát hiện & Kiểm tra tài nguyên HTTP không an toàn
                         </h2>
                     </div>
                     <div class="card__body">
@@ -62,14 +63,8 @@
                             <div class="form-inline">
                                 <div class="form-field form-field--wide">
                                     <label class="form-label" for="mixedContentUrl">URL cần kiểm tra</label>
-                                    <input
-                                        type="text"
-                                        id="mixedContentUrl"
-                                        name="url"
-                                        class="form-input"
-                                        placeholder="Ví dụ: https://example.com"
-                                        autocomplete="off"
-                                    >
+                                    <input type="text" id="mixedContentUrl" name="url" class="form-input"
+                                        placeholder="Ví dụ: https://example.com" autocomplete="off">
                                     <div id="urlValidationError" class="message-card message-card--error mt-2 d-none">
                                         <div class="message-card__header">
                                             <h4 class="message-card__title">
@@ -78,7 +73,9 @@
                                             </h4>
                                         </div>
                                         <div class="message-card__body">
-                                            <p class="message-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng <code>http://</code> hoặc <code>https://</code>.</p>
+                                            <p class="message-card__message">Vui lòng nhập URL đầy đủ bắt đầu bằng
+                                                <code>http://</code> hoặc <code>https://</code>.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -94,126 +91,179 @@
                             <!-- Advanced Options -->
                             <div class="form-field mt-4 d-flex flex-row gap-6 items-center flex-wrap">
                                 <label class="form-checkbox-label" for="ignoreTLSErrors">
-                                    <input type="checkbox" id="ignoreTLSErrors" name="ignoreTLSErrors" class="form-checkbox">
+                                    <input type="checkbox" id="ignoreTLSErrors" name="ignoreTLSErrors"
+                                        class="form-checkbox">
                                     <span><i class="fa-solid fa-ban"></i> Bỏ qua lỗi SSL</span>
                                 </label>
                             </div>
                         </form>
-                    </div>
-                </div>
-
-                <!-- ========== ERROR CARD ========== -->
-                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
-                    <div class="message-card__header">
-                        <h4 class="message-card__title text-xl font-bold">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            Scan thất bại
-                        </h4>
-                    </div>
-                    <div class="message-card__body">
-                        <p id="errorMessage" class="message-card__message">
-                            Không thể kết nối tới URL. Vui lòng kiểm tra lại và thử lại.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- ========== RESULT SECTION ========== -->
-                <div id="resultSection" class="d-none mt-6">
-
-                    <!-- Summary Stats -->
-                    <div id="summaryCard" class="card mb-4">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-circle-check"></i>
-                                Kết quả cho: <span id="summaryUrl" class="mc-url-highlight"></span>
-                            </h3>
+                        <!-- ========== ERROR CARD ========== -->
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Scan thất bại
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message">
+                                    Không thể kết nối tới URL. Vui lòng kiểm tra lại và thử lại.
+                                </p>
+                            </div>
                         </div>
-                        <div class="card__body">
-                            <div class="mc-stats d-flex flex-row gap-4 flex-wrap">
-                                <div class="mc-stat mc-stat--total">
-                                    <div class="mc-stat__value" id="statTotal">0</div>
-                                    <div class="mc-stat__label">Tổng lỗi</div>
-                                </div>
-                                <div class="mc-stat mc-stat--active">
-                                    <div class="mc-stat__value" id="statActive">0</div>
-                                    <div class="mc-stat__label">Active (CRITICAL)</div>
-                                </div>
-                                <div class="mc-stat mc-stat--passive">
-                                    <div class="mc-stat__value" id="statPassive">0</div>
-                                    <div class="mc-stat__label">Passive (WARNING)</div>
-                                </div>
+
+                        <!-- ========== RESULT SECTION ========== -->
+                        <section id="resultSection" class="result-card d-none mt-6">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 class="result-card__title font-bold">
+                                    <i class="fa-solid fa-magnifying-glass-chart"></i> Báo cáo Mixed Content
+                                </h3>
                             </div>
 
-                            <!-- Truncated warning -->
-                            <div id="truncatedBanner" class="mc-truncated-banner mt-4 d-none">
-                                <i class="fa-solid fa-circle-exclamation"></i>
-                                Trang có hơn 200 tài nguyên HTTP. Chỉ hiển thị 200 mục đầu tiên.
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="mc-actions d-flex flex-row gap-2 flex-wrap mt-4" id="mcActionBar">
-                                <button id="btnExportCsv" type="button" class="btn btn-sm btn-outline">
-                                    <i class="fa-solid fa-file-csv"></i> Export CSV
+                            <!-- Cache Notice -->
+                            <div id="cacheNotice" class="cache-card mt-2 d-none">
+                                <span><i id="cacheNoticeIcon" class="fa-solid fa-clock"></i> <span
+                                        id="cacheNoticeText">Kết quả này được xuất
+                                        từ bộ nhớ tạm phục hồi lúc</span> <b id="cacheTime"></b>.</span>
+                                <button type="button" id="btnBypassCache"
+                                    class="btn btn-sm btn-outline cache-card__btn">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Làm mới
                                 </button>
-                                <button id="btnCopyFixes" type="button" class="btn btn-sm btn-outline">
-                                <i class="fa-solid fa-copy"></i> Copy tất cả Fix Suggestions
-                            </button>
-                            <a href="#" target="_blank" class="btn btn-sm btn-success">
-                                <i class="fa-solid fa-wrench"></i> Hướng dẫn Fix Lỗi Chi tiết (WordPress)
-                            </a>
-                        </div>
-                        </div>
-                    </div>
-
-                    <!-- No Issues Card -->
-                    <div id="noIssuesCard" class="card d-none mb-4">
-                        <div class="card__body text-center py-6">
-                            <i class="fa-solid fa-shield-halved mc-no-issues-icon"></i>
-                            <h3 class="mc-no-issues-title mt-3">Không tìm thấy Mixed Content!</h3>
-                            <p class="mc-no-issues-subtitle mt-1">Website này không có tài nguyên HTTP không an toàn.</p>
-                        </div>
-                    </div>
-
-                    <!-- Issues Table -->
-                    <div id="issuesCard" class="card d-none mb-4">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-list"></i>
-                                Danh sách tài nguyên HTTP cần khắc phục
-                            </h3>
-                        </div>
-                        <div class="card__body p-0">
-                            <div class="table-wrapper w-full overflow-x-auto">
-                                <table class="results-table w-full mc-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Mức độ</th>
-                                            <th>Loại</th>
-                                            <th>Vị trí (FoundIn)</th>
-                                            <th>Liên Kết Cần Khắc Phục (HTTP)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="issuesTableBody"></tbody>
-                                </table>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Share Card -->
-                    <div id="shareCard" class="share-card mt-4">
-                        <div class="share-card__header">
-                            <h4 class="share-card__title text-xl font-bold">
-                                <i class="fa-solid fa-share-nodes"></i>
-                                Chia sẻ kết quả:
-                            </h4>
-                        </div>
-                        <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                            <input type="text" id="shareLink" readonly class="share-card__input" value="">
-                            <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                <i class="fas fa-copy"></i>
-                                <span>Copy</span>
-                            </button>
-                        </div>
+                            <div class="result-card__body mt-4">
+                                <!-- Summary Stats -->
+                                <div class="d-flex flex-wrap gap-4 justify-center items-center mc-stats mb-6">
+                                    <div class="mc-stat mc-stat--total">
+                                        <div class="mc-stat__value" id="statTotal">0</div>
+                                        <div class="mc-stat__label">Tổng lỗi</div>
+                                    </div>
+                                    <div class="mc-stat mc-stat--active">
+                                        <div class="mc-stat__value" id="statActive">0</div>
+                                        <div class="mc-stat__label">Active (CRITICAL)</div>
+                                    </div>
+                                    <div class="mc-stat mc-stat--passive">
+                                        <div class="mc-stat__value" id="statPassive">0</div>
+                                        <div class="mc-stat__label">Passive (WARNING)</div>
+                                    </div>
+                                </div>
+                                <!-- Hướng dẫn khắc phục -->
+                                <div class="mt-4 mb-4 d-flex justify-center">
+                                    <a href="https://bctechvibe.com/huong-dan-fix-loi-mixed-content/" target="_blank"
+                                        class="btn btn-sm btn-success">
+                                        <i class="fa-solid fa-wrench"></i> Hướng dẫn khắc phục (Wordpress)
+                                    </a>
+                                </div>
+
+                                <!-- Truncated warning -->
+                                <div id="truncatedBanner" class="mc-truncated-banner mb-4 d-none">
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                    Trang có hơn 200 tài nguyên HTTP. Chỉ hiển thị 200 mục đầu tiên.
+                                </div>
+
+                                <!-- Filter Bar -->
+                                <div class="mc-filter-bar mb-4" id="mcFilterBar">
+                                    <div class="mc-filter-buttons d-flex flex-row gap-1 flex-wrap">
+                                        <button class="btn btn-sm btn-action btn-filter is-active" data-filter="all">Tất
+                                            cả</button>
+                                        <button class="btn btn-sm btn-danger btn-filter"
+                                            data-filter="active">Critical</button>
+                                        <button class="btn btn-sm btn-warning btn-filter"
+                                            data-filter="passive">Warning</button>
+                                        <button class="btn btn-sm btn-success btn-filter" data-filter="internal">Nội
+                                            bộ</button>
+                                        <button class="btn btn-sm btn-outline btn-filter" data-filter="third-party">Bên
+                                            thứ 3</button>
+                                    </div>
+                                    <div class="mc-action-buttons d-flex flex-row gap-2">
+                                        <button id="btnExportXlsx" type="button" class="btn btn-sm btn-info">
+                                            <i class="fa-solid fa-file-excel"></i> Xuất Excel
+                                        </button>
+                                        <button id="btnCopyFixes" type="button" class="btn btn-sm btn-outline">
+                                            <i class="fa-solid fa-copy"></i> Copy Fixes
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Issues Table Area -->
+                                <div id="issuesCard" class="mt-2 d-none">
+                                    <div class="mc-table-wrapper w-full">
+                                        <table class="results-table w-full mc-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Mức độ</th>
+                                                    <th>Loại</th>
+                                                    <th>Vị trí</th>
+                                                    <th>Liên Kết Cần Khắc Phục</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="issuesTableBody"></tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Empty State -->
+                                    <div id="mc-empty-state" class="mc-empty d-none py-10 text-center">
+                                        <i class="fa-solid fa-circle-check mc-empty__icon mb-2"></i>
+                                        <p class="mc-empty__title font-bold">Không tìm thấy kết quả nào theo bộ lọc này.
+                                        </p>
+                                    </div>
+                                </div>
+                                <!-- Pagination Container -->
+                                <div id="mc-pagination-container" class="mc-pagination d-none">
+                                    <div class="mc-pagination__info text-sm text-muted">
+                                        Hiển thị <span id="mc-page-start" class="font-bold">0</span> - <span
+                                            id="mc-page-end" class="font-bold">0</span> / <span id="mc-page-total-items"
+                                            class="font-bold">0</span> mục
+                                    </div>
+
+                                    <div class="mc-pagination__controls">
+                                        <ul id="mc-pagination-list" class="mc-pagination__list">
+                                            <!-- JS inserts pagination here -->
+                                        </ul>
+                                    </div>
+
+                                    <div class="mc-pagination__size">
+                                        <div class="mc-btn-group">
+                                            <button class="btn btn-sm btn-size is-active" data-size="10">10</button>
+                                            <button class="btn btn-sm btn-size" data-size="25">25</button>
+                                            <button class="btn btn-sm btn-size" data-size="100">100</button>
+                                            <button class="btn btn-sm btn-size" data-size="all">All</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- No Issues Card -->
+                                <div id="noIssuesCard" class="message-card message-card--success d-none">
+                                    <div class="message-card__header">
+                                        <h4 class="message-card__title">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            Tuyệt vời! Không tìm thấy Mixed Content.
+                                        </h4>
+                                    </div>
+                                    <div class="message-card__body">
+                                        <p class="message-card__message">Website của bạn đang sử dụng tài nguyên an toàn.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Share Card -->
+                                <div id="shareCard" class="share-card mt-6">
+                                    <div class="share-card__header">
+                                        <h4 class="share-card__title font-bold">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                            Chia sẻ kết quả:
+                                        </h4>
+                                    </div>
+                                    <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                        <input type="text" id="shareLink" readonly class="share-card__input" value="">
+                                        <button class="share-card__button share-card__button--copy gap-1"
+                                            id="btnCopyLink">
+                                            <i class="fa-solid fa-copy"></i>
+                                            <span>Copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 </div>
                 <!-- End: Result Section -->
@@ -245,7 +295,9 @@
         <!-- End: Footer -->
     </div>
 
+    <script src="../../public/assets/vendor/xlsx-js-style.min.js"></script>
     <script type="module" src="../../src/js/main.js"></script>
     <script type="module" src="../../src/js/tools/mixed-content/mixed-content.js"></script>
 </body>
+
 </html>

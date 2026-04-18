@@ -31,6 +31,7 @@ const (
 
 type cacheEntry struct {
 	data      *models.ScanData
+	fetchedAt time.Time
 	expiresAt time.Time
 }
 
@@ -38,29 +39,56 @@ var (
 	cacheMap sync.Map
 )
 
-func cacheGet(key string) (*models.ScanData, bool) {
+// Cleanup goroutine: dọn cache hết hạn định kỳ, tránh memory leak
+func init() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			now := time.Now()
+			cacheMap.Range(func(key, value interface{}) bool {
+				if entry, ok := value.(cacheEntry); ok {
+					if now.After(entry.expiresAt) {
+						cacheMap.Delete(key)
+					}
+				}
+				return true
+			})
+		}
+	}()
+}
+
+func cacheGet(key string) (*models.ScanData, time.Time, bool) {
 	v, ok := cacheMap.Load(key)
 	if !ok {
-		return nil, false
+		return nil, time.Time{}, false
 	}
 	entry := v.(cacheEntry)
 	if time.Now().After(entry.expiresAt) {
 		cacheMap.Delete(key)
-		return nil, false
+		return nil, time.Time{}, false
 	}
-	return entry.data, true
+	return entry.data, entry.fetchedAt, true
 }
 
-func cacheSet(key string, data *models.ScanData) {
+func cacheSet(key string, data *models.ScanData, fetchedAt time.Time) {
 	cacheMap.Store(key, cacheEntry{
 		data:      data,
+		fetchedAt: fetchedAt,
 		expiresAt: time.Now().Add(cacheTTL),
 	})
 }
 
 // ─── SSRF Protection (Delegated to platform/validator) ────────────
 
-func newSecureClient(ignoreTLS bool) *http.Client {
+// Singleton HTTP clients: reuse TCP connection pool + TLS session cache
+var (
+	defaultClient  *http.Client
+	insecureClient *http.Client
+	clientOnce     sync.Once
+)
+
+func buildSecureClient(ignoreTLS bool) *http.Client {
 	return &http.Client{
 		Timeout: 15 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -74,8 +102,11 @@ func newSecureClient(ignoreTLS bool) *http.Client {
 			return nil
 		},
 		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreTLS},
+			Proxy:             http.ProxyFromEnvironment,
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: ignoreTLS},
+			MaxIdleConns:      50,
+			IdleConnTimeout:   90 * time.Second,
+			DisableKeepAlives: false,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
@@ -102,6 +133,17 @@ func newSecureClient(ignoreTLS bool) *http.Client {
 			},
 		},
 	}
+}
+
+func getSecureClient(ignoreTLS bool) *http.Client {
+	clientOnce.Do(func() {
+		defaultClient = buildSecureClient(false)
+		insecureClient = buildSecureClient(true)
+	})
+	if ignoreTLS {
+		return insecureClient
+	}
+	return defaultClient
 }
 
 func validateHostSSRF(hostname string) error {
@@ -298,35 +340,38 @@ func parseSrcset(srcset string) []string {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 // ScanMixedContent fetch URL, parse HTML, trả danh sách HTTP resources
-func ScanMixedContent(ctx context.Context, req models.ScanRequest) (*models.ScanData, error) {
+func ScanMixedContent(ctx context.Context, req models.ScanRequest) (scanRes *models.ScanData, errRes error, isCached bool, fetchedAt time.Time) {
 	rawURL := strings.TrimSpace(req.URL)
 
 	// Validate scheme
 	lower := strings.ToLower(rawURL)
 	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
-		return nil, fmt.Errorf("URL phải bắt đầu bằng http:// hoặc https://")
+		return nil, fmt.Errorf("URL phải bắt đầu bằng http:// hoặc https://"), false, time.Time{}
 	}
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("URL không hợp lệ")
+		return nil, fmt.Errorf("URL không hợp lệ"), false, time.Time{}
 	}
 
 	// SSRF check trước khi fetch
 	if err := validateHostSSRF(parsed.Hostname()); err != nil {
-		return nil, err
+		return nil, err, false, time.Time{}
 	}
 
-	// Cache lookup
-	if cached, ok := cacheGet(rawURL); ok {
-		log.Debug().Str("url", rawURL).Msg("mixedcontent cache hit")
-		return cached, nil
+	// Cache lookup (chỉ khi không bypass)
+	if !req.BypassCache {
+		if cached, fetchedAt, ok := cacheGet(rawURL); ok {
+			log.Debug().Str("url", rawURL).Msg("mixedcontent cache hit")
+			return cached, nil, true, fetchedAt
+		}
 	}
 
-	client := newSecureClient(req.IgnoreTLSErrors)
+	fetchedAt = time.Now()
+	client := getSecureClient(req.IgnoreTLSErrors)
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("không thể tạo request")
+		return nil, fmt.Errorf("không thể tạo request"), false, time.Time{}
 	}
 	httpReq.Header.Set("User-Agent", scanUserAgent)
 	httpReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -334,10 +379,16 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest) (*models.Scan
 
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		log.Warn().Err(err).Str("url", rawURL).Msg("mixedcontent fetch failed")
-		return nil, fmt.Errorf("không thể kết nối tới URL (%v). Vui lòng kiểm tra lại URL và thử lại.", err)
+		// Trả về lỗi gốc để handler.go có thể dùng errutil.TranslateError dịch chính xác
+		return nil, err, false, time.Time{}
 	}
 	defer resp.Body.Close()
+
+	// Validate Content-Type: chỉ parse HTML, bỏ qua binary (PDF, ZIP...)
+	ct := resp.Header.Get("Content-Type")
+	if ct != "" && !strings.Contains(ct, "text/html") && !strings.Contains(ct, "application/xhtml") {
+		return nil, fmt.Errorf("content-type không hợp lệ: %s", ct), false, time.Time{}
+	}
 
 	limitedBody := io.LimitReader(resp.Body, maxBodySize)
 	baseHost := parsed.Hostname()
@@ -346,10 +397,12 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest) (*models.Scan
 
 	activeCount, passiveCount := 0, 0
 	for _, it := range items {
-		if it.Type == "Active" {
+		switch it.Type {
+		case "Active":
 			activeCount++
-		} else {
+		case "Passive":
 			passiveCount++
+		// "Info" type: không tính vào active hay passive
 		}
 	}
 
@@ -362,6 +415,6 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest) (*models.Scan
 		Truncated:    truncated,
 	}
 
-	cacheSet(rawURL, data)
-	return data, nil
+	cacheSet(rawURL, data, fetchedAt)
+	return data, nil, false, fetchedAt
 }

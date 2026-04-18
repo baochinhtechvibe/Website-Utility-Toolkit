@@ -4,6 +4,7 @@ package models
 type ScanRequest struct {
 	URL              string `json:"url" binding:"required"`
 	IgnoreTLSErrors  bool   `json:"ignoreTLSErrors"`
+	BypassCache      bool   `json:"bypassCache"`
 }
 
 // MixedItem đại diện một tài nguyên HTTP tìm thấy trên trang HTTPS
