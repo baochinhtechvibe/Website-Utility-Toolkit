@@ -24,12 +24,18 @@ func ExtractLinks(req models.ScanRequest) (models.ScanData, []models.ScanResultR
 	// Follow redirects until max depth automatically
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return models.ScanData{}, nil, fmt.Errorf("failed fetching base URL: %v", err)
+		return models.ScanData{}, nil, err
 	}
 	defer resp.Body.Close()
 
+	// Validate Content-Type: chỉ parse HTML
+	ct := resp.Header.Get("Content-Type")
+	if ct != "" && !strings.Contains(ct, "text/html") && !strings.Contains(ct, "application/xhtml") {
+		return models.ScanData{}, nil, fmt.Errorf("content-type không hợp lệ: %s", ct)
+	}
+
 	if resp.StatusCode >= 400 {
-		return models.ScanData{}, nil, fmt.Errorf("base URL returned status code %d", resp.StatusCode)
+		return models.ScanData{}, nil, fmt.Errorf("website trả về mã lỗi HTTP %d", resp.StatusCode)
 	}
 
 	finalPageURL := resp.Request.URL

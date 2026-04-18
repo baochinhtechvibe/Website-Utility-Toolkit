@@ -18,10 +18,28 @@ type MemoryCache struct {
 }
 
 func NewMemoryCache(ttl time.Duration) *MemoryCache {
-	return &MemoryCache{
+	c := &MemoryCache{
 		items: make(map[string]item),
 		ttl:   ttl,
 	}
+
+	// Cleanup goroutine
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			c.mu.Lock()
+			now := time.Now()
+			for k, v := range c.items {
+				if now.After(v.expiresAt) {
+					delete(c.items, k)
+				}
+			}
+			c.mu.Unlock()
+		}
+	}()
+
+	return c
 }
 
 func (c *MemoryCache) Get(key string) (interface{}, time.Time, bool) {

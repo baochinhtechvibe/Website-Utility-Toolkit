@@ -15,7 +15,8 @@
     <link rel="manifest" href="../../public/site.webmanifest" />
 
     <title>Broken Link Scanner | Website Utility Toolkit - Kiểm tra liên kết hỏng</title>
-    <meta name="description" content="Công cụ quét và phát hiện liên kết hỏng (broken links), asset lỗi (404) và chuỗi chuyển hướng trên website của bạn. Hỗ trợ đa luồng, báo cáo chi tiết và xuất dữ liệu CSV.">
+    <meta name="description"
+        content="Công cụ quét và phát hiện liên kết hỏng (broken links), asset lỗi (404) và chuỗi chuyển hướng trên website của bạn. Hỗ trợ đa luồng, báo cáo chi tiết và xuất dữ liệu CSV.">
 </head>
 
 <body>
@@ -70,15 +71,8 @@
                             <div class="form-inline">
                                 <div class="form-field form-field--wide">
                                     <label class="form-label" for="bls-url-input">Đường dẫn Website Cần Kiểm Tra</label>
-                                    <input
-                                        type="url"
-                                        id="bls-url-input"
-                                        name="url"
-                                        class="form-input"
-                                        placeholder="https://example.com"
-                                        required
-                                        autocomplete="url"
-                                    >
+                                    <input type="url" id="bls-url-input" name="url" class="form-input"
+                                        placeholder="https://example.com" required autocomplete="url">
                                 </div>
 
                                 <!-- Submit Button -->
@@ -96,11 +90,13 @@
                                 <label class="form-label">Cấu hình Nâng cao</label>
                                 <div class="bls-advanced-options mt-2">
                                     <label class="bls-advanced-option mr-4" for="bls-scope-same-host">
-                                        <input type="checkbox" id="bls-scope-same-host" name="scopeSameHost" class="form-checkbox" checked>
+                                        <input type="checkbox" id="bls-scope-same-host" name="scopeSameHost"
+                                            class="form-checkbox" checked>
                                         <span>Cùng Hostname (bỏ qua CDN / domain ngoài)</span>
                                     </label>
                                     <label class="bls-advanced-option mr-4" for="bls-ignore-tls">
-                                        <input type="checkbox" id="bls-ignore-tls" name="ignoreTLS" class="form-checkbox">
+                                        <input type="checkbox" id="bls-ignore-tls" name="ignoreTLS"
+                                            class="form-checkbox">
                                         <span>Bỏ qua lỗi SSL/TLS</span>
                                     </label>
                                 </div>
@@ -114,15 +110,8 @@
                                     </label>
                                     <span id="bls-worker-val" class="form-hint">50</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    id="bls-workers-input"
-                                    name="workers"
-                                    class="bls-range mt-2"
-                                    min="5"
-                                    max="50"
-                                    value="50"
-                                >
+                                <input type="range" id="bls-workers-input" name="workers" class="bls-range mt-2" min="5"
+                                    max="50" value="50">
                             </div>
 
                             <!-- Validation Error -->
@@ -157,7 +146,8 @@
                                 <div id="bls-progress-bar-fill" class="bls-progress-bar-fill"></div>
                             </div>
                             <div class="bls-progress-meta">
-                                <span>Đã xử lý: <strong id="bls-progress-done">0</strong> / <strong id="bls-progress-total">?</strong> links</span>
+                                <span>Đã xử lý: <strong id="bls-progress-done">0</strong> / <strong
+                                        id="bls-progress-total">?</strong> links</span>
                                 <span id="bls-progress-pct">0%</span>
                             </div>
                         </div>
@@ -178,137 +168,152 @@
                         </div>
 
                         <!-- Results Section -->
-                <section id="bls-results-section" class="result-card mt-6 d-none">
-                    
-                    <div class="result-card__header d-flex flex-row justify-between items-center">
-                        <h3 id="bls-results-title" class="result-card__title font-bold">
-                            <i class="fa-solid fa-magnifying-glass-chart"></i> Báo cáo Quét Liên kết
-                        </h3>
-                    </div>
+                        <section id="bls-results-section" class="result-card mt-6 d-none">
 
-                    <!-- CACHE NOTICE -->
-                    <div id="cacheNotice" class="cache-card mt-2 d-none">
-                        <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b>.</span>
-                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn">
-                            <i class="fa-solid fa-arrows-rotate"></i> Làm mới
-                        </button>
-                    </div>
-
-                    <div class="result-card__body mt-4">
-                        <!-- Summary Stats -->
-                        <div class="bls-stats mb-6">
-                            <div class="bls-stat bls-stat--total">
-                                <strong id="bls-stat-total" class="bls-stat__value">0</strong>
-                                <span class="bls-stat__label">Tổng Links</span>
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 id="bls-results-title" class="result-card__title font-bold">
+                                    <i class="fa-solid fa-magnifying-glass-chart"></i> Báo cáo quét liên kết
+                                </h3>
                             </div>
-                        <div class="bls-stat bls-stat--ok">
-                            <strong id="bls-stat-ok" class="bls-stat__value">0</strong>
-                            <span class="bls-stat__label">Hoạt động (2xx)</span>
-                        </div>
-                        <div class="bls-stat bls-stat--redirect">
-                            <strong id="bls-stat-redirect" class="bls-stat__value">0</strong>
-                            <span class="bls-stat__label">Điều hướng (3xx)</span>
-                        </div>
-                        <div class="bls-stat bls-stat--broken">
-                            <strong id="bls-stat-broken" class="bls-stat__value">0</strong>
-                            <span class="bls-stat__label">Lỗi / Hỏng (4xx+)</span>
-                        </div>
-                        <div class="bls-stat bls-stat--blocked">
-                            <strong id="bls-stat-blocked" class="bls-stat__value">0</strong>
-                            <span class="bls-stat__label">Bị chặn (403)</span>
-                        </div>
-                        <div class="bls-stat bls-stat--timeout">
-                            <strong id="bls-stat-timeout" class="bls-stat__value">0</strong>
-                            <span class="bls-stat__label">Timeout</span>
-                        </div>
-                    </div>
 
-                    <!-- Filter Bar -->
-                    <div class="bls-filter-bar mb-4">
-                        <div class="bls-filter-buttons">
-                            <button class="btn btn-sm btn-action btn-filter is-active" data-filter="all">Tất cả</button>
-                            <button class="btn btn-sm btn-danger btn-filter" data-filter="broken">Error 4xx/5xx</button>
-                            <button class="btn btn-sm btn-warning btn-filter" data-filter="redirect">Redirect 3xx</button>
-                            <button class="btn btn-sm btn-success btn-filter" data-filter="ok">OK 2xx</button>
-                            <button class="btn btn-sm btn-outline btn-filter" data-filter="timeout">Timeout</button>
-                        </div>
-                        <button id="bls-btn-export-csv" class="btn btn-sm btn-info">
-                            <i class="fa-solid fa-file-csv"></i>
-                            Xuất CSV
-                        </button>
-                    </div>
-
-                    <!-- Results Table -->
-                    <div class="mt-2">
-                        <div class="bls-table-wrapper">
-                            <table class="bls-table" id="bls-results-table">
-                                <thead>
-                                    <tr>
-                                        <th>Trạng thái</th>
-                                        <th>Loại thẻ</th>
-                                        <th>URL Đích</th>
-                                        <th>Độ trễ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="bls-results-body">
-                                    <!-- JS inserts rows here -->
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Empty State (shown when table has 0 rows after filter) -->
-                        <div id="bls-empty-state" class="bls-empty d-none">
-                            <i class="fa-solid fa-circle-check bls-empty__icon"></i>
-                            <p class="bls-empty__title">Không tìm thấy kết quả nào theo bộ lọc này.</p>
-                            <p>Thử chọn bộ lọc khác hoặc quét lại trang.</p>
-                        </div>
-
-                        <!-- Pagination Container -->
-                        <div id="bls-pagination-container" class="bls-pagination d-none">
-                            <div class="bls-pagination__info">
-                                Hiển thị <span id="bls-page-start">0</span> - <span id="bls-page-end">0</span> / <span id="bls-page-total-items">0</span> liên kết
-                            </div>
-                            
-                            <div class="bls-pagination__controls">
-                                <ul id="bls-pagination-list" class="bls-pagination__list">
-                                    <!-- Pagination items generated by JS -->
-                                </ul>
-                            </div>
-                            
-                            <div class="bls-pagination__size">
-                                <div class="bls-btn-group">
-                                    <button class="btn btn-sm btn-size is-active" data-size="10" title="Hiển thị 10 kết quả mỗi trang">10</button>
-                                    <button class="btn btn-sm btn-size" data-size="25" title="Hiển thị 25 kết quả mỗi trang">25</button>
-                                    <button class="btn btn-sm btn-size" data-size="100" title="Hiển thị 100 kết quả mỗi trang">100</button>
-                                    <button class="btn btn-sm btn-size" data-size="150" title="Hiển thị 150 kết quả mỗi trang">150</button>
-                                    <button class="btn btn-sm btn-size" data-size="all" title="Hiển thị tất cả kết quả">All</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    </div><!-- end result-card__body -->
-                </section>
-
-                        <!-- Share Card -->
-                        <div id="shareCard" class="share-card mt-6 d-none">
-                            <div class="share-card__header">
-                                <h4 class="share-card__title font-bold">
-                                    <i class="fa-solid fa-share-nodes"></i>
-                                    Chia sẻ kết quả:
-                                </h4>
-                            </div>
-                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                                <input type="text" id="shareLink" readonly class="share-card__input" value=""/>
-                                <button type="button" class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                    <i class="fa-solid fa-copy"></i>
-                                    <span>Copy</span>
+                            <!-- CACHE NOTICE -->
+                            <div id="cacheNotice" class="cache-card mt-2 d-none">
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc
+                                    <b id="cacheTime"></b>.</span>
+                                <button type="button" id="btnBypassCache"
+                                    class="btn btn-sm btn-outline cache-card__btn">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Làm mới
                                 </button>
                             </div>
-                        </div>
+
+                            <div class="result-card__body mt-4">
+                                <!-- Summary Stats -->
+                                <div class="bls-stats mb-6">
+                                    <div class="bls-stat bls-stat--total">
+                                        <strong id="bls-stat-total" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Tổng Links</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--ok">
+                                        <strong id="bls-stat-ok" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Hoạt động (2xx)</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--redirect">
+                                        <strong id="bls-stat-redirect" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Điều hướng (3xx)</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--broken">
+                                        <strong id="bls-stat-broken" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Lỗi / Hỏng (4xx+)</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--blocked">
+                                        <strong id="bls-stat-blocked" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Bị chặn (403)</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--timeout">
+                                        <strong id="bls-stat-timeout" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Timeout</span>
+                                    </div>
+                                </div>
+
+                                <!-- Filter Bar -->
+                                <div class="bls-filter-bar mb-4">
+                                    <div class="bls-filter-buttons">
+                                        <button class="btn btn-sm btn-action btn-filter is-active" data-filter="all">Tất
+                                            cả</button>
+                                        <button class="btn btn-sm btn-danger btn-filter" data-filter="broken">Error
+                                            4xx/5xx</button>
+                                        <button class="btn btn-sm btn-filter btn-filter--blocked" data-filter="blocked">Bị chặn (403)</button>
+                                        <button class="btn btn-sm btn-warning btn-filter"
+                                            data-filter="redirect">Redirect 3xx</button>
+                                        <button class="btn btn-sm btn-success btn-filter" data-filter="ok">OK
+                                            2xx</button>
+                                        <button class="btn btn-sm btn-outline btn-filter"
+                                            data-filter="timeout">Timeout</button>
+                                    </div>
+                                    <button id="bls-btn-export-xlsx" class="btn btn-sm btn-info">
+                                        <i class="fa-solid fa-file-excel"></i>
+                                        Xuất Excel
+                                    </button>
+                                </div>
+
+                                <!-- Results Table -->
+                                <div class="mt-2">
+                                    <div class="bls-table-wrapper">
+                                        <table class="bls-table" id="bls-results-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Trạng thái</th>
+                                                    <th>Loại thẻ</th>
+                                                    <th>URL Đích</th>
+                                                    <th>Độ trễ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="bls-results-body">
+                                                <!-- JS inserts rows here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Empty State (shown when table has 0 rows after filter) -->
+                                    <div id="bls-empty-state" class="bls-empty d-none">
+                                        <i class="fa-solid fa-circle-check bls-empty__icon"></i>
+                                        <p class="bls-empty__title">Không tìm thấy kết quả nào theo bộ lọc này.</p>
+                                        <p>Thử chọn bộ lọc khác hoặc quét lại trang.</p>
+                                    </div>
+
+                                    <!-- Pagination Container -->
+                                    <div id="bls-pagination-container" class="bls-pagination d-none">
+                                        <div class="bls-pagination__info">
+                                            Hiển thị <span id="bls-page-start">0</span> - <span
+                                                id="bls-page-end">0</span> / <span id="bls-page-total-items">0</span>
+                                            liên kết
+                                        </div>
+
+                                        <div class="bls-pagination__controls">
+                                            <ul id="bls-pagination-list" class="bls-pagination__list">
+                                                <!-- Pagination items generated by JS -->
+                                            </ul>
+                                        </div>
+
+                                        <div class="bls-pagination__size">
+                                            <div class="bls-btn-group">
+                                                <button class="btn btn-sm btn-size is-active" data-size="10"
+                                                    title="Hiển thị 10 kết quả mỗi trang">10</button>
+                                                <button class="btn btn-sm btn-size" data-size="25"
+                                                    title="Hiển thị 25 kết quả mỗi trang">25</button>
+                                                <button class="btn btn-sm btn-size" data-size="100"
+                                                    title="Hiển thị 100 kết quả mỗi trang">100</button>
+                                                <button class="btn btn-sm btn-size" data-size="150"
+                                                    title="Hiển thị 150 kết quả mỗi trang">150</button>
+                                                <button class="btn btn-sm btn-size" data-size="all"
+                                                    title="Hiển thị tất cả kết quả">All</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Share Card -->
+                                <div id="shareCard" class="share-card mt-6 d-none">
+                                    <div class="share-card__header">
+                                        <h4 class="share-card__title font-bold">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                            Chia sẻ kết quả:
+                                        </h4>
+                                    </div>
+                                    <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                        <input type="text" id="shareLink" readonly class="share-card__input" value="" />
+                                        <button type="button" class="share-card__button share-card__button--copy gap-1"
+                                            id="btnCopyLink">
+                                            <i class="fa-solid fa-copy"></i>
+                                            <span>Copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div><!-- end result-card__body -->
+                        </section>
                     </div>
                 </div>
 
-                
+
             </div>
         </main>
         <!-- End: Main Content -->
@@ -337,6 +342,7 @@
         <!-- End: Footer Content -->
     </div>
 
+    <script src="../../public/assets/vendor/xlsx-js-style.min.js"></script>
     <script type="module" src="../../src/js/main.js"></script>
     <script type="module" src="../../src/js/tools/broken-link-scanner/broken-link-scanner.js"></script>
 </body>

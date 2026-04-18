@@ -19,7 +19,8 @@ const state = {
     currentFilter: "all",
     currentPage: 1,
     pageSize: 10,
-    isScanning: false
+    isScanning: false,
+    scannedUrl: ""
 };
 
 function init() {
@@ -46,6 +47,7 @@ function init() {
     const statTimeout = $("#bls-stat-timeout");
 
     const tbody = $("#bls-results-body");
+    const resultsTitle = $("#bls-results-title");
 
     const optSameHost = $("#bls-scope-same-host");
     const optIgnoreTls = $("#bls-ignore-tls");
@@ -54,6 +56,7 @@ function init() {
 
     const scanIcon = $("#bls-scan-icon");
     const scanLoadingState = $("#bls-scan-loading");
+    const btnExportXlsx = $("#bls-btn-export-xlsx");
 
     // Slider Value Sync
     workersInput?.addEventListener("input", (e) => {
@@ -70,7 +73,11 @@ function init() {
     // Realtime Validation
     if (urlInput && validationError && btnScan) {
         createRealtimeURLValidator(urlInput, validationError, btnScan);
-        urlInput.addEventListener('input', hideResults);
+        urlInput.addEventListener('input', () => {
+            // Chỉ ẩn kết quả cũ, không đè lên thông báo của validator
+            if (!validationError.classList.contains('d-none')) return;
+            hideResults();
+        });
     }
 
     // Cancel Scan
@@ -93,6 +100,7 @@ function init() {
         if (!rawUrl) return;
 
         state.isScanning = true;
+        state.scannedUrl = rawUrl;
         updateURL(rawUrl);
 
         hideResults();
@@ -130,6 +138,12 @@ function init() {
             if (!response.ok || !data.success) throw new Error(data.message || `HTTP ${response.status}`);
 
             const scanData = data.data;
+
+            // Update Result Title
+            if (resultsTitle) {
+                resultsTitle.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart mr-2"></i> Báo cáo quét trên <span class="text-success">"${escapeHTML(rawUrl)}"</span>`;
+            }
+
             if (statTotal) statTotal.textContent = scanData.summary?.total || 0;
             if (statOk) statOk.textContent = scanData.summary?.ok || 0;
             if (statRedirect) statRedirect.textContent = scanData.summary?.redirect || 0;
@@ -185,7 +199,10 @@ function init() {
         tbody.innerHTML = "";
         state.currentFilter = filter;
 
-        const filtered = state.currentResults.filter(r => filter === "all" || r.status_class === filter);
+        const filtered = state.currentResults.filter(r => {
+            if (filter === "all") return true;
+            return r.status_class === filter;
+        });
         const total = filtered.length;
 
         if (total === 0) {
@@ -214,7 +231,7 @@ function init() {
 
         filtered.slice(start, end).forEach(row => {
             const tr = document.createElement("tr");
-            
+
             // Map status_class to project badges
             let badgeClass = "badge-default";
             if (row.status_class === "ok") badgeClass = "badge-success";
@@ -227,13 +244,13 @@ function init() {
             let kindIcon = "fa-link";
             if (kindLower.includes("img")) kindIcon = "fa-image";
             else if (kindLower.includes("script")) kindIcon = "fa-code";
-            else if (kindLower.includes("style")) kindIcon = "fa-css3";
+            else if (kindLower.includes("style") || kindLower.includes("link")) kindIcon = "fa-css3";
             else if (kindLower.includes("iframe")) kindIcon = "fa-window-maximize";
 
-            const redirectInfo = row.redirect_count > 0 
-                ? `<div class="bls-redirect-info text-warning mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-arrow-right-arrow-left"></i> ${row.redirect_count} chuyển hướng</div>` 
+            const redirectInfo = row.redirect_count > 0
+                ? `<div class="bls-redirect-info text-warning mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-arrow-right-arrow-left"></i> ${row.redirect_count} chuyển hướng</div>`
                 : "";
-            
+
             tr.innerHTML = `
                 <td>
                     <span class="badge ${badgeClass} uppercase">
@@ -241,9 +258,9 @@ function init() {
                     </span>
                 </td>
                 <td>
-                    <div class="bls-tag-item">
+                    <div class="badge badge-default bls-tag-item">
                         <i class="fa-solid ${kindIcon}"></i>
-                        <span class="uppercase">${escapeHTML(row.kind)}</span>
+                        <span>${escapeHTML(row.kind)}</span>
                     </div>
                 </td>
                 <td class="bls-url-cell">
@@ -252,7 +269,7 @@ function init() {
                             ${row.error ? `<span class="text-error">${escapeHTML(row.final_url)} <br/><small class="text-muted"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHTML(row.error)}</small></span>` : escapeHTML(row.final_url)}
                         </a>
                     </div>
-                    <div class="bls-url-parent text-muted"><i class="fa-solid fa-share fa-rotate-90 mr-1 opacity-50"></i> ${escapeHTML(row.original_url)}</div>
+                    <div class="bls-url-parent text-muted"><i class="fa-solid fa-arrow-right mr-1"></i> ${escapeHTML(row.original_url)}</div>
                 </td>
                 <td>
                     <div class="bls-latency text-right">
@@ -294,7 +311,7 @@ function init() {
 
         // Previous Button
         list.appendChild(createLi('<i class="fa-solid fa-chevron-left"></i>', state.currentPage - 1, state.currentPage === 1, false, 'bls-page-link--prev'));
-        
+
         let pages = [];
         if (totalPages <= 5) {
             for (let i = 1; i <= totalPages; i++) pages.push(i);
@@ -333,6 +350,25 @@ function init() {
         };
     });
 
+    const statMappings = {
+        "bls-stat--ok": "ok",
+        "bls-stat--redirect": "redirect",
+        "bls-stat--broken": "broken",
+        "bls-stat--blocked": "blocked",
+        "bls-stat--timeout": "timeout"
+    };
+
+    Object.keys(statMappings).forEach(className => {
+        const el = document.querySelector(`.${className}`);
+        if (el) {
+            el.onclick = () => {
+                const filter = statMappings[className];
+                const targetBtn = document.querySelector(`.btn-filter[data-filter="${filter}"]`);
+                if (targetBtn) targetBtn.click();
+            };
+        }
+    });
+
     // Page Size Buttons
     document.querySelectorAll(".btn-size").forEach(btn => {
         btn.onclick = (e) => {
@@ -345,19 +381,11 @@ function init() {
         };
     });
 
-    // CSV Export
-    $("#bls-btn-export-csv")?.addEventListener("click", () => {
-        if (state.currentResults.length === 0) return;
-        const headers = ["Khởi nguồn thẻ", "Phân loại Thẻ", "Đường dẫn gốc", "Đường dẫn Final", "Mã HTTP", "Status Class", "Độ trễ (ms)", "Ghi chú Lỗi"];
-        const csv = [headers.join(","), ...state.currentResults.map(r => [
-            `"${(r.source_tag || "").replace(/"/g, '""')}"`, r.kind, `"${r.original_url}"`, `"${r.final_url}"`,
-            r.status_code, r.status_class, r.response_ms || 0, `"${(r.error || "").replace(/"/g, '""')}"`
-        ].join(","))].join("\n");
-        const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `broken_links_${new Date().toISOString().substring(0, 10)}.csv`;
-        link.click();
+    // XLSX Export
+    btnExportXlsx?.addEventListener("click", () => {
+        if (state.currentResults.length > 0) {
+            exportXLSX(state.currentResults, state.scannedUrl);
+        }
     });
 
     // Share link copy
@@ -373,6 +401,116 @@ function init() {
         urlInput.dispatchEvent(new Event('input'));
         setTimeout(() => { if (!btnScan.disabled) performScan(false); }, 100);
     }
+}
+
+/**
+ * Xuất dữ liệu ra file Excel (.xlsx) với định dạng và màu sắc chuyên nghiệp.
+ * Sử dụng thư viện xlsx-js-style.
+ */
+function exportXLSX(results, url) {
+    if (!window.XLSX) {
+        console.error("xlsx-js-style library not found.");
+        return;
+    }
+
+    const filename = `broken_links_${new Date().toISOString().substring(0, 10)}.xlsx`;
+    const wb = XLSX.utils.book_new();
+
+    // --- SHEET 1: TỔNG QUAN ---
+    const summaryData = [
+        ["BÁO CÁO QUÉT LIÊN KẾT HỎNG (BROKEN LINK SCANNER)"],
+        ["URL quét:", url],
+        ["Ngày thực hiện:", new Date().toLocaleString("vi-VN")],
+        [""],
+        ["THỐNG KÊ TỔNG QUÁT"],
+        ["Trạng thái", "Số lượng", "Mô tả"],
+        ["Hoạt động (OK)", results.filter(r => r.status_class === "ok").length, "Các liên kết trả về mã 2xx"],
+        ["Điều hướng (Redirect)", results.filter(r => r.status_class === "redirect").length, "Các liên kết trả về mã 3xx"],
+        ["Lỗi (Broken)", results.filter(r => r.status_class === "broken").length, "Các liên kết trả về mã 4xx/5xx hoặc lỗi kết nối"],
+        ["Bị chặn (Blocked)", results.filter(r => r.status_class === "blocked").length, "Máy chủ mục tiêu từ chối truy cập (403/401)"],
+        ["Hết thời gian (Timeout)", results.filter(r => r.status_class === "timeout").length, "Máy chủ không phản hồi kịp thời"],
+        ["TỔNG CỘNG", results.length, ""]
+    ];
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+    // Styling cho Sheet Tổng quan
+    wsSummary["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 50 }];
+    wsSummary["A1"].s = { font: { bold: true, sz: 16, color: { rgb: "2E7D32" } } };
+    
+    const headerStyle = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "444444" } },
+        alignment: { horizontal: "center" },
+        border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }
+    };
+    
+    ["A6", "B6", "C6"].forEach(ref => { if (wsSummary[ref]) wsSummary[ref].s = headerStyle; });
+
+    // --- SHEET 2: CHI TIẾT ---
+    const headers = ["Trạng thái", "Mã HTTP", "Loại thẻ", "Redirects", "URL Đích (Final)", "URL Gốc (Original)", "Độ trễ (ms)", "Lỗi chi tiết"];
+    const rows = results.map(r => [
+        r.status_class.toUpperCase(),
+        r.status_code || "-",
+        r.kind,
+        r.redirect_count || 0,
+        r.final_url,
+        r.original_url,
+        r.response_ms || 0,
+        r.error || ""
+    ]);
+
+    const wsDetails = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    // Độ rộng cột
+    wsDetails["!cols"] = [
+        { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 60 }, { wch: 60 }, { wch: 12 }, { wch: 40 }
+    ];
+
+    // Filter và Freeze
+    wsDetails["!autofilter"] = { ref: `A1:H${rows.length + 1}` };
+    wsDetails["!views"] = [{ state: "frozen", ySplit: 1 }];
+
+    // Styling Headers chi tiết
+    const detailHeaderStyle = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "1976D2" } }, // Blue Primary
+        alignment: { horizontal: "center", vertical: "center" }
+    };
+
+    const alphabet = "ABCDEFGH";
+    for (let i = 0; i < alphabet.length; i++) {
+        const cellRef = alphabet[i] + "1";
+        if (wsDetails[cellRef]) wsDetails[cellRef].s = detailHeaderStyle;
+    }
+
+    // Styling Rows theo mức độ lỗi
+    rows.forEach((row, index) => {
+        const rowIndex = index + 2;
+        const statusClass = row[0].toLowerCase();
+        
+        let rowColor = null;
+        if (statusClass === "broken" || statusClass === "blocked") rowColor = "FFEBEE"; // Red-50
+        else if (statusClass === "redirect") rowColor = "FFFDE7"; // Yellow-50
+        else if (statusClass === "timeout") rowColor = "E3F2FD"; // Blue-50
+
+        if (rowColor) {
+            for (let i = 0; i < alphabet.length; i++) {
+                const cellRef = alphabet[i] + rowIndex;
+                if (wsDetails[cellRef]) {
+                    wsDetails[cellRef].s = {
+                        fill: { fgColor: { rgb: rowColor } },
+                        border: { bottom: { style: "thin", color: { rgb: "EEEEEE" } } }
+                    };
+                }
+            }
+        }
+    });
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Tổng quan");
+    XLSX.utils.book_append_sheet(wb, wsDetails, "Chi tiết liên kết");
+
+    XLSX.writeFile(wb, filename);
 }
 
 function updateURL(url) {

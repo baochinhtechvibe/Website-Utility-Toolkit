@@ -6,27 +6,27 @@
 
 /* ─── 1. Page-level Local Variables ─────────────────── */
 .page--broken-link {
-    --bls-primary:        var(--color-brand);
-    --bls-text-primary:   var(--color-text-inverse);
-    --bls-text-base:      var(--color-text-primary);
+    --bls-primary: var(--color-brand);
+    --bls-text-primary: var(--color-text-inverse);
+    --bls-text-base: var(--color-text-primary);
     --bls-text-secondary: var(--white);
 
     /* Status colors */
-    --bls-color-ok:       var(--color-success-text);
+    --bls-color-ok: var(--color-success-text);
     --bls-color-redirect: var(--color-warning-text);
-    --bls-color-broken:   var(--color-error-text);
-    --bls-color-blocked:  var(--color-error);
-    --bls-color-timeout:  var(--color-text-muted);
+    --bls-color-broken: var(--color-error-text);
+    --bls-color-blocked: var(--color-error);
+    --bls-color-timeout: var(--color-text-muted);
 
     /* Stat box */
-    --bls-stat-bg:        var(--color-surface-muted);
-    --bls-stat-border:    var(--color-border-subtle);
+    --bls-stat-bg: var(--color-surface-muted);
+    --bls-stat-border: var(--color-border-subtle);
 
     /* Table */
-    --bls-table-head-bg:  var(--color-brand);
+    --bls-table-head-bg: var(--color-brand);
     --bls-table-head-text: var(--color-text-inverse);
     --bls-table-row-border: 1px solid var(--color-border);
-    --bls-table-text:     var(--color-text-primary);
+    --bls-table-text: var(--color-text-primary);
 }
 
 /* Dark mode overrides (Reduced as tokens are standardized) */
@@ -36,7 +36,7 @@
 
 /* ─── 2. Form variants ───────────────────────────────── */
 .page--broken-link .form--bls {
-    --form-focus-color:  var(--color-brand);
+    --form-focus-color: var(--color-brand);
 }
 
 /* Advanced option checkboxes (dùng native checkbox + label đơn giản) */
@@ -164,12 +164,29 @@
 }
 
 /* Status-specific value colors */
-.page--broken-link .bls-stat--total .bls-stat__value { color: var(--color-text-primary); }
-.page--broken-link .bls-stat--ok .bls-stat__value { color: var(--color-success-text); }
-.page--broken-link .bls-stat--redirect .bls-stat__value { color: var(--color-warning-text); }
-.page--broken-link .bls-stat--broken .bls-stat__value { color: var(--color-error-text); }
-.page--broken-link .bls-stat--blocked .bls-stat__value { color: var(--color-error); }
-.page--broken-link .bls-stat--timeout .bls-stat__value { color: var(--color-text-muted); }
+.page--broken-link .bls-stat--total .bls-stat__value {
+    color: var(--color-text-primary);
+}
+
+.page--broken-link .bls-stat--ok .bls-stat__value {
+    color: var(--color-success-text);
+}
+
+.page--broken-link .bls-stat--redirect .bls-stat__value {
+    color: var(--color-warning-text);
+}
+
+.page--broken-link .bls-stat--broken .bls-stat__value {
+    color: var(--color-error-text);
+}
+
+.page--broken-link .bls-stat--blocked .bls-stat__value {
+    color: var(--color-error);
+}
+
+.page--broken-link .bls-stat--timeout .bls-stat__value {
+    color: var(--color-text-muted);
+}
 
 /* ─── 5. Filter Bar ──────────────────────────────────── */
 .page--broken-link .bls-filter-bar {
@@ -194,13 +211,28 @@
     border: 1px solid var(--color-text-primary) !important;
 }
 
+.page--broken-link .btn-filter--blocked {
+    background-color: var(--red-700);
+    color: white;
+    border-color: var(--red-700);
+}
+
+.page--broken-link .btn-filter--blocked:hover {
+    background-color: var(--red-800);
+    color: white;
+}
+
+.page--broken-link .bls-stat {
+    cursor: pointer;
+}
+
 /* ─── 6. Results Table ───────────────────────────────── */
 /* ─── 6. Results Table (Premium Data Grid) ────────────── */
 .page--broken-link .bls-table-wrapper {
     position: relative;
     width: 100%;
     margin-top: var(--space-4);
-    max-height: 650px;
+    max-height: 1400px;
     overflow-x: auto;
     overflow-y: auto;
     border-radius: var(--radius-md);
@@ -224,6 +256,7 @@
     z-index: var(--z-sticky);
     background-color: var(--color-brand);
     color: var(--bls-text-secondary);
+    text-transform: uppercase;
     padding: var(--space-4) var(--space-5);
     text-align: left;
     font-weight: var(--font-weight-bold);
@@ -245,6 +278,7 @@
     border-bottom: 1px solid var(--color-border-subtle);
     transition: background-color var(--transition-base);
 }
+
 .page--broken-link .bls-table tbody,
 .page--broken-link #bls-results-body {
     background-color: var(--color-surface);
@@ -260,7 +294,7 @@
 }
 
 .page--broken-link .bls-table tbody tr:last-child td {
-    border-bottom: none;
+    border-bottom: medium none currentcolor;
 }
 
 /* Column Width Adjustments */
@@ -339,33 +373,33 @@
 
 /* ─── 7. Status Badges (tool-scoped, map qua badge component) ── */
 .page--broken-link .bls-badge--ok {
-    --badge-bg:     var(--color-success-bg);
+    --badge-bg: var(--color-success-bg);
     --badge-border: var(--color-success-border);
-    --badge-text:   var(--color-success-text);
+    --badge-text: var(--color-success-text);
 }
 
 .page--broken-link .bls-badge--redirect {
-    --badge-bg:     var(--color-warning-bg);
+    --badge-bg: var(--color-warning-bg);
     --badge-border: var(--color-warning-border);
-    --badge-text:   var(--color-warning-text);
+    --badge-text: var(--color-warning-text);
 }
 
 .page--broken-link .bls-badge--broken {
-    --badge-bg:     var(--color-error-bg);
+    --badge-bg: var(--color-error-bg);
     --badge-border: var(--color-error-border);
-    --badge-text:   var(--color-error-text);
+    --badge-text: var(--color-error-text);
 }
 
 .page--broken-link .bls-badge--blocked {
-    --badge-bg:     var(--color-error-bg);
+    --badge-bg: var(--color-error-bg);
     --badge-border: var(--color-error-border);
-    --badge-text:   var(--color-error-text);
+    --badge-text: var(--color-error-text);
 }
 
 .page--broken-link .bls-badge--timeout {
-    --badge-bg:     var(--color-surface-muted);
+    --badge-bg: var(--color-surface-muted);
     --badge-border: 1px solid var(--color-border);
-    --badge-text:   var(--color-text-muted);
+    --badge-text: var(--color-text-muted);
 }
 
 /* Dark mode badge overrides removed as they are handled by semantic tokens */
@@ -431,7 +465,6 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-4);
-    border-top: var(--border-width-1) solid var(--color-border-subtle);
     gap: var(--space-4);
 }
 
@@ -500,6 +533,7 @@
     color: var(--color-text-muted);
     cursor: default;
 }
+
 .page--broken-link .bls-page-link--ellipsis:hover {
     background-color: transparent;
     transform: none;
@@ -541,6 +575,7 @@
     background-color: var(--color-surface);
     color: var(--color-text-secondary);
     cursor: pointer;
+    transform: none;
 }
 
 .page--broken-link .bls-btn-group .btn-size:last-child {

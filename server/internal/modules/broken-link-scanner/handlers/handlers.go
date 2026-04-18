@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"tools.bctechvibe.com/server/internal/modules/broken-link-scanner/models"
 	"tools.bctechvibe.com/server/internal/modules/broken-link-scanner/service"
 	"tools.bctechvibe.com/server/internal/platform/cache"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 	"tools.bctechvibe.com/server/internal/response"
 )
 
@@ -54,7 +56,8 @@ func HandleScan(c *gin.Context) {
 		response.Error(c, http.StatusGatewayTimeout, "Pha thực thi vượt quá giới hạn 35 giây do quá nhiều Links hoặc Server tải quá chậm.")
 		return
 	case err := <-errChan:
-		response.Error(c, http.StatusInternalServerError, err.Error())
+		log.Error().Err(err).Str("url", req.URL).Msg("broken-link scan error")
+		response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 		return
 	case scanData := <-dataChan:
 		blsCache.Set(cacheKey, scanData)

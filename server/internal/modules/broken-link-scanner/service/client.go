@@ -7,16 +7,27 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
-// SafeHTTPClient creates an HTTP client with tight timeouts and SSRF protection.
-func SafeHTTPClient(ignoreTLS bool, timeout time.Duration) *http.Client {
+var (
+	defaultClient  *http.Client
+	insecureClient *http.Client
+	once           sync.Once
+)
+
+func initClients() {
+	defaultClient = createClient(false)
+	insecureClient = createClient(true)
+}
+
+func createClient(ignoreTLS bool) *http.Client {
 	dialer := &net.Dialer{
 		Timeout:   5 * time.Second,
-		KeepAlive: 5 * time.Second,
+		KeepAlive: 30 * time.Second, // Tăng keepalive
 	}
 
 	transport := &http.Transport{
@@ -26,15 +37,13 @@ func SafeHTTPClient(ignoreTLS bool, timeout time.Duration) *http.Client {
 				return nil, err
 			}
 
-			// Prevent parsing errors if it's already an IP
 			if ip := net.ParseIP(host); ip != nil {
 				if !validator.IsSafeIP(ip) {
-					return nil, errors.New("SSRF Blocked: Tries to connect to a private IP")
+					return nil, errors.New("SSRF Blocked: private IP")
 				}
 				return dialer.DialContext(ctx, network, addr)
 			}
 
-			// Lookup domains
 			ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
 			if err != nil {
 				return nil, err
@@ -49,42 +58,48 @@ func SafeHTTPClient(ignoreTLS bool, timeout time.Duration) *http.Client {
 			}
 
 			if safeIP == nil {
-				return nil, errors.New("SSRF Blocked: Domain resolves to private networks")
+				return nil, errors.New("SSRF Blocked: private network")
 			}
 
-			// Dial the strict safe IP
-			safeAddr := net.JoinHostPort(safeIP.String(), port)
-			return dialer.DialContext(ctx, network, safeAddr)
+			return dialer.DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
 		},
 		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second, // Tăng thêm chút cho link chậm
+		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   10,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: ignoreTLS,
 		},
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
 	}
 
 	return &http.Client{
 		Transport: transport,
-		Timeout:   timeout,
-		// Do not auto-follow redirects, we will handle it manually for meticulous tracing
+		Timeout:   15 * time.Second, // Timeout tổng quát
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 }
 
-// Redirect Following Logic Client (Only for extracting the Base page)
+// SafeHTTPClient trả về singleton client dựa trên cấu hình TLS
+func SafeHTTPClient(ignoreTLS bool, timeout time.Duration) *http.Client {
+	once.Do(initClients)
+	if ignoreTLS {
+		return insecureClient
+	}
+	return defaultClient
+}
+
+// SafeBasePageClient trả về client riêng để fetch trang gốc (có follow redirect)
 func SafeBasePageClient(ignoreTLS bool) *http.Client {
-	client := SafeHTTPClient(ignoreTLS, 15*time.Second)
-	// Base page needs to automatically parse follow
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	// Trang gốc cần follow redirect tự động
+	baseClient := createClient(ignoreTLS)
+	baseClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 {
-			return fmt.Errorf("stopped after 5 redirects")
+			return fmt.Errorf("quá nhiều chuyển hướng (5+)")
 		}
 		return nil
 	}
-	return client
+	return baseClient
 }

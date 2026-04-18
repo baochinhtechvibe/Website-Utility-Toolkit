@@ -29,6 +29,7 @@ type ScanSummary struct {
 	Redirect       int `json:"redirect"`
 	Broken         int `json:"broken"`
 	Blocked        int `json:"blocked"`
+	Timeout        int `json:"timeout"`
 	SkippedInvalid int `json:"skipped_invalid"` // specific to invalid schemes like mailto:, data:, blob:, javascript:
 }
 

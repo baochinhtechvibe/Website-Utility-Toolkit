@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"tools.bctechvibe.com/server/internal/modules/broken-link-scanner/models"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 )
 
 // ProcessScan kicks off the complete scanning phase
@@ -79,6 +80,8 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 			data.Summary.Broken++
 		case "blocked":
 			data.Summary.Blocked++
+		case "timeout":
+			data.Summary.Timeout++
 		}
 	}
 
@@ -218,12 +221,14 @@ func evaluateFinalStatus(resp *http.Response, client *http.Client, redirectDepth
 		// Go recursive!
 		v := doFetchWithFallback(target, client, redirectDepth+1)
 		
-		// If final is broken, then the WHOLE CHAIN is mapped as broken! 
-		// Except if the final was OK, then mark it as redirect
+		// Logic mới: Nếu trang đích cuối cùng hoạt động tốt (ok), 
+		// ta hiển thị mã HTTP của bước nhảy ĐẦU TIÊN (301, 302...) 
+		// để người dùng biết loại chuyển hướng.
 		if v.StatusClass == "ok" {
-			v.StatusClass = "redirect" 
+			v.StatusClass = "redirect"
+			v.StatusCode = code // Trả về mã 301, 302... thay vì 200
 		}
-		// Notice how `v.StatusCode` isn't overridden if you want to keep final. BUT we need to report final code.
+		// Nếu đích cuối bị hỏng (broken), ta giữ nguyên mã lỗi (404, 500...) của đích cuối
 		return v
 	}
 
@@ -280,11 +285,17 @@ func matchTransportFallbackError(err error) bool {
 }
 
 func parseRequestError(err error, urlStr string, redirects int) CachedVerdict {
+	statusClass := "broken"
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "timeout") || strings.Contains(msg, "deadline exceeded") {
+		statusClass = "timeout"
+	}
+
 	return CachedVerdict{
 		FinalURL:      urlStr,
 		RedirectCount: redirects,
 		StatusCode:    -1, // Represent failure on transport layer
-		StatusClass:   "broken",
-		ErrorDetail:   err.Error(),
+		StatusClass:   statusClass,
+		ErrorDetail:   errutil.TranslateError(err),
 	}
 }
