@@ -73,7 +73,7 @@ func ValidateDNSSEC(serverKey, domain string) models.DNSSECInfo {
 	return models.DNSSECInfo{
 		Enabled: false,
 		Status:  "INSECURE",
-		Message: "Domain does not have DNSSEC enabled",
+		Message: "Tên miền không bật DNSSEC.",
 	}
 }
 
