@@ -17,6 +17,7 @@ import (
 	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/service"
 	response "tools.bctechvibe.com/server/internal/response"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 )
 
 var validMatchTypes = map[string]bool{
@@ -55,10 +56,10 @@ func (h *KeyMatchHandler) HandleKeyMatch(c *gin.Context) {
 			return
 		}
 		log.Error().Err(err).Str("type", req.Type).Msg("Key match failed")
-		response.Error(c, http.StatusInternalServerError, "Lỗi hệ thống trong quá trình đối soát")
+		response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 		return
 	}
 
-	log.Info().Str("type", req.Type).Bool("matched", res.Matched).Msg("Key match completed")
-	c.JSON(http.StatusOK, res)
+	log.Debug().Str("type", req.Type).Bool("matched", res.Matched).Msg("Key match completed")
+	response.SuccessNoMeta(c, res)
 }

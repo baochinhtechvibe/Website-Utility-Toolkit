@@ -66,6 +66,9 @@ const (
 	// Hostname
 	TrustNameMismatch TrustCode = "name_mismatch"
 
+	// Revocation (OCSP)
+	TrustCertRevoked TrustCode = "cert_revoked"
+
 	// Weak security (Warnings)
 	TrustWeakKey       TrustCode = "weak_key"
 	TrustWeakAlgorithm TrustCode = "weak_algorithm"
@@ -133,6 +136,13 @@ type SSLCheckResponse struct {
 	InsecureConnection bool   `json:"insecure_connection,omitempty"` // Track fallback TLS
 
 	CertChain []CertDetail `json:"cert_chain"`
+
+	// Khi TLS handshake thất bại, backend vẫn trả partial data (IP, ServerType)
+	// kèm thông báo lỗi chi tiết để frontend render trong bảng kết quả thay vì hiện lỗi cứng.
+	HandshakeError string `json:"handshake_error,omitempty"`
+
+	// Trạng thái OCSP revocation: "good", "revoked", "unknown"
+	OCSPStatus string `json:"ocsp_status,omitempty"`
 
 	CheckTime time.Time `json:"check_time"`
 }

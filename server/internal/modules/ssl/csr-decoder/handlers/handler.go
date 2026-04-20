@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	response "tools.bctechvibe.com/server/internal/response"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/csr-decoder/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/csr-decoder/service"
@@ -63,7 +64,7 @@ func (h *CSRHandler) HandleCSRDecode(c *gin.Context) {
 			return
 		}
 
-		response.Error(c, http.StatusInternalServerError, "Đã xảy ra lỗi hệ thống khi giải mã CSR.")
+		response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 		return
 	}
 

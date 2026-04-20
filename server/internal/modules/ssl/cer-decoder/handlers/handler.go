@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	response "tools.bctechvibe.com/server/internal/response"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/cer-decoder/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/cer-decoder/service"
@@ -64,7 +65,7 @@ func (h *CERHandler) HandleCerDecode(c *gin.Context) {
 			return
 		}
 
-		response.Error(c, http.StatusInternalServerError, "Đã xảy ra lỗi hệ thống khi giải mã Certificate.")
+		response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 		return
 	}
 

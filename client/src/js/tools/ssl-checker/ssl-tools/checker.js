@@ -71,7 +71,8 @@ function formatDays(n) {
     return `${Math.abs(n)} ngày trước`;
 }
 
-function getBadgeStatus(trust_issues) {
+function getBadgeStatus(trust_issues, handshake_error) {
+    if (handshake_error) return "critical";
     if (!Array.isArray(trust_issues) || trust_issues.length === 0) return "valid";
     if (trust_issues.some(i => i.level === "critical")) return "critical";
     if (trust_issues.some(i => i.level === "warning")) return "warning";
@@ -152,12 +153,18 @@ function getExpiryInfo(valid, days_left) {
 }
 
 function getTrustState(data) {
-    const { hostname_ok, trusted, trust_issues } = data;
-    return { hostname_ok, trusted, hasIssue: Array.isArray(trust_issues) && trust_issues.length > 0 };
+    const { hostname_ok, trusted, trust_issues, handshake_error } = data;
+    return { 
+        hostname_ok, 
+        trusted, 
+        hasIssue: Array.isArray(trust_issues) && trust_issues.length > 0,
+        handshake_error: !!handshake_error
+    };
 }
 
 function detectCase(state) {
-    const { hostname_ok, trusted, hasIssue } = state;
+    const { hostname_ok, trusted, hasIssue, handshake_error } = state;
+    if (handshake_error) return "HANDSHAKE_FAILED";
     if (hostname_ok && trusted && !hasIssue) return "PERFECT";
     if (hostname_ok && trusted && hasIssue) return "MINOR_ISSUE";
     if (hostname_ok && !trusted) return "UNTRUSTED";
@@ -273,30 +280,70 @@ export function init() {
     }
 
     function renderCaseContent(caseType, data) {
-        const { hostname, hostname_ok, valid, days_left, trusted, trust_issues } = data;
+        const { hostname, hostname_ok, valid, days_left, trusted, trust_issues, handshake_error } = data;
         const hostStatus = getHostnameStatus(hostname_ok, hostname);
         const trustStatus = getTrustedStatus(trusted);
         const expr = getExpiryInfo(valid, days_left);
         const issues = renderTrustIssues(trust_issues);
 
         // Tránh lặp lại thông báo hết hạn nếu đã có trong trust_issues
-        const hasExpiryIssue = (trust_issues || []).some(i => 
+        const hasExpiryIssue = (trust_issues || []).some(i =>
             i.code === "cert_expired" || i.code === "expiring_soon"
         );
 
-        const trustRow = `<tr><td class="ssl-checker__icon ssl-checker__icon--trusted-${trustStatus.iconClass}">&nbsp;</td><td><strong class="ssl-checker__message">${trustStatus.message}</strong></td></tr>`;
-        const hostRow = hostStatus.message ? `<tr><td class="ssl-checker__icon ssl-checker__icon--hostname${hostStatus.iconClass}">&nbsp;</td><td><strong class="ssl-checker__message">${hostStatus.message}</strong></td></tr>` : "";
-        const expiryRow = (expr.visible && !hasExpiryIssue) ? renderExpiryRow(expr) : "";
+        const rows = [];
+
+        if (caseType === "HANDSHAKE_FAILED") {
+            if (handshake_error) {
+                rows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--trusted-issue">&nbsp;</td><td><strong class="text-error">${escapeHTML(handshake_error)}</strong></td></tr>`);
+            }
+            return rows.join("");
+        }
+
+        const addTrustRow = () => {
+            if (trustStatus.message) {
+                rows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--trusted-${trustStatus.iconClass}">&nbsp;</td><td><strong class="ssl-checker__message">${trustStatus.message}</strong></td></tr>`);
+            }
+        };
+
+        const addExpiryRow = () => {
+            if (expr.visible && !hasExpiryIssue) {
+                rows.push(renderExpiryRow(expr));
+            }
+        };
+
+        const addHostRow = () => {
+            if (hostStatus.message) {
+                rows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--hostname${hostStatus.iconClass}">&nbsp;</td><td><strong class="ssl-checker__message">${hostStatus.message}</strong></td></tr>`);
+            }
+        };
+
+        const addIssues = () => {
+            if (issues) rows.push(issues);
+        };
 
         switch (caseType) {
-            case "PERFECT": return `${trustRow}${expiryRow}${hostRow}`;
-            case "MINOR_ISSUE": return `${trustRow}${expiryRow}${hostRow}${issues}`;
-            case "UNTRUSTED": return `${expiryRow}${hostRow}${issues}`;
-            case "BROKEN": return `${expiryRow}${issues}`;
+            case "PERFECT": 
+                addTrustRow(); addExpiryRow(); addHostRow(); 
+                break;
+            case "MINOR_ISSUE": 
+                addTrustRow(); addExpiryRow(); addHostRow(); addIssues(); 
+                break;
+            case "UNTRUSTED": 
+                addExpiryRow(); addHostRow(); addIssues(); 
+                break;
+            case "BROKEN": 
+                addExpiryRow(); addIssues(); 
+                break;
             case "WEIRD":
-            case "WEIRD_WITH_ISSUE": return `${trustRow}${expiryRow}${hostRow}${issues}`;
-            default: return `<tr><td>Không xác định trạng thái SSL.</td></tr>`;
+            case "WEIRD_WITH_ISSUE": 
+                addTrustRow(); addExpiryRow(); addHostRow(); addIssues(); 
+                break;
+            default: 
+                rows.push(`<tr><td>Không xác định trạng thái SSL.</td></tr>`);
         }
+
+        return rows.join("");
     }
 
     function getTrustedStatus(trusted) {
@@ -304,10 +351,10 @@ export function init() {
     }
 
     function renderSSLResultUI(data) {
-        const { hostname, ip, server_type, tls_version, cert_chain, cipher_suite, trust_issues } = data;
+        const { hostname, ip, server_type, tls_version, cert_chain, cipher_suite, trust_issues, handshake_error } = data;
         const trstState = getTrustState(data);
         const cType = detectCase(trstState);
-        const badge = getBadgeStatus(trust_issues);
+        const badge = getBadgeStatus(trust_issues, handshake_error);
         const tls = getTSLInfo(tls_version);
         const brnd = getIssuerBrand(cert_chain);
         const logo = getIssuerLogoPath(brnd);
@@ -320,30 +367,68 @@ export function init() {
             return card + arrow;
         }).join("");
 
+        const badgeIcons = {
+            "valid": '<i class="fa-solid fa-circle-check"></i>',
+            "warning": '<i class="fa-solid fa-triangle-exclamation"></i>',
+            "critical": '<i class="fa-solid fa-circle-xmark"></i>'
+        };
+        const badgeIcon = badgeIcons[badge.toLowerCase()] || "";
+
+        const tableRows = [];
+
+        // Resolve IP Row
+        if (hostname !== ip && ip) {
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--resolve">&nbsp;</td><td><span>Tên miền <strong class="text-primary">${escapeHTML(hostname)}</strong> phân giải thành IP <strong class="text-primary">${escapeHTML(ip)}</strong>.</span></td></tr>`);
+        }
+
+        // Server Type Row
+        if (server_type && server_type !== "Unknown") {
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Server Type: <strong class="text-primary">${escapeHTML(server_type)}</strong>.</span></td></tr>`);
+        }
+
+        // Issuer Row
+        if (brnd) {
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--issuer">&nbsp;</td><td class="d-flex items-center"><span>Nhà cung cấp chứng chỉ: <strong class="font-bold">${brnd}</strong></span> ${logo ? `<img src="${logo}" width="48" height="48" class="ml-2">` : ""}</td></tr>`);
+        }
+
+        // TLS Row
+        if (tls.message) {
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--tls ${tls.iconClass}">&nbsp;</td><td><span>TLS: <strong>${tls.message}</strong> (${tls.iconClass.toUpperCase()})</span></td></tr>`);
+        }
+
+        // Cipher Row
+        if (cipher_suite) {
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--tls ok">&nbsp;</td><td><span>Cipher: <strong class="font-mono">${escapeHTML(cipher_suite)}</strong></span></td></tr>`);
+        }
+
+        // Public Key Row
+        if (pk) {
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Public Key: <strong>${pk}</strong></span></td></tr>`);
+        }
+
+        // Case Specific Rows (Trust, Expiry, Hostname, Issues, Handshake Error)
+        tableRows.push(renderCaseContent(cType, data));
+
         resultCheckerContent.innerHTML = `
             <div class="ssl-checker__overview d-flex flex-row gap-2 items-center">
                 <span class="ssl-checker__icon ssl-checker__icon--result"></span>
                 <h3 class="ssl-checker__overview-title">Kết quả tổng quan:</h3>
-                <span class="ssl-checker__badge ssl-checker__badge--${badge.toLowerCase()} rounded-sm">${badge.toUpperCase()}</span>
+                <span class="ssl-checker__badge ssl-checker__badge--${badge.toLowerCase()} rounded-sm">${badgeIcon}${badge.toUpperCase()}</span>
             </div>
             <table class="ssl-checker__table">
                 <tbody>
-                    <tr><td class="ssl-checker__icon ssl-checker__icon--resolve">&nbsp;</td><td><span>Domain <strong class="text-primary">${escapeHTML(hostname)}</strong> resolve thành IP <strong class="text-primary">${escapeHTML(ip)}</strong>.</span></td></tr>
-                    <tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Server Type: <strong class="text-primary">${escapeHTML(server_type)}</strong>.</span></td></tr>
-                    ${brnd ? `<tr><td class="ssl-checker__icon ssl-checker__icon--issuer">&nbsp;</td><td class="d-flex items-center"><span>Issuer: <strong class="font-bold">${brnd}</strong></span> ${logo ? `<img src="${logo}" width="48" height="48" class="ml-2">` : ""}</td></tr>` : ""}
-                    ${tls.message ? `<tr><td class="ssl-checker__icon ssl-checker__icon--tls ${tls.iconClass}">&nbsp;</td><td><span>TLS: <strong>${tls.message}</strong> (${tls.iconClass.toUpperCase()})</span></td></tr>` : ""}
-                    ${cipher_suite ? `<tr><td class="ssl-checker__icon ssl-checker__icon--tls ok">&nbsp;</td><td><span>Cipher: <strong class="font-mono">${escapeHTML(cipher_suite)}</strong></span></td></tr>` : ""}
-                    ${pk ? `<tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Public Key: <strong>${pk}</strong></span></td></tr>` : ""}
-                    ${renderCaseContent(cType, data)}
+                    ${tableRows.join("")}
                 </tbody>
             </table>
-            <div class="cert-chain d-flex flex-col items-center gap-2 mt-4">${chainHTML}</div>
+            ${chainHTML ? `<div class="cert-chain d-flex flex-col items-center gap-2 mt-4">${chainHTML}</div>` : ""}
         `;
     }
 
     function displayResults(data) {
-        if (!data || data.success === false) {
-            renderFatalError(data?.error || "Hệ thống đang bận, vui lòng thử lại sau.");
+        // Chỉ hiện lỗi fatal nếu thực sự không có data hoặc có flag success=false 
+        // VÀ đồng thời không có thông tin IP (nghĩa là fail ngay từ bước resolve)
+        if (!data || (data.success === false && !data.ip && !data.hostname)) {
+            renderFatalError(data?.message || data?.error || "Hệ thống đang bận, vui lòng thử lại sau.");
             return;
         }
 
@@ -352,17 +437,17 @@ export function init() {
         setDisplay(resultCheckerHeader, "flex");
         getWhoisDomain(btnWhoisChecker, data.hostname);
         showElements("block", resultCheckerContent, toolShareLink);
-        
+
         const url = new URL(window.location.href);
         url.searchParams.set("hostname", data.hostname);
         shareLinkChecker.value = url.toString();
-        
+
         if (cacheNotice && data.meta?.fetched_at) {
             const spanEl = cacheNotice.querySelector("span");
             const timeStr = new Date(data.meta.fetched_at).toLocaleString('vi-VN');
-            spanEl.innerHTML = data.meta.cached 
-                ? `<i class="fa-solid fa-clock"></i> Kết quả từ cache lúc <b>${timeStr}</b>.` 
-                : `<i class="fa-solid fa-bolt"></i> Tra cứu mới nhất lúc <b>${timeStr}</b>.`;
+            spanEl.innerHTML = data.meta.cached
+                ? `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`
+                : `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
             setDisplay(cacheNotice, "flex");
         }
 
@@ -388,7 +473,7 @@ export function init() {
             const res = rawData?.data || rawData;
             if (rawData?.meta) res.meta = rawData.meta;
             displayResults(res);
-            
+
             const url = new URL(window.location.href);
             url.searchParams.set("hostname", hostname);
             if (window.location.search !== url.search) {
@@ -407,7 +492,11 @@ export function init() {
     formChecker.addEventListener("submit", (e) => {
         e.preventDefault();
         const hostname = normalizeHostnameInput(inputChecker.value.trim());
-        if (hostname) handleCheckRequest(hostname);
+        if (hostname) {
+            inputChecker.value = hostname;
+            inputChecker.dispatchEvent(new Event('input'));
+            handleCheckRequest(hostname);
+        }
     });
 
     btnBypassCache?.addEventListener("click", () => {

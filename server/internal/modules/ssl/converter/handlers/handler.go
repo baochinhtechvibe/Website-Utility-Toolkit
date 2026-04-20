@@ -12,6 +12,7 @@ import (
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/converter/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/converter/service"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 	response "tools.bctechvibe.com/server/internal/response"
 )
 
@@ -127,11 +128,10 @@ func (h *ConvertHandler) HandleConvert(c *gin.Context) {
 	res, err := h.svc.Convert(ctx, req)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			response.Error(c, http.StatusGatewayTimeout, "Quá thời gian xử lý, vui lòng thử lại.")
+			response.Error(c, http.StatusGatewayTimeout, errutil.TranslateError(err))
 			return
 		}
 
-		// Trả về lỗi thực tế từ Service (đã được sanitize tiếng Việt)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}

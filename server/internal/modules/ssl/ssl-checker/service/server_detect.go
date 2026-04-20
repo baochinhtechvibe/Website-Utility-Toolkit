@@ -242,5 +242,5 @@ func DetectServerType(ctx context.Context, domain string, ip string) string {
 		return name
 	}
 
-	return ""
+	return "Unknown"
 }

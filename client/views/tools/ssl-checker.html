@@ -5,7 +5,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../../src/css/main.css" />
-    <link rel="stylesheet" href="../../src/css/tools/ssl-checker.css" />
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css" />
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
@@ -123,7 +122,8 @@
                                         </div>
                                     </div>
 
-                                    <div id="domainValidationError" class="message-card message-card--error mt-4 d-none">
+                                    <div id="domainValidationError"
+                                        class="message-card message-card--error mt-4 d-none">
                                         <div class="message-card__header">
                                             <h4 class="message-card__title">
                                                 <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
@@ -131,7 +131,7 @@
                                         </div>
                                         <div class="message-card__body">
                                             <p class="message-card__message">Vui lòng nhập đúng định dạng domain (ví dụ:
-                                                <code>google.com</code>).
+                                                <code>google.com</code>)!
                                             </p>
                                         </div>
                                     </div>
@@ -153,9 +153,9 @@
                                     </div>
 
                                     <!-- CACHE BANNER (Premium Refresh) -->
-                                    <div id="cacheNotice"
-                                        class="cache-card mt-2 flex-row justify-between items-center d-none">
-                                        <span><i class="fa-solid fa-clock"></i> <b id="cacheText"></b> <b id="cacheTime"></b></span>
+                                    <div id="cacheNotice" class="cache-card mt-2 d-none">
+                                        <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục
+                                            hồi lúc <b id="cacheTime"></b></span>
                                         <button type="button" id="btnBypassCache"
                                             class="btn btn-sm btn-outline cache-card__btn">
                                             <i class="fa-solid fa-arrows-rotate"></i> Làm mới
@@ -228,15 +228,18 @@
                                             </label>
                                             <input type="text" id="inputCsrDomain" name="domainName" class="form-input"
                                                 placeholder="VD: example.com" required>
-                                            
-                                            <div id="csrDomainValidationError" class="message-card message-card--error mt-2 d-none">
+
+                                            <div id="csrDomainValidationError"
+                                                class="message-card message-card--error mt-2 d-none">
                                                 <div class="message-card__header">
                                                     <h4 class="message-card__title text-base">
-                                                        <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
+                                                        <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không
+                                                        hợp lệ
                                                     </h4>
                                                 </div>
                                                 <div class="message-card__body py-2">
-                                                    <p class="message-card__message text-sm">Vui lòng nhập đúng định dạng domain (ví dụ: <code>example.com</code>).</p>
+                                                    <p class="message-card__message text-sm">Vui lòng nhập đúng định
+                                                        dạng domain (ví dụ: <code>example.com</code>).</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -251,15 +254,18 @@
                                             <p class="text-sm text-muted mt-1">
                                                 Phân cách bằng dấu phẩy. Common Name sẽ tự động được thêm vào.
                                             </p>
-                                            
-                                            <div id="sansValidationError" class="message-card message-card--error mt-2 d-none">
+
+                                            <div id="sansValidationError"
+                                                class="message-card message-card--error mt-2 d-none">
                                                 <div class="message-card__header">
                                                     <h4 class="message-card__title text-base">
-                                                        <i class="fa-solid fa-triangle-exclamation"></i> SANs không hợp lệ
+                                                        <i class="fa-solid fa-triangle-exclamation"></i> SANs không hợp
+                                                        lệ
                                                     </h4>
                                                 </div>
                                                 <div class="message-card__body py-2">
-                                                    <p id="sansValidationMessage" class="message-card__message text-sm"></p>
+                                                    <p id="sansValidationMessage" class="message-card__message text-sm">
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -272,15 +278,18 @@
                                             </label>
                                             <input type="text" id="inputCsrCountry" name="country" class="form-input"
                                                 placeholder="VN" maxlength="2">
-                                            
-                                            <div id="countryValidationError" class="message-card message-card--error mt-2 d-none">
+
+                                            <div id="countryValidationError"
+                                                class="message-card message-card--error mt-2 d-none">
                                                 <div class="message-card__header">
                                                     <h4 class="message-card__title text-base">
-                                                        <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ
+                                                        <i class="fa-solid fa-triangle-exclamation"></i> Định dạng không
+                                                        hợp lệ
                                                     </h4>
                                                 </div>
                                                 <div class="message-card__body py-2">
-                                                    <p class="message-card__message text-sm">Vui lòng nhập đúng 2 ký tự chữ cái mã quốc gia (ví dụ: VN, US).</p>
+                                                    <p class="message-card__message text-sm">Vui lòng nhập đúng 2 ký tự
+                                                        chữ cái mã quốc gia (ví dụ: VN, US).</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -335,26 +344,30 @@
                                             <label class="form-label">Kích thước khóa (Key Size)</label>
                                             <div class="form-radio-group mt-2" id="keySizeRsa">
                                                 <label class="form-radio-label">
-                                                    <input type="radio" name="keySizeRsa" value="2048" class="form-radio"
-                                                        checked>
+                                                    <input type="radio" name="keySizeRsa" value="2048"
+                                                        class="form-radio" checked>
                                                     2048-bit
                                                 </label>
                                                 <label class="form-radio-label">
-                                                    <input type="radio" name="keySizeRsa" value="4096" class="form-radio">
+                                                    <input type="radio" name="keySizeRsa" value="4096"
+                                                        class="form-radio">
                                                     4096-bit
                                                 </label>
                                             </div>
                                             <div class="form-radio-group mt-2 d-none" id="keySizeEcdsa">
                                                 <label class="form-radio-label">
-                                                    <input type="radio" name="keySizeEcdsa" value="256" class="form-radio" checked>
+                                                    <input type="radio" name="keySizeEcdsa" value="256"
+                                                        class="form-radio" checked>
                                                     P-256
                                                 </label>
                                                 <label class="form-radio-label">
-                                                    <input type="radio" name="keySizeEcdsa" value="384" class="form-radio">
+                                                    <input type="radio" name="keySizeEcdsa" value="384"
+                                                        class="form-radio">
                                                     P-384
                                                 </label>
                                                 <label class="form-radio-label">
-                                                    <input type="radio" name="keySizeEcdsa" value="521" class="form-radio">
+                                                    <input type="radio" name="keySizeEcdsa" value="521"
+                                                        class="form-radio">
                                                     P-521
                                                 </label>
                                             </div>
@@ -385,9 +398,9 @@
                                         </h3>
                                     </div>
 
-                                     <div class="result-card__body p-0">
-                                         <div id="resultCsrGeneratorContent"></div>
-                                     </div>
+                                    <div class="result-card__body p-0">
+                                        <div id="resultCsrGeneratorContent"></div>
+                                    </div>
                                 </div>
 
                                 <!-- Error Card -->
@@ -452,7 +465,8 @@
                                 <form id="formCsrDecoder">
                                     <div class="form-radio-group justify-center mb-4">
                                         <label class="form-radio-label">
-                                            <input type="radio" name="csrInputMode" value="paste" class="form-radio" checked>
+                                            <input type="radio" name="csrInputMode" value="paste" class="form-radio"
+                                                checked>
                                             <span>📝 Dán văn bản</span>
                                         </label>
                                         <label class="form-radio-label">
@@ -461,16 +475,20 @@
                                         </label>
                                     </div>
                                     <div class="form-field" id="csrPasteZone">
-                                        <label class="form-label d-none" for="inputCsr">Dán Certificate Signing Request (CSR):</label>
+                                        <label class="form-label d-none" for="inputCsr">Dán Certificate Signing Request
+                                            (CSR):</label>
                                         <textarea id="inputCsr" name="csr" class="form-text-area" required
                                             placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;MII..."></textarea>
                                     </div>
                                     <div class="form-field d-none" id="csrUploadZone">
                                         <div class="ssl-file-upload js-ssl-upload" id="uploadCsrDropzone">
-                                            <input type="file" id="inputCsrFile" class="ssl-file-upload__input" accept=".csr,.txt,.pem">
+                                            <input type="file" id="inputCsrFile" class="ssl-file-upload__input"
+                                                accept=".csr,.txt,.pem">
                                             <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
-                                            <span class="ssl-file-upload__text js-upload-text">Kéo thả tệp CSR vào đây hoặc click để chọn</span>
-                                            <span class="ssl-file-upload__hint">Hỗ trợ: .csr, .txt, .pem (Dung lượng tối đa: Thấp hơn 2MB)</span>
+                                            <span class="ssl-file-upload__text js-upload-text">Kéo thả tệp CSR vào đây
+                                                hoặc click để chọn</span>
+                                            <span class="ssl-file-upload__hint">Hỗ trợ: .csr, .txt, .pem (Dung lượng tối
+                                                đa: Thấp hơn 2MB)</span>
                                         </div>
                                     </div>
                                     <div class="form-field form-field--button mt-4">
@@ -564,7 +582,8 @@
                                 <form id="formCertDecoder">
                                     <div class="form-radio-group justify-center mb-4">
                                         <label class="form-radio-label">
-                                            <input type="radio" name="certInputMode" value="paste" class="form-radio" checked>
+                                            <input type="radio" name="certInputMode" value="paste" class="form-radio"
+                                                checked>
                                             <span>📝 Dán văn bản</span>
                                         </label>
                                         <label class="form-radio-label">
@@ -573,16 +592,20 @@
                                         </label>
                                     </div>
                                     <div class="form-field" id="certPasteZone">
-                                        <label class="form-label d-none" for="inputCert">Dán Certificate (CRT/PEM):</label>
+                                        <label class="form-label d-none" for="inputCert">Dán Certificate
+                                            (CRT/PEM):</label>
                                         <textarea id="inputCert" name="cert" class="form-text-area" required
                                             placeholder="-----BEGIN CERTIFICATE-----&#10;MII..."></textarea>
                                     </div>
                                     <div class="form-field d-none" id="certUploadZone">
                                         <div class="ssl-file-upload js-ssl-upload" id="uploadCertDropzone">
-                                            <input type="file" id="inputCertFile" class="ssl-file-upload__input" accept=".crt,.cer,.pem,.txt">
+                                            <input type="file" id="inputCertFile" class="ssl-file-upload__input"
+                                                accept=".crt,.cer,.pem,.txt">
                                             <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
-                                            <span class="ssl-file-upload__text js-upload-text">Kéo thả tệp Certificate vào đây hoặc click để chọn</span>
-                                            <span class="ssl-file-upload__hint">Hỗ trợ: .crt, .cer, .pem, .txt (Dung lượng tối đa: Thấp hơn 2MB)</span>
+                                            <span class="ssl-file-upload__text js-upload-text">Kéo thả tệp Certificate
+                                                vào đây hoặc click để chọn</span>
+                                            <span class="ssl-file-upload__hint">Hỗ trợ: .crt, .cer, .pem, .txt (Dung
+                                                lượng tối đa: Thấp hơn 2MB)</span>
                                         </div>
                                     </div>
                                     <div class="form-field form-field--button mt-4">
@@ -700,10 +723,12 @@
                                                 </label>
                                                 <div class="form-radio-group matcher-box-modes">
                                                     <label class="form-radio-label text-sm">
-                                                        <input type="radio" name="matcher1Mode" value="paste" class="form-radio" checked> Dán
+                                                        <input type="radio" name="matcher1Mode" value="paste"
+                                                            class="form-radio" checked> Dán
                                                     </label>
                                                     <label class="form-radio-label text-sm">
-                                                        <input type="radio" name="matcher1Mode" value="upload" class="form-radio"> Tệp
+                                                        <input type="radio" name="matcher1Mode" value="upload"
+                                                            class="form-radio"> Tệp
                                                     </label>
                                                 </div>
                                             </div>
@@ -712,10 +737,14 @@
                                                     required></textarea>
                                             </div>
                                             <div id="matcher1UploadZone" class="d-none">
-                                                <div class="ssl-file-upload ssl-file-upload--matcher js-ssl-upload" id="uploadMatcher1Dropzone">
-                                                    <input type="file" id="inputMatcher1File" class="ssl-file-upload__input" accept=".key,.pem,.txt,.csr,.crt,.cer">
+                                                <div class="ssl-file-upload ssl-file-upload--matcher js-ssl-upload"
+                                                    id="uploadMatcher1Dropzone">
+                                                    <input type="file" id="inputMatcher1File"
+                                                        class="ssl-file-upload__input"
+                                                        accept=".key,.pem,.txt,.csr,.crt,.cer">
                                                     <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
-                                                    <span class="ssl-file-upload__text js-upload-text text-sm">Kéo thả tệp hoặc click chọn</span>
+                                                    <span class="ssl-file-upload__text js-upload-text text-sm">Kéo thả
+                                                        tệp hoặc click chọn</span>
                                                 </div>
                                             </div>
                                             <div id="matcher1ValidationError"
@@ -741,10 +770,12 @@
                                                 </label>
                                                 <div class="form-radio-group matcher-box-modes">
                                                     <label class="form-radio-label text-sm">
-                                                        <input type="radio" name="matcher2Mode" value="paste" class="form-radio" checked> Dán
+                                                        <input type="radio" name="matcher2Mode" value="paste"
+                                                            class="form-radio" checked> Dán
                                                     </label>
                                                     <label class="form-radio-label text-sm">
-                                                        <input type="radio" name="matcher2Mode" value="upload" class="form-radio"> Tệp
+                                                        <input type="radio" name="matcher2Mode" value="upload"
+                                                            class="form-radio"> Tệp
                                                     </label>
                                                 </div>
                                             </div>
@@ -753,10 +784,14 @@
                                                     required></textarea>
                                             </div>
                                             <div id="matcher2UploadZone" class="d-none">
-                                                <div class="ssl-file-upload ssl-file-upload--matcher js-ssl-upload" id="uploadMatcher2Dropzone">
-                                                    <input type="file" id="inputMatcher2File" class="ssl-file-upload__input" accept=".crt,.cer,.pem,.txt,.csr">
+                                                <div class="ssl-file-upload ssl-file-upload--matcher js-ssl-upload"
+                                                    id="uploadMatcher2Dropzone">
+                                                    <input type="file" id="inputMatcher2File"
+                                                        class="ssl-file-upload__input"
+                                                        accept=".crt,.cer,.pem,.txt,.csr">
                                                     <i class="fa-solid fa-cloud-arrow-up ssl-file-upload__icon"></i>
-                                                    <span class="ssl-file-upload__text js-upload-text text-sm">Kéo thả tệp hoặc click chọn</span>
+                                                    <span class="ssl-file-upload__text js-upload-text text-sm">Kéo thả
+                                                        tệp hoặc click chọn</span>
                                                 </div>
                                             </div>
                                             <div id="matcher2ValidationError"
@@ -849,18 +884,21 @@
                                             <label class="form-label" for="inputFilePrivateKey">Tệp Private Key (Private
                                                 Key File)</label>
                                             <input type="file" id="inputFilePrivateKey" name="privateKey"
-                                                class="form-input">                                            
+                                                class="form-input">
                                             <div class="message-card message-card--warning mt-2">
-                                            <div class="message-card__header">
-                                                <h4 class="message-card__title">
-                                                    <i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
-                                                    mật
-                                                </h4>
+                                                <div class="message-card__header">
+                                                    <h4 class="message-card__title">
+                                                        <i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
+                                                        mật
+                                                    </h4>
+                                                </div>
+                                                <div class="message-card__body">
+                                                    <p class="message-card__message">Private Key là dữ liệu nhạy cảm bậc
+                                                        nhất. Không chia sẻ hoặc upload lên bất kỳ dịch vụ nào không
+                                                        đáng tin cậy. File chỉ được xử lý trên server của bạn và không
+                                                        được lưu trữ.</p>
+                                                </div>
                                             </div>
-                                            <div class="message-card__body">
-                                                <p class="message-card__message">Private Key là dữ liệu nhạy cảm bậc nhất. Không chia sẻ hoặc upload lên bất kỳ dịch vụ nào không đáng tin cậy. File chỉ được xử lý trên server của bạn và không được lưu trữ.</p>
-                                            </div>
-                                        </div>
                                         </div>
 
                                         <!-- Chain Certificate File 1 (Hidden by default) -->
@@ -911,7 +949,8 @@
                                         </div>
 
                                         <!-- Cảnh báo bảo mật PFX (Giống mockup) -->
-                                        <div id="groupPfxWarning" class="message-card message-card--warning mt-4 d-none">
+                                        <div id="groupPfxWarning"
+                                            class="message-card message-card--warning mt-4 d-none">
                                             <div class="message-card__header">
                                                 <h4 class="message-card__title">
                                                     <i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo bảo
@@ -935,7 +974,8 @@
                                         <div class="form-field w-full mt-4">
                                             <button id="btnConvertCertificate" type="submit"
                                                 class="btn btn-action btn-block w-full justify-center">
-                                                <i class="fa-solid fa-arrow-right-arrow-left mr-2" id="btnConvertCertificateIcon"></i>
+                                                <i class="fa-solid fa-arrow-right-arrow-left mr-2"
+                                                    id="btnConvertCertificateIcon"></i>
                                                 Convert Certificate
                                                 <i class="fa-solid fa-spinner fa-spin d-none"
                                                     id="btnConvertCertificateLoading"></i>
@@ -955,231 +995,237 @@
                                         </div>
                                     </div>
 
-                                    <div id="toolSuccessConverter" class="message-card message-card--success mt-4 d-none">
-                                         <div class="message-card__header">
-                                             <h4 class="message-card__title">
-                                                 <i class="fa-solid fa-circle-check"></i> Chuyển đổi thành công
-                                             </h4>
-                                         </div>
-                                         <div class="message-card__body">
-                                             <p class="message-card__message">Tệp chứng chỉ của bạn đã được chuyển đổi thành công!</p>
-                                             <div id="converterDownloadArea" class="mt-4 d-none">
-                                                 <div class="d-flex items-center mb-4 gap-2">
-                                                     <i class="fa-solid fa-file-export text-success"></i>
-                                                     <span id="converterFilenameDisplay" class="font-mono text-xs opacity-75">filename.der</span>
-                                                 </div>
-                                                 <button type="button" id="btnManualDownload" class="btn btn-action btn-sm">
-                                                     <i class="fa-solid fa-download mr-1"></i> Lưu tệp
-                                                 </button>
-                                             </div>
-                                         </div>
-                                     </div>
-                        <br>
-                        <div class="ssl-converter__commands">
-                            <h3 class="ssl-converter__title font-bold">Lệnh OpenSSL để chuyển đổi SSL trên máy của bạn
-                            </h3>
-                            <p>
-                                Khuyến nghị bạn thực hiện chuyển đổi (đặc biệt với file <code
-                                    class="font-semibold">.pfx</code>) trực tiếp trên máy cá nhân
-                                bằng OpenSSL để đảm bảo private key luôn được giữ an toàn. Dưới đây là các lệnh OpenSSL
-                                giúp bạn chuyển đổi chứng chỉ SSL sang các định dạng khác nhau.
-                            </p>
+                                    <div id="toolSuccessConverter"
+                                        class="message-card message-card--success mt-4 d-none">
+                                        <div class="message-card__header">
+                                            <h4 class="message-card__title">
+                                                <i class="fa-solid fa-circle-check"></i> Chuyển đổi thành công
+                                            </h4>
+                                        </div>
+                                        <div class="message-card__body">
+                                            <p class="message-card__message">Tệp chứng chỉ của bạn đã được chuyển đổi
+                                                thành công!</p>
+                                            <div id="converterDownloadArea" class="mt-4 d-none">
+                                                <div class="d-flex items-center mb-4 gap-2">
+                                                    <i class="fa-solid fa-file-export text-success"></i>
+                                                    <span id="converterFilenameDisplay"
+                                                        class="font-mono text-xs opacity-75">filename.der</span>
+                                                </div>
+                                                <button type="button" id="btnManualDownload"
+                                                    class="btn btn-action btn-sm">
+                                                    <i class="fa-solid fa-download mr-1"></i> Lưu tệp
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <br>
+                                    <div class="ssl-converter__commands">
+                                        <h3 class="ssl-converter__title font-bold">Lệnh OpenSSL để chuyển đổi SSL trên
+                                            máy của bạn
+                                        </h3>
+                                        <p>
+                                            Khuyến nghị bạn thực hiện chuyển đổi (đặc biệt với file <code
+                                                class="font-semibold">.pfx</code>) trực tiếp trên máy cá nhân
+                                            bằng OpenSSL để đảm bảo private key luôn được giữ an toàn. Dưới đây là các
+                                            lệnh OpenSSL
+                                            giúp bạn chuyển đổi chứng chỉ SSL sang các định dạng khác nhau.
+                                        </p>
 
-                            <div class="command-group mt-6">
-                                <div class="command-group__header">
-                                    <h4 class="font-bold mb-2">
-                                        Chuyển đổi PEM bằng OpenSSL:
-                                    </h4>
-                                </div>
-                                <div class="command-group__body">
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi PEM sang DER:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codePemToDer">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
+                                        <div class="command-group mt-6">
+                                            <div class="command-group__header">
+                                                <h4 class="font-bold mb-2">
+                                                    Chuyển đổi PEM bằng OpenSSL:
+                                                </h4>
                                             </div>
-                                            <div class="code-block__body">
-                                                <code id="codePemToDer"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-outform</span> <span class="code-value">der</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.pem</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.der</span></code>
+                                            <div class="command-group__body">
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi PEM sang DER:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codePemToDer">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codePemToDer"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-outform</span> <span class="code-value">der</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.pem</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.der</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi PEM sang P7B:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codePemToP7b">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codePemToP7b"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">crl2pkcs7</span> <span class="code-parameter">-nocrl</span> <span class="code-parameter">-certfile</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.cer</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi PEM sang PFX:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codePemToPfx">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codePemToPfx"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-export</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-inkey</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.crt</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.crt</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi PEM sang P7B:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codePemToP7b">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
-                                            </div>
-                                            <div class="code-block__body">
-                                                <code id="codePemToP7b"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">crl2pkcs7</span> <span class="code-parameter">-nocrl</span> <span class="code-parameter">-certfile</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.cer</span></code>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi PEM sang PFX:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codePemToPfx">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
-                                            </div>
-                                            <div class="code-block__body">
-                                                <code id="codePemToPfx"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-export</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-inkey</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.crt</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.crt</span></code>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div class="command-group mt-6">
-                                <div class="command-group__header">
-                                    <h4 class="font-bold mb-2">
-                                        Chuyển đổi DER bằng OpenSSL:
-                                    </h4>
-                                </div>
-                                <div class="command-group__body">
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi DER sang PEM:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codeDerToPem">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
+                                        <div class="command-group mt-6">
+                                            <div class="command-group__header">
+                                                <h4 class="font-bold mb-2">
+                                                    Chuyển đổi DER bằng OpenSSL:
+                                                </h4>
                                             </div>
-                                            <div class="code-block__body">
-                                                <code id="codeDerToPem"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-inform</span> <span class="code-value">der</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pem</span></code>
+                                            <div class="command-group__body">
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi DER sang PEM:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codeDerToPem">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codeDerToPem"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">x509</span> <span class="code-parameter">-inform</span> <span class="code-value">der</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pem</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div class="command-group mt-6">
-                                <div class="command-group__header">
-                                    <h4 class="font-bold mb-2">
-                                        Chuyển đổi P7B bằng OpenSSL:
-                                    </h4>
-                                </div>
-                                <div class="command-group__body">
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi P7B sang PEM:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codeP7bToPem">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
+                                        <div class="command-group mt-6">
+                                            <div class="command-group__header">
+                                                <h4 class="font-bold mb-2">
+                                                    Chuyển đổi P7B bằng OpenSSL:
+                                                </h4>
                                             </div>
-                                            <div class="code-block__body">
-                                                <code id="codeP7bToPem"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs7</span> <span class="code-parameter">-print_certs</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span></code>
+                                            <div class="command-group__body">
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi P7B sang PEM:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codeP7bToPem">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codeP7bToPem"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs7</span> <span class="code-parameter">-print_certs</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi P7B sang PFX:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codeP7bToPfx1">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codeP7bToPfx1"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs7</span> <span class="code-parameter">-print_certs</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span></code>
+                                                        </div>
+                                                    </div>
+                                                    <div class="code-block mt-2">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codeP7bToPfx2">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codeP7bToPfx2"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-export</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-inkey</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.cer</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi P7B sang PFX:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codeP7bToPfx1">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
-                                            </div>
-                                            <div class="code-block__body">
-                                                <code id="codeP7bToPfx1"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs7</span> <span class="code-parameter">-print_certs</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.p7b</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span></code>
-                                            </div>
-                                        </div>
-                                        <div class="code-block mt-2">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codeP7bToPfx2">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
-                                            </div>
-                                            <div class="code-block__body">
-                                                <code id="codeP7bToPfx2"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-export</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-inkey</span> <span class="code-value">privateKey.key</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-certfile</span> <span class="code-value">CACert.cer</span></code>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div class="command-group mt-6">
-                                <div class="command-group__header">
-                                    <h4 class="font-bold mb-2">
-                                        Chuyển đổi PFX bằng OpenSSL:
-                                    </h4>
-                                </div>
-                                <div class="command-group__body">
-                                    <div class="command-group__item mb-4">
-                                        <strong class="font-bold mb-2">
-                                            Chuyển đổi PFX sang PEM:
-                                        </strong>
-                                        <div class="code-block">
-                                            <div class="code-block__header">
-                                                <span class="code-block__lang">
-                                                    <i class="fa-solid fa-code"></i> Bash
-                                                </span>
-                                                <button class="code-block__btn-copy js-copy-code"
-                                                    data-clipboard-target="#codePfxToPem">
-                                                    <i class="fa-regular fa-clone"></i>
-                                                </button>
+                                        <div class="command-group mt-6">
+                                            <div class="command-group__header">
+                                                <h4 class="font-bold mb-2">
+                                                    Chuyển đổi PFX bằng OpenSSL:
+                                                </h4>
                                             </div>
-                                            <div class="code-block__body">
-                                                <code id="codePfxToPem"
-                                                    class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-nodes</span></code>
+                                            <div class="command-group__body">
+                                                <div class="command-group__item mb-4">
+                                                    <strong class="font-bold mb-2">
+                                                        Chuyển đổi PFX sang PEM:
+                                                    </strong>
+                                                    <div class="code-block">
+                                                        <div class="code-block__header">
+                                                            <span class="code-block__lang">
+                                                                <i class="fa-solid fa-code"></i> Bash
+                                                            </span>
+                                                            <button class="code-block__btn-copy js-copy-code"
+                                                                data-clipboard-target="#codePfxToPem">
+                                                                <i class="fa-regular fa-clone"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="code-block__body">
+                                                            <code id="codePfxToPem"
+                                                                class="code-block__text"><span class="code-program">openssl</span> <span class="code-text">pkcs12</span> <span class="code-parameter">-in</span> <span class="code-value">certificate.pfx</span> <span class="code-parameter">-out</span> <span class="code-value">certificate.cer</span> <span class="code-parameter">-nodes</span></code>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
                     </section>
                 </div>
             </div>

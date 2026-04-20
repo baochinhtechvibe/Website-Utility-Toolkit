@@ -30,10 +30,16 @@ import (
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/service"
 	"tools.bctechvibe.com/server/internal/platform/cache"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
-var sslCache = cache.NewMemoryCache(30 * time.Minute)
+type cachedSSL struct {
+	Data      *models.SSLCheckResponse `json:"data"`
+	FetchedAt time.Time                `json:"fetched_at"`
+}
+
+var sslCache = cache.New[string, cachedSSL](5000, 30*time.Minute)
 
 // ===========================
 // Domain normalization
@@ -86,11 +92,17 @@ func HandleSSLCheck(c *gin.Context) {
 		return
 	}
 
+	// 3.5. Chặn các IP Private/Local để đảm bảo an toàn hệ thống (SSRF protection)
+	if !validator.IsSafeHostname(domain) {
+		response.Error(c, http.StatusBadRequest, "Địa chỉ IP hoặc Tên miền thuộc mạng nội bộ, không được phép tra cứu!")
+		return
+	}
+
 	// 4. Cache interception
 	cacheKey := "ssl:" + domain
 	if !req.BypassCache {
-		if data, fetchedAt, found := sslCache.Get(cacheKey); found {
-			response.Success(c, data, true, fetchedAt)
+		if item, found := sslCache.Get(cacheKey); found {
+			response.Success(c, item.Data, true, item.FetchedAt)
 			return
 		}
 	} else {
@@ -112,10 +124,18 @@ func HandleSSLCheck(c *gin.Context) {
 	}
 
 	// 7. Update cache & Log success
-	sslCache.Set(cacheKey, result)
-	log.Info().Str("domain", domain).Dur("duration", duration).Msg("SSL check success")
+	sslCache.Set(cacheKey, cachedSSL{
+		Data:      result,
+		FetchedAt: time.Now(),
+	}, 0)
 
-	// 8. Response thành công
+	if result.HandshakeError != "" {
+		log.Warn().Str("domain", domain).Str("error", result.HandshakeError).Msg("SSL handshake failed (Partial Result)")
+	} else {
+		log.Info().Str("domain", domain).Dur("duration", duration).Msg("SSL check success")
+	}
+
+	// 8. Response thành công (ngay cả khi handshake_error có dữ liệu, vì ta vẫn có IP/ServerType)
 	response.Success(c, result, false, time.Now())
 }
 
@@ -127,11 +147,9 @@ func handleScanError(c *gin.Context, err error, domain string) {
 
 	// Timeout
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		response.Error(c, http.StatusGatewayTimeout,
-			fmt.Sprintf("Quá thời gian chờ phản hồi từ %s. Vui lòng thử lại.", domain))
+		response.Error(c, http.StatusGatewayTimeout, errutil.TranslateError(err))
 		return
 	}
-
 
 	// DNS resolution failed
 	if errors.Is(err, service.ErrDNSFailed) || errors.Is(err, service.ErrNoIP) {
@@ -143,8 +161,9 @@ func handleScanError(c *gin.Context, err error, domain string) {
 	// TLS handshake failed
 	if errors.Is(err, service.ErrTLSFailed) {
 		log.Error().Err(err).Str("domain", domain).Msg("TLS handshake failed")
-		response.Error(c, http.StatusBadGateway,
-			fmt.Sprintf("Không thể thiết lập kết nối SSL bảo mật tới %s. Có thể server chưa cấu hình đúng TLS hoặc chứng chỉ không hợp lệ.", domain))
+		
+		msg := fmt.Sprintf("Không tìm thấy chứng chỉ SSL hoặc không thể thiết lập kết nối an toàn tới %s. Vui lòng đảm bảo tên miền đã trỏ đúng IP máy chủ và cổng SSL (mặc định là 443) đang mở.", domain)
+		response.Error(c, http.StatusBadGateway, msg)
 		return
 	}
 
@@ -157,6 +176,5 @@ func handleScanError(c *gin.Context, err error, domain string) {
 
 	// Fallback generic
 	log.Error().Err(err).Str("domain", domain).Msg("SSL check unexpected error")
-	response.Error(c, http.StatusInternalServerError,
-		"Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.")
+	response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 }

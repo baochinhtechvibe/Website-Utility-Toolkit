@@ -43,6 +43,10 @@ var (
 // ===========================
 
 func resolveIP(ctx context.Context, domain string) (string, error) {
+	// Nếu domain đã là một IP hợp lệ, trả về luôn để đỡ tốn thời gian DNS
+	if net.ParseIP(domain) != nil {
+		return domain, nil
+	}
 
 	type result struct {
 		ips []net.IP
@@ -551,38 +555,36 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 	conn, tcpSuccess, err = dialTLS(ctx, dialer, addrIP, baseConf)
 
 	var insecureConn bool
-	if err != nil {
-		// Chỉ retry Insecure nếu TCP đã thành công (lỗi ở tầng Handshake).
-		// Nếu TCP fail (timeout/connection refused), retry cũng sẽ fail tương tự.
-		if tcpSuccess {
-			insecure := baseConf.Clone()
-			insecure.InsecureSkipVerify = true //nolint:gosec
+	var handshakeErr string
 
-			conn, _, err = dialTLS(ctx, dialer, addrIP, insecure)
-			if err != nil {
-				return nil, fmt.Errorf("%w: %v", ErrTLSFailed, err)
-			}
+	if err != nil {
+		// Nếu TCP fail (timeout/connection refused), return lỗi ngay
+		if !tcpSuccess {
+			return nil, fmt.Errorf("%w: %v", ErrTLSFailed, err)
+		}
+
+		// TCP thành công nhưng Handshake fail -> Thử Insecure fallback
+		insecure := baseConf.Clone()
+		insecure.InsecureSkipVerify = true //nolint:gosec
+
+		conn2, _, err2 := dialTLS(ctx, dialer, addrIP, insecure)
+		if err2 == nil {
+			conn = conn2
 			insecureConn = true
 			log.Warn().Str("domain", domain).Str("ip", ip).Msg("SSL: fell back to InsecureSkipVerify")
 		} else {
-			return nil, fmt.Errorf("%w: %v", ErrTLSFailed, err)
+			// Cả 2 đều fail -> Đánh dấu lỗi handshake nhưng vẫn tiếp tục để lấy Server Type
+			handshakeErr = fmt.Sprintf("Không tìm thấy chứng chỉ SSL hoặc không thể thiết lập kết nối an toàn tới %s. Vui lòng đảm bảo tên miền đã trỏ đúng IP máy chủ và cổng SSL (mặc định là 443) đang mở.", domain)
 		}
 	}
 
-	defer conn.Close()
-
-	state := conn.ConnectionState()
-	certs := state.PeerCertificates
-
-	if len(certs) == 0 {
-		return nil, ErrNoCertificates
-	}
-
-	// 3. PARALLEL: Detect server type đồng thời với các bước phân tích dưới
+	// 3. PARALLEL: Detect server type + OCSP revocation check
 	var (
 		serverType string
+		ocspStatus string
 		wg         sync.WaitGroup
 	)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -590,6 +592,77 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		defer srvCancel()
 		serverType = DetectServerType(srvCtx, domain, ip)
 	}()
+
+	now := time.Now()
+
+	// Trường hợp lỗi handshake hoàn toàn
+	if handshakeErr != "" {
+		wg.Wait()
+		return &models.SSLCheckResponse{
+			Hostname:       domain,
+			IP:             ip,
+			ServerType:     serverType,
+			HandshakeError: handshakeErr,
+			CheckTime:      now,
+		}, nil
+	}
+
+	defer conn.Close()
+	state := conn.ConnectionState()
+	certs := state.PeerCertificates
+
+	log.Debug().Str("domain", domain).Int("peerCerts", len(certs)).Int("verifiedChains", len(state.VerifiedChains)).Msg("SSL Scan: connection state")
+
+	if len(certs) == 0 {
+		wg.Wait()
+		return &models.SSLCheckResponse{
+			Hostname:       domain,
+			IP:             ip,
+			ServerType:     serverType,
+			HandshakeError: fmt.Sprintf("Máy chủ %s không trả về bất kỳ chứng chỉ SSL nào.", domain),
+			CheckTime:      now,
+		}, nil
+	}
+
+	// Revocation check (OCSP + CRL) chạy song song
+	var leaf, issuer *x509.Certificate
+	if len(certs) >= 2 {
+		leaf, issuer = certs[0], certs[1]
+	} else if len(state.VerifiedChains) > 0 && len(state.VerifiedChains[0]) >= 2 {
+		leaf, issuer = state.VerifiedChains[0][0], state.VerifiedChains[0][1]
+	}
+
+	if leaf != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			
+			// 1. Thử OCSP (Ưu tiên vì nhanh hơn)
+			if issuer != nil && (len(leaf.OCSPServer) > 0 || len(state.OCSPResponse) > 0) {
+				st, err := CheckOCSP(ctx, leaf, issuer, state.OCSPResponse)
+				if err == nil && st == OCSPStatusRevoked {
+					ocspStatus = OCSPStatusRevoked
+					return
+				}
+			}
+
+			// 2. Fallback sang CRL nếu OCSP không có hoặc không báo revoked
+			if len(leaf.CRLDistributionPoints) > 0 {
+				revoked, err := CheckCRL(ctx, leaf)
+				if err == nil && revoked {
+					ocspStatus = OCSPStatusRevoked
+					return
+				}
+				if err != nil {
+					log.Debug().Err(err).Str("domain", domain).Msg("CRL check failed")
+				}
+			}
+
+			ocspStatus = OCSPStatusGood
+		}()
+	} else {
+		ocspStatus = OCSPStatusUnknown
+	}
 
 	// 4. TLS version & Cipher Suite (ngay sau khi có connection state)
 	tlsVersion := detectTLSVersion(state)
@@ -606,13 +679,25 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 
 	// 8. Validity & days left
 	mainCert := certs[0]
-	now := time.Now()
 	daysLeft := int64(time.Until(mainCert.NotAfter).Hours() / 24)
 	isExpired := now.After(mainCert.NotAfter)
 	valid := !isExpired && now.After(mainCert.NotBefore)
 
-	// 9. Chờ server type detection hoàn thành
+	// 9. Chờ cả 2 goroutine (serverType + OCSP) hoàn thành
 	wg.Wait()
+
+	log.Debug().Str("domain", domain).Str("ocspStatus", ocspStatus).Msg("SSL Scan: results merged")
+
+	// 10. Nếu OCSP revoked, inject TrustIssue critical
+	if ocspStatus == OCSPStatusRevoked {
+		trust.Issues = append([]models.TrustIssue{{
+			Code:    models.TrustCertRevoked,
+			Level:   models.TrustLevelCritical,
+			Message: "Chứng chỉ này đã bị thu hồi bởi nhà phát hành (CA). Trình duyệt sẽ hiển thị lỗi bảo mật nghiêm trọng khi truy cập website này.",
+		}}, trust.Issues...)
+		trust.Trusted = false
+		log.Warn().Str("domain", domain).Msg("OCSP: certificate is REVOKED")
+	}
 
 	return &models.SSLCheckResponse{
 		Hostname:           domain,
@@ -628,6 +713,7 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		Trusted:            trust.Trusted,
 		TrustIssues:        trust.Issues,
 		CertChain:          chain,
+		OCSPStatus:         ocspStatus,
 		CheckTime:          now,
 	}, nil
 }

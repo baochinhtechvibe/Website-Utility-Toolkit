@@ -334,7 +334,7 @@ export function init() {
             const data = await response.json();
 
             if (!response.ok) {
-                showError(errorCard, errorMsg, data.error || "Lỗi hệ thống không xác định.", [resultCard]);
+                showError(errorCard, errorMsg, data.message || data.error || "Lỗi hệ thống không xác định.", [resultCard]);
                 return;
             }
 

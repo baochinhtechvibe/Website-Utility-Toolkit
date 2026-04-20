@@ -10,6 +10,7 @@ import (
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/generator/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/generator/service"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 	"tools.bctechvibe.com/server/internal/response"
 
 	"github.com/gin-gonic/gin"
@@ -104,11 +105,11 @@ func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
 		log.Error().Err(err).Msg("GenerateCSR Service x509 Error")
 
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			response.Error(c, http.StatusGatewayTimeout, "Tiến trình chạy nền quá tải hoặc bị hủy (Timeout 30s).")
+			response.Error(c, http.StatusGatewayTimeout, errutil.TranslateError(err))
 			return
 		}
 
-		response.Error(c, http.StatusInternalServerError, "Đóng gói mã RSA/ECDSA thất bại ở máy chủ, vui lòng quay lại sau.")
+		response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 		return
 	}
 

@@ -189,11 +189,17 @@
 
 .ssl-checker__icon {
     width: 36px;
+    min-width: 36px; /* Ngăn chặn việc ép chết icon */
     height: 36px;
     background-repeat: no-repeat;
     background-position: center;
     background-size: 28px 28px;
     flex-shrink: 0;
+}
+
+.ssl-checker__table tr td:last-child {
+    word-break: break-word; /* Wrap text tự nhiên mà không phá vỡ table */
+    padding-left: var(--space-2);
 }
 
 .ssl-checker__icon--result { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/result.png"); }
