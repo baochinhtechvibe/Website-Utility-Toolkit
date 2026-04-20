@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -39,6 +40,9 @@ const (
 
 	// Thời gian chờ ưu tiên cho kết quả tốt nhất (Tier 1 hoặc Tier 2 xịn)
 	genericBestResultTimeout = 5 * time.Second
+
+	// DomScan API endpoint
+	domscanAPIBase = "https://domscan.net/v1/status"
 )
 
 var (
@@ -47,13 +51,17 @@ var (
 
 	// Limiter cho bypass cache: giới hạn bộ nhớ và thời gian (LRU)
 	bypassLimiter  cache.Cache[string, time.Time]
-	bypassCooldown = 2 * time.Minute
+	bypassCooldown = 1 * time.Minute
+
+	// Giới hạn số lần bypass theo IP (5 lần / 1 phút)
+	ipLimiter cache.Cache[string, []time.Time]
 )
 
 // init khởi tạo cache ở package level, đảm bảo chỉ chạy 1 lần khi import.
 func init() {
 	whoisCache = cache.NewCache[string, *models.WhoisCacheEntry]().WithLRU().WithTTL(cacheTTLDefault)
 	bypassLimiter = cache.NewCache[string, time.Time]().WithLRU().WithTTL(bypassCooldown)
+	ipLimiter = cache.NewCache[string, []time.Time]().WithLRU().WithTTL(1 * time.Minute)
 
 	// Tải dữ liệu IANA dùng chung
 	iana.Init()
@@ -67,34 +75,57 @@ func isVNDomain(domain string) bool {
 
 // LookupWhois thực hiện truy vấn WHOIS cho một domain.
 // ctx: context từ Gin request — cancel khi client disconnect.
-// bypassCache=true ép tải lại dữ liệu mới (giới hạn 1 lần/2 phút/domain).
-func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.WhoisResponse, *models.WhoisMeta, error) {
+// bypassCache=true ép tải lại dữ liệu mới (giới hạn 5 lần/phút/IP và 1 lần/phút/domain).
+func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP string) (*models.WhoisResponse, *models.WhoisMeta, error) {
 
 	isVN := isVNDomain(domain)
 	cacheKey := strings.ToLower(domain)
 
-	// .vn: không cho bypass cache (bảo vệ rate limit VNNIC & Tino)
-	if isVN {
-		bypassCache = false
-	}
-
-	// Bypass rate limiting: chỉ cho phép bypass 1 lần / 2 phút / domain
+	// Bypass rate limiting: giới hạn bypass cache liên tục
 	if bypassCache {
-		if lastBypass, ok := bypassLimiter.Get(cacheKey); ok {
-			if time.Since(lastBypass) < bypassCooldown {
-				log.Info().Str("domain", domain).Msg("WHOIS: bypass cooldown active, serving from cache")
-				bypassCache = false
+		// 1. Kiểm tra giới hạn theo IP (5 lần / 1 phút)
+		now := time.Now()
+		var validTimestamps []time.Time
+		if timestamps, ok := ipLimiter.Get(clientIP); ok {
+			for _, t := range timestamps {
+				if time.Since(t) < time.Minute {
+					validTimestamps = append(validTimestamps, t)
+				}
 			}
 		}
+
+		if len(validTimestamps) >= 5 {
+			log.Warn().Str("ip", clientIP).Msg("WHOIS: IP bypass limit exceeded (5/min)")
+			bypassCache = false
+		} else {
+			// 2. Kiểm tra cooldown theo Domain
+			cooldown := bypassCooldown
+			if lastBypass, ok := bypassLimiter.Get(cacheKey); ok {
+				if time.Since(lastBypass) < cooldown {
+					log.Info().Str("domain", domain).Msg("WHOIS: bypass cooldown active, serving from cache")
+					bypassCache = false
+				}
+			}
+		}
+
+		// Nếu qua được các màng lọc, tính là 1 lần bypass hợp lệ cho IP
+		if bypassCache {
+			validTimestamps = append(validTimestamps, now)
+			ipLimiter.Set(clientIP, validTimestamps, time.Minute)
+		}
 	}
 
-	// Kiểm tra cache trước
-	if !bypassCache {
-		if entry, ok := whoisCache.Get(cacheKey); ok {
-			cachedMeta := *entry.Meta
-			cachedMeta.Cached = true
-			return entry.Response, &cachedMeta, nil
-		}
+	// 1. Lấy dữ liệu từ cache trước (để dành fallback nếu query live lỗi)
+	var cachedEntry *models.WhoisCacheEntry
+	if entry, ok := whoisCache.Get(cacheKey); ok {
+		cachedEntry = entry
+	}
+
+	// 2. Nếu không bypass, trả luôn cache nếu có
+	if !bypassCache && cachedEntry != nil {
+		cachedMeta := *cachedEntry.Meta
+		cachedMeta.Cached = true
+		return cachedEntry.Response, &cachedMeta, nil
 	}
 
 	// Tạo child context với timeout tổng cho toàn bộ lookup
@@ -136,6 +167,15 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 	wr := <-whoisChan
 	if wr.err != nil {
 		log.Error().Err(wr.err).Str("domain", domain).Msg("WHOIS all sources failed")
+		
+		// Fallback: Nếu truy vấn live lỗi nhưng có cache cũ, trả về cache luôn cho user đỡ thấy lỗi đỏ
+		if cachedEntry != nil {
+			log.Info().Str("domain", domain).Msg("WHOIS fallback to cache after live query failed")
+			cachedMeta := *cachedEntry.Meta
+			cachedMeta.Cached = true
+			return cachedEntry.Response, &cachedMeta, nil
+		}
+
 		return nil, nil, wr.err
 	}
 
@@ -151,17 +191,36 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 		}
 	}
 	// Kiểm tra nếu tên miền chưa đăng ký (Available)
-	isAvailable := false
-	for _, s := range resp.Status {
-		if strings.ToLower(s) == "available" {
-			isAvailable = true
-			break
-		}
-	}
+	isAvailable := resp.IsAvailable || (len(resp.Status) > 0 && strings.ToLower(resp.Status[0]) == "available")
 
-	// Chỉ đợi DNS Nameserver discovery nếu tên miền đã đăng ký
-	if !isAvailable {
-		// Thêm timeout để không block WHOIS quá lâu nếu DNS trace bị treo (như VNNIC lỗi 26s)
+	if isAvailable {
+		// Lớp bảo vệ DNS Cross-check (Tận dụng nsChan đã chạy song song)
+		// Nếu WHOIS báo "Available" nhưng DNS có trả về Nameserver -> Domain ĐÃ đăng ký
+		select {
+		case dnsNS := <-nsChan:
+			// Lọc ra các nameserver thực sự của domain, bỏ qua TLD registries
+			var realNS []string
+			for _, n := range dnsNS {
+				name := strings.ToLower(strings.TrimSpace(n))
+				if name != "" && !iana.IsRegistryNS(name) {
+					realNS = append(realNS, name)
+				}
+			}
+
+			if len(realNS) > 0 {
+				log.Warn().Str("domain", domain).Msg("WHOIS: Domain reported available but DNS NS check found records -> Overriding to Registered")
+				isAvailable = false
+				resp.IsAvailable = false
+				resp.Status = []string{"Registered (Lookup Limited)"}
+				for _, n := range realNS {
+					nsMap[n] = true
+				}
+			}
+		case <-time.After(500 * time.Millisecond):
+			// Không đợi quá lâu nếu tên miền có vẻ available thật
+		}
+	} else {
+		// Tên miền đã đăng ký: Đợi và gom Nameserver (tối đa 4s)
 		select {
 		case dnsNS := <-nsChan:
 			for _, n := range dnsNS {
@@ -180,7 +239,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 	// Chuyển lại thành slice (lọc bỏ NS thuộc TLD registry)
 	finalNS := make([]string, 0, len(nsMap))
 	for ns := range nsMap {
-		if !isRegistryNS(ns) {
+		if !iana.IsRegistryNS(ns) {
 			finalNS = append(finalNS, ns)
 		}
 	}
@@ -207,9 +266,14 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 		FetchedAt: now,
 		Cached:    false,
 	}
-	// Hậu xử lý: Nếu vẫn là placeholder (DATA REDACTED...), chuyển về "Domain Admin" cho thân thiện
-	if isPlaceholderRegistrant(resp.Registrant) {
-		resp.Registrant = "Domain Admin"
+	// Hậu xử lý: Chỉ hiển thị Chủ sở hữu cho tên miền .vn
+	if isVN {
+		if isPlaceholderRegistrant(resp.Registrant) {
+			resp.Registrant = "Domain Admin"
+		}
+	} else {
+		// Tên miền quốc tế: Xóa trắng trường registrant để frontend không hiển thị
+		resp.Registrant = ""
 	}
 
 	whoisCache.Set(cacheKey, &models.WhoisCacheEntry{
@@ -235,7 +299,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool) (*models.
 //   - VNNIC về trước → đợi thêm tối đa 1s cho Tino (vì Tino data đẹp hơn)
 //   - Cả 2 tạch sau 5s → Tier 3 Auto-Discover
 func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisResponse, error) {
-	ctx, cancel := context.WithTimeout(parentCtx, 8*time.Second)
+	ctx, cancel := context.WithTimeout(parentCtx, 12*time.Second) // Tăng lên 12s cho .vn vì VNNIC khá chậm
 	defer cancel()
 
 	type result struct {
@@ -261,24 +325,22 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 		resChan <- result{r, e, 2}
 	}()
 
-	// Deadline tổng: nếu 5s mà chưa có gì → Tier 3
-	deadline := time.NewTimer(5 * time.Second)
+	// Deadline tổng: nếu 10s mà chưa có gì → Tier 3
+	deadline := time.NewTimer(10 * time.Second)
 	defer deadline.Stop()
 
 	var vnnicResult *models.WhoisResponse
-	availableSignals := 0 // Đếm số nguồn báo "available"
 
 	for i := 0; i < 2; i++ {
 		select {
 		case res := <-resChan:
 			if res.err != nil {
-				// Kiểm tra nếu lỗi là "available" (tên miền chưa đăng ký)
-				errStr := strings.ToLower(res.err.Error())
-				if strings.Contains(errStr, "available") || strings.Contains(errStr, "not found") || strings.Contains(errStr, "not registered") {
-					availableSignals++
-					log.Info().Str("domain", domain).Int("tier", res.tier).Msg("WHOIS VN: Tier reported domain is available")
-				}
 				continue
+			}
+
+			if res.resp != nil && res.resp.IsAvailable {
+				log.Info().Str("domain", domain).Int("tier", res.tier).Str("source", res.resp.AvailableSource).Msg("WHOIS VN: Tier reported domain is available (Early Return)")
+				return res.resp, nil
 			}
 
 			if res.tier == 1 {
@@ -316,16 +378,6 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 			}
 
 		case <-deadline.C:
-			// Hết 5s — Kiểm tra tín hiệu trống trước khi nhảy fallback
-			if availableSignals > 0 {
-				log.Info().Str("domain", domain).Int("signals", availableSignals).Msg("WHOIS VN: Deadline hit, using available signal")
-				return &models.WhoisResponse{
-					Domain:     domain,
-					IsVNDomain: true,
-					Status:     []string{"Available"},
-				}, nil
-			}
-
 			if vnnicResult != nil {
 				log.Info().Str("domain", domain).Msg("WHOIS VN: Deadline hit — using VNNIC")
 				return vnnicResult, nil
@@ -335,13 +387,6 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 			return queryVNTier3Fallback(domain)
 
 		case <-ctx.Done():
-			if availableSignals > 0 {
-				return &models.WhoisResponse{
-					Domain:     domain,
-					IsVNDomain: true,
-					Status:     []string{"Available"},
-				}, nil
-			}
 			if vnnicResult != nil {
 				return vnnicResult, nil
 			}
@@ -349,19 +394,8 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 		}
 	}
 
-	// Loop kết thúc bình thường mà không có kết quả nào
 	if vnnicResult != nil {
-		return vnnicResult, nil
-	}
-
-	// Nếu có ít nhất 1 nguồn báo Available → tên miền chưa đăng ký
-	if availableSignals > 0 {
-		log.Info().Str("domain", domain).Int("signals", availableSignals).Msg("WHOIS VN: Domain is available (not registered)")
-		return &models.WhoisResponse{
-			Domain:     domain,
-			IsVNDomain: true,
-			Status:     []string{"Available"},
-		}, nil
+				return vnnicResult, nil
 	}
 
 	return queryVNTier3Fallback(domain)
@@ -386,9 +420,11 @@ func queryVNTier3Fallback(domain string) (*models.WhoisResponse, error) {
 		strings.Contains(rawLower, "available") ||
 		strings.Contains(rawLower, "does not exist") {
 		return &models.WhoisResponse{
-			Domain:     domain,
-			IsVNDomain: true,
-			Status:     []string{"Available"},
+			Domain:          domain,
+			IsVNDomain:      true,
+			Status:          []string{"Available"},
+			IsAvailable:     true,
+			AvailableSource: "whois_port43",
 		}, nil
 	}
 
@@ -414,7 +450,13 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("tino: domain not found (available)")
+		return &models.WhoisResponse{
+			Domain:          domain,
+			IsVNDomain:      true,
+			Status:          []string{"Available"},
+			IsAvailable:     true,
+			AvailableSource: "tino",
+		}, nil
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -468,9 +510,14 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 		}
 	}
 
-	// Nếu available=true và không có whois data → tên miền chưa đăng ký
 	if tinoResp.Available && tinoResp.Whois == nil {
-		return nil, fmt.Errorf("tino: domain %s is available (not registered)", domain)
+		return &models.WhoisResponse{
+			Domain:          domain,
+			IsVNDomain:      true,
+			Status:          []string{"Available"},
+			IsAvailable:     true,
+			AvailableSource: "tino",
+		}, nil
 	}
 
 	return resp, nil
@@ -510,8 +557,8 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 		err  error
 		tier int
 	}
-	// Chỉ dùng 2 tier cho domain quốc tế: Port 43 + RDAP (bỏ Tino vì không đáng tin với hàng quốc tế)
-	resChan := make(chan result, 2)
+	// Dùng 3 tier cho domain quốc tế: Port 43 + RDAP + DomScan
+	resChan := make(chan result, 3)
 
 	// Tier 1: Port 43 (Standard WHOIS) với cơ chế bám đuổi Referral (Referral Following)
 	go func() {
@@ -539,48 +586,57 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 		resChan <- result{r, e, 2}
 	}()
 
+	// Tier 3: DomScan API (Authoritative Availability Signal)
+	go func() {
+		r, e := queryDomScanAPI(ctx, domain)
+		resChan <- result{r, e, 3}
+	}()
+
 	var bestRes *models.WhoisResponse
 
 	// Timer duy nhất — tăng lên 4s để hỗ trợ RDAP/Redirects chậm của domain quốc tế
 	timer := time.NewTimer(genericBestResultTimeout)
 	defer timer.Stop()
 
-	deadlineFired := false
-	var graceTimer <-chan time.Time
+	var graceTimer *time.Timer
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
+		// Tạo một channel chỉ hoạt động khi graceTimer đã được thiết lập
+		var graceChan <-chan time.Time
+		if graceTimer != nil {
+			graceChan = graceTimer.C
+		}
+
 		select {
 		case res := <-resChan:
-			if res.err == nil {
+			if res.err == nil && res.resp != nil {
+				if res.resp.IsAvailable {
+					log.Info().Str("domain", domain).Int("tier", res.tier).Str("source", res.resp.AvailableSource).Msg("WHOIS Generic: Domain is available (Early Return)")
+					return res.resp, nil
+				}
 				bestRes = mergeWhoisResults(bestRes, res.resp)
 				if isResultComplete(bestRes) {
 					log.Info().Str("domain", domain).Int("tier", res.tier).Msg("WHOIS Generic: High quality result found (Early Return)")
 					return bestRes, nil
 				}
 				hasBasics := bestRes.Registrar != "" && bestRes.RegisteredOn != "" && len(bestRes.Nameservers) > 0
-				if hasBasics && i == 0 && graceTimer == nil {
-					log.Info().Str("domain", domain).Msg("WHOIS Generic: Basic data found, activating 1500ms grace period for high-quality data")
-					graceTimer = time.After(1500 * time.Millisecond)
-				}
-				if deadlineFired && bestRes != nil {
-					return bestRes, nil
-				}
-			} else {
-				errStr := strings.ToLower(res.err.Error())
-				if strings.Contains(errStr, "not found") || strings.Contains(errStr, "available") {
-					return &models.WhoisResponse{Domain: domain, Status: []string{"Available"}}, nil
+				if hasBasics && graceTimer == nil {
+					log.Info().Str("domain", domain).Msg("WHOIS Generic: Basic data found, activating 1000ms grace period for high-quality data")
+					graceTimer = time.NewTimer(1000 * time.Millisecond)
 				}
 			}
 		case <-timer.C:
-			deadlineFired = true
 			if bestRes != nil {
 				return bestRes, nil
 			}
-		case <-graceTimer:
+			// Hết 5s mà chưa có gì -> thoát khỏi vòng lặp để chuyển sang DNS discovery
+			goto DoneRace
+		case <-graceChan:
 			if bestRes != nil {
 				log.Info().Str("domain", domain).Msg("WHOIS Generic: Grace period expired")
 				return bestRes, nil
 			}
+			continue
 		case <-ctx.Done():
 			if bestRes != nil {
 				return bestRes, nil
@@ -588,6 +644,8 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 			return nil, &WhoisError{Message: "Yêu cầu tra cứu quá hạn (timeout)."}
 		}
 	}
+
+DoneRace:
 
 	if bestRes != nil {
 		return bestRes, nil
@@ -605,6 +663,76 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 	}
 
 	return nil, &WhoisError{Message: "Không thể kết nối đến máy chủ WHOIS. Vui lòng kiểm tra lại tên miền."}
+}
+
+// queryDomScanAPI sử dụng dịch vụ bên thứ 3 để check availability cực nhanh cho domain quốc tế
+func queryDomScanAPI(ctx context.Context, domain string) (*models.WhoisResponse, error) {
+	apiKey := os.Getenv("DOMSCAN_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("domscan: API key not found")
+	}
+
+	// Tách name và tld
+	parts := strings.Split(domain, ".")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("domscan: invalid domain format")
+	}
+	name := parts[0]
+	tld := strings.Join(parts[1:], ".")
+
+	apiURL := fmt.Sprintf("%s?name=%s&tlds=%s&prefer_cache=1", domscanAPIBase, url.QueryEscape(name), url.QueryEscape(tld))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Header hỗ trợ cả 2 cách như docs yêu cầu
+	req.Header.Set("X-API-Key", apiKey)
+	req.Header.Set("Accept", "application/json")
+
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("domscan: status code %d", resp.StatusCode)
+	}
+
+	var domscanRes struct {
+		Results []struct {
+			Domain    string `json:"domain"`
+			Available bool   `json:"available"`
+			Source    string `json:"source"`
+			CheckedAt string `json:"checked_at"`
+		} `json:"results"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&domscanRes); err != nil {
+		return nil, err
+	}
+
+	if len(domscanRes.Results) == 0 {
+		return nil, fmt.Errorf("domscan: no results found")
+	}
+
+	// DomScan trả về array, ta lấy cái đầu tiên vì mình chỉ check 1 TLD
+	result := domscanRes.Results[0]
+	if result.Available {
+		log.Info().Str("domain", domain).Str("source", result.Source).Msg("WHOIS: DomScan confirmed domain is available")
+		return &models.WhoisResponse{
+			Domain:          domain,
+			IsAvailable:     true,
+			AvailableSource: "domscan",
+			Status:          []string{"Available"},
+		}, nil
+	}
+
+	// Nếu không available, trả về lỗi để cuộc đua tiếp tục đợi kết quả từ RDAP/Port 43 (lấy info chi tiết hơn)
+	return nil, fmt.Errorf("domscan: domain is registered")
 }
 
 // queryRDAP gọi rdap.org proxy để lấy dữ liệu json — nhận context để cancel khi cần
@@ -635,6 +763,9 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 		}
 		defer res.Body.Close()
 		if res.StatusCode != http.StatusOK {
+			if res.StatusCode == http.StatusNotFound {
+				return nil, fmt.Errorf("domain not found (rdap status 404)")
+			}
 			// Trả về error cụ thể nếu RDAP server báo lỗi
 			var errResp models.RDAPResponse
 			_ = json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&errResp)
@@ -652,6 +783,15 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 
 	rdapResp, err := fetchRDAP(url)
 	if err != nil {
+		if strings.Contains(err.Error(), "domain not found (rdap status 404)") {
+			return &models.WhoisResponse{
+				Domain:          domain,
+				IsVNDomain:      false,
+				Status:          []string{"Available"},
+				IsAvailable:     true,
+				AvailableSource: "rdap",
+			}, nil
+		}
 		return nil, fmt.Errorf("rdap registry: %w", err)
 	}
 
@@ -876,6 +1016,24 @@ func mergeWhoisResults(base, extra *models.WhoisResponse) *models.WhoisResponse 
 		return base
 	}
 
+	// Xử lý Trust Hierarchy cho tín hiệu Available
+	if extra.IsAvailable {
+		// Nếu extra có độ tin cậy cao (RDAP, Tino) thì luôn ưu tiên ghi đè
+		if extra.AvailableSource == "rdap" || extra.AvailableSource == "tino" || extra.AvailableSource == "domscan" {
+			base.IsAvailable = true
+			base.AvailableSource = extra.AvailableSource
+			base.Status = []string{"Available"}
+		} else if !base.IsAvailable {
+			// Nếu extra là port43 báo available, nhưng base có dữ liệu thì không override
+			// Trừ khi base chỉ là record rỗng không có gì
+			if base.Registrar == "" && base.RegisteredOn == "" {
+				base.IsAvailable = true
+				base.AvailableSource = extra.AvailableSource
+				base.Status = []string{"Available"}
+			}
+		}
+	}
+
 	// Merge field-by-field: ưu tiên giá trị cụ thể hơn (RDAP thường xịn hơn Port 43 Thin)
 	if extra.Registrar != "" {
 		if base.Registrar == "" || isPlaceholderRegistrant(base.Registrar) {
@@ -996,7 +1154,7 @@ func parseWhoisRaw(domain, rawText string, isVN bool) *models.WhoisResponse {
 		for _, ns := range result.Domain.NameServers {
 			nsLower := strings.ToLower(strings.TrimSpace(ns))
 			// Lọc bỏ NS thuộc TLD registry (không phải NS thực của domain)
-			if isRegistryNS(nsLower) {
+			if iana.IsRegistryNS(nsLower) {
 				continue
 			}
 			resp.Nameservers = append(resp.Nameservers, nsLower)
@@ -1068,8 +1226,12 @@ func parseWhoisRaw(domain, rawText string, isVN bool) *models.WhoisResponse {
 		if strings.Contains(rawLower, "no match for") ||
 			strings.Contains(rawLower, "not found") ||
 			strings.Contains(rawLower, "no data found") ||
-			strings.Contains(rawLower, "object does not exist") {
+			strings.Contains(rawLower, "object does not exist") ||
+			strings.Contains(rawLower, "is available for registration") ||
+			strings.Contains(rawLower, "domain not found") {
 			resp.Status = []string{"Available"}
+			resp.IsAvailable = true
+			resp.AvailableSource = "whois_port43"
 		}
 	}
 
@@ -1079,25 +1241,6 @@ func parseWhoisRaw(domain, rawText string, isVN bool) *models.WhoisResponse {
 	}
 
 	return resp
-}
-
-// isRegistryNS kiểm tra xem một nameserver có phải thuộc TLD registry hay không.
-// Những NS này là server quản lý TLD, KHÔNG phải NS thực của domain.
-func isRegistryNS(ns string) bool {
-	registrySuffixes := []string{
-		".dns-servers.vn",   // VNNIC TLD NS
-		".gtld-servers.net", // Verisign (.com/.net) TLD NS
-		".nstld.com",        // Verisign alternative
-		".nic.vn",           // VNNIC alternative
-		"dns1.vnnic.vn",     // VNNIC direct
-		"dns2.vnnic.vn",
-	}
-	for _, suffix := range registrySuffixes {
-		if strings.HasSuffix(ns, suffix) || ns == suffix {
-			return true
-		}
-	}
-	return false
 }
 
 func formatWhoisDate(raw string) string {
@@ -1184,15 +1327,6 @@ func discoverNameservers(ctx context.Context, domain string) []string {
 // Ví dụ: Với "google.com", hỏi thẳng a.gtld-servers.net (quản lý .com) xem google.com
 // được delegate tới NS nào. Đây chính là NS gốc từ Registry (Parent Zone).
 func discoverNSViaTLDDirect(domain string) []string {
-	// Hardcode fallback (dùng khi IANA Bootstrap chưa tải xong)
-	hardcodeFallback := map[string]string{
-		"com": "192.5.6.30",   // a.gtld-servers.net
-		"net": "192.5.6.30",   // a.gtld-servers.net (shared with .com)
-		"org": "199.19.56.1",  // a0.org.afilias-nst.info
-		"io":  "65.22.160.17", // a0.nic.io
-		"vn":  "194.0.1.28",   // dns1.vnnic.vn
-	}
-
 	// Xác định TLD
 	parts := strings.Split(strings.ToLower(domain), ".")
 	if len(parts) < 2 {
@@ -1200,13 +1334,8 @@ func discoverNSViaTLDDirect(domain string) []string {
 	}
 	tld := parts[len(parts)-1]
 
-	// Ưu tiên: IANA Bootstrap → Hardcode Fallback
+	// Lấy TLD NS IP từ hệ thống IANA (sẽ tự động lazy-resolve nếu chưa có)
 	tldNS := iana.GetTLDNS(tld)
-	if tldNS == "" {
-		if fallbackNS, ok := hardcodeFallback[tld]; ok {
-			tldNS = fallbackNS
-		}
-	}
 
 	if tldNS == "" {
 		return nil
@@ -1290,19 +1419,18 @@ func isPlaceholderRegistrant(s string) bool {
 	return false
 }
 
-// isResultComplete đánh giá chất lượng kết quả tra cứu để quyết định Early Return
-func isResultComplete(resp *models.WhoisResponse) bool {
-	if resp == nil {
+// isResultComplete kiểm tra xem kết quả đã đủ "chất lượng" để trả về sớm chưa.
+func isResultComplete(r *models.WhoisResponse) bool {
+	if r == nil {
 		return false
 	}
-	// Tiêu chuẩn cơ bản: Có Registrar + Dates + NS
-	hasBasics := resp.Registrar != "" && resp.RegisteredOn != "" && resp.ExpiresOn != "" && len(resp.Nameservers) > 0
+	// Với domain quốc tế (.com, .net...), Registrant thường bị ẩn (GDPR).
+	// Chỉ cần có Registrar + Dates + Nameservers là đủ để coi là kết quả tốt.
+	hasBasics := r.Registrar != "" && r.RegisteredOn != "" && r.ExpiresOn != "" && len(r.Nameservers) > 0
 
-	// Với tên miền quốc tế:
-	// Nếu registrant là placeholder (Domain Admin, Redacted...), ta KHÔNG coi là complete
-	// để loop tiếp tục đợi kết quả từ nguồn khác (ví dụ RDAP có thể trả tên thật).
-	if !resp.IsVNDomain {
-		return hasBasics && !isPlaceholderRegistrant(resp.Registrant)
+	if r.IsVNDomain {
+		// Domain .vn thường có đủ Registrant, nên đợi thêm tí
+		return hasBasics && r.Registrant != ""
 	}
 
 	return hasBasics
@@ -1317,15 +1445,7 @@ func queryWhoisRecursive(ctx context.Context, domain, startServer string, depth 
 	client := whois.NewClient()
 	client.SetTimeout(5 * time.Second) // Fail faster if server hangs
 
-	var raw string
-	var err error
-
-	if startServer != "" {
-		raw, err = client.Whois(domain, startServer)
-	} else {
-		raw, err = client.Whois(domain)
-	}
-
+	raw, err := doWhoisWithCtx(ctx, client, domain, startServer)
 	if err != nil {
 		return "", err
 	}
@@ -1334,6 +1454,16 @@ func queryWhoisRecursive(ctx context.Context, domain, startServer string, depth 
 	if depth >= maxDepth {
 		log.Warn().Str("domain", domain).Int("depth", depth).Msg("WHOIS: max referral depth reached, stopping")
 		return raw, nil
+	}
+
+	// TỐI ƯU: Nếu là lượt truy vấn đầu tiên và đã có đủ data cốt lõi, không cần follow referral
+	// Việc này giúp giảm latency từ ~2.5s xuống còn ~0.5s cho .com/.net
+	if depth == 0 {
+		parsed := parseWhoisRaw(domain, raw, false)
+		if parsed != nil && parsed.Registrar != "" && parsed.RegisteredOn != "" && len(parsed.Nameservers) > 0 {
+			log.Info().Str("domain", domain).Msg("WHOIS: Registry data is complete enough, skipping referral for speed")
+			return raw, nil
+		}
 	}
 
 	// Phân tích raw text để tìm "Whois Server" hoặc "Registrar WHOIS Server"
@@ -1360,13 +1490,42 @@ func queryWhoisRecursive(ctx context.Context, domain, startServer string, depth 
 	// Nếu tìm thấy referral server mới -> truy vấn tiếp
 	if referralServer != "" {
 		log.Info().Str("domain", domain).Str("registry", startServer).Str("registrar", referralServer).Int("depth", depth+1).Msg("WHOIS: Following referral to registrar server")
-		raw2, err2 := client.Whois(domain, referralServer)
+		raw2, err2 := doWhoisWithCtx(ctx, client, domain, referralServer)
 		if err2 == nil {
 			return raw + "\n\n<<< REFERRAL DATA FROM " + referralServer + " >>>\n\n" + raw2, nil
 		}
 	}
 
 	return raw, nil
+}
+
+// doWhoisWithCtx bọc whois.Client bằng goroutine và select context để có thể dừng ngay lập tức khi timeout.
+func doWhoisWithCtx(ctx context.Context, client *whois.Client, domain, server string) (string, error) {
+	ch := make(chan struct {
+		raw string
+		err error
+	}, 1)
+
+	go func() {
+		var r string
+		var e error
+		if server != "" {
+			r, e = client.Whois(domain, server)
+		} else {
+			r, e = client.Whois(domain)
+		}
+		ch <- struct {
+			raw string
+			err error
+		}{r, e}
+	}()
+
+	select {
+	case res := <-ch:
+		return res.raw, res.err
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
 }
 
 // capitalizeFirst viết hoa chữ cái đầu tiên của chuỗi (thay thế strings.Title deprecated)

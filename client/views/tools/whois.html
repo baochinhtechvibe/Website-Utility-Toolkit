@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Tra cứu thông tin đăng ký tên miền WHOIS: Registrar, ngày đăng ký, ngày hết hạn, Name Servers và vòng đời tên miền chi tiết.">
+    <meta name="description"
+        content="Tra cứu thông tin đăng ký tên miền WHOIS: Registrar, ngày đăng ký, ngày hết hạn, Name Servers và vòng đời tên miền chi tiết.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
@@ -38,7 +39,8 @@
                         </div>
                     </div>
                     <p class="header__meta text-center justify-center">
-                        Tra cứu thông tin đăng ký tên miền: Registrar, ngày hết hạn, Name Servers và vòng đời tên miền chi tiết.
+                        Tra cứu thông tin đăng ký tên miền: Registrar, ngày hết hạn, Name Servers và vòng đời tên miền
+                        chi tiết.
                     </p>
                     <div class="header__theme-toggle">
                         <input type="checkbox" id="theme-toggle" class="header__theme-input">
@@ -72,7 +74,7 @@
                                 <!-- Button -->
                                 <div class="form-field form-field--button">
                                     <button id="btnWhoisLookup" type="submit" class="btn btn-action btn-block" disabled>
-                                        <i class="fas fa-search" id="whoisLookupIcon"></i>
+                                        <i class="fa-solid fa-magnifying-glass" id="whoisLookupIcon"></i>
                                         Tra cứu
                                         <i class="fa-solid fa-spinner fa-spin d-none" id="whoisLookupLoading"></i>
                                     </button>
@@ -82,10 +84,13 @@
                             <!-- Validation Error -->
                             <div id="whoisValidationError" class="message-card message-card--error mt-4 d-none">
                                 <div class="message-card__header">
-                                    <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h4>
+                                    <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i>
+                                        Định dạng không hợp lệ</h4>
                                 </div>
                                 <div class="message-card__body">
-                                    <p class="message-card__message">Vui lòng nhập đúng định dạng tên miền (ví dụ: <code>google.com</code>).</p>
+                                    <p class="message-card__message">Vui lòng nhập đúng định dạng tên miền (ví dụ:
+                                        <code>google.com</code>).
+                                    </p>
                                 </div>
                             </div>
                         </form>
@@ -118,14 +123,16 @@
 
                             <!-- Cache Notice -->
                             <div id="cacheNotice" class="cache-card mt-2 d-none">
-                                <span><i class="fa-solid fa-clock"></i> <b id="cacheText"></b> <b id="cacheTime"></b></span>
-                                <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn">
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc
+                                    <b id="cacheTime"></b></span>
+                                <button type="button" id="btnBypassCache"
+                                    class="btn btn-sm btn-outline cache-card__btn">
                                     <i class="fa-solid fa-arrows-rotate"></i> Làm mới
                                 </button>
                             </div>
 
                             <div id="whoisResultBody" class="result-card__body">
-                                
+
                                 <!-- Available Message (Full width) -->
                                 <div id="whoisAvailableMsg" class="d-none mb-4"></div>
 
@@ -136,7 +143,8 @@
                                         <!-- Domain info card -->
                                         <div class="card card--flat">
                                             <div class="card__header">
-                                                <h3 class="card__title d-flex flex-row justify-center items-center gap-2">
+                                                <h3
+                                                    class="card__title d-flex flex-row justify-center items-center gap-2">
                                                     <i class="fa-solid fa-address-card"></i>
                                                     Thông tin đăng ký
                                                 </h3>
@@ -153,7 +161,8 @@
                                         <!-- Raw text (parse failed fallback) -->
                                         <div class="card card--flat mt-4 d-none" id="whoisRawCard">
                                             <div class="card__header">
-                                                <h3 class="card__title d-flex flex-row justify-center items-center gap-2">
+                                                <h3
+                                                    class="card__title d-flex flex-row justify-center items-center gap-2">
                                                     <i class="fa-solid fa-code"></i>
                                                     Raw WHOIS Data
                                                 </h3>
@@ -168,13 +177,15 @@
                                     <div class="whois__col-timeline">
                                         <div class="card card--flat">
                                             <div class="card__header">
-                                                <h3 class="card__title d-flex flex-row justify-center items-center gap-2">
+                                                <h3
+                                                    class="card__title d-flex flex-row justify-center items-center gap-2">
                                                     <i class="fa-solid fa-timeline"></i>
                                                     Vòng đời tên miền
                                                 </h3>
                                             </div>
                                             <div class="card__body">
-                                                <small class="card__subtitle text-muted mb-2">* Thông tin chỉ mang tính chất tham khảo</small>
+                                                <small class="card__subtitle text-muted mb-2">* Thông tin chỉ mang tính
+                                                    chất tham khảo</small>
                                                 <div id="whoisTimelineBadge" class="mb-4 whois__timeline-badge"></div>
                                                 <div id="whoisTimelineList" class="whois__timeline">
                                                     <!-- Dynamic timeline content -->
@@ -183,23 +194,24 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Share Card -->
-                        <div id="whoisShareCard" class="share-card mt-6 d-none">
-                            <div class="share-card__header">
-                                <h4 class="share-card__title font-bold">
-                                    <i class="fa-solid fa-share-nodes"></i>
-                                    Chia sẻ kết quả:
-                                </h4>
-                            </div>
-                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                                <input type="text" id="whoisShareLink" readonly class="share-card__input" value="https" />
-                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyWhoisLink">
-                                    <i class="fas fa-copy"></i>
-                                    <span>Copy</span>
-                                </button>
+                                <!-- Share Card -->
+                                <div id="whoisShareCard" class="share-card mt-6 d-none">
+                                    <div class="share-card__header">
+                                        <h4 class="share-card__title font-bold">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                            Chia sẻ kết quả:
+                                        </h4>
+                                    </div>
+                                    <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                        <input type="text" id="whoisShareLink" readonly class="share-card__input"
+                                            value="https" />
+                                        <button class="share-card__button share-card__button--copy gap-1"
+                                            id="btnCopyWhoisLink">
+                                            <i class="fa-solid fa-copy"></i>
+                                            <span>Copy</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

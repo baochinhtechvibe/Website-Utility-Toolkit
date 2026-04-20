@@ -16,16 +16,17 @@ import { API_BASE_URL } from "../../config.js";
 // =============================================
 const VN_TIMELINE = [
     { days: 0,  label: "Hết hạn",            desc: "Tên miền chính thức hết hạn đăng ký.",                                   type: "expiry",  icon: "fa-clock" },
-    { days: 1,  label: "Tên miền tạm ngưng hoạt động",            desc: "Tên miền bị tạm ngưng hoạt động nếu chủ thể không gia hạn tên miền.",     type: "danger",  icon: "fa-triangle-exclamation" },
-    { days: 30, label: "Ngày cuối cùng có thể gia hạn",         desc: "Tên miền chuyển sang trạng thái chờ thu hồi sau ngày này. Sau ngày này tên miền không thể thực hiện duy trì.",      type: "muted",   icon: "fa-hourglass-half" },
-    { days: 40, label: "Tên miền bị xóa",       desc: "VNNIC hoàn tất thu hồi. Tên miền sẵn sàng cho đăng ký mới (~15 ngày).", type: "muted",   icon: "fa-skull-crossbones" },
+    { days: 1,  label: "Tạm ngưng hoạt động", desc: "Tên miền bị tạm ngưng. Bạn có 25 ngày để gia hạn với giá bình thường.",    type: "danger",  icon: "fa-triangle-exclamation" },
+    { days: 26, label: "Chờ thu hồi",         desc: "Tên miền chuyển sang trạng thái chờ thu hồi (Pending Delete). Không thể gia hạn.", type: "muted",   icon: "fa-hourglass-half" },
+    { days: 31, label: "Giải phóng",          desc: "VNNIC hoàn tất thu hồi. Tên miền sẵn sàng cho đăng ký mới.",                type: "muted",   icon: "fa-skull-crossbones" },
 ];
 
 const INTL_TIMELINE = [
-    { days: 0,  label: "Hết hạn",            desc: "Tên miền đến ngày hết hạn sử dụng tên miền.",                                          type: "expiry",  icon: "fa-clock" },
-    { days: 1,  label: "Tên miền tạm ngưng hoạt động",  desc: "Ngày tên miền bị tạm ngưng hoạt động nếu chủ thể không gia hạn tên miền.",           type: "danger",  icon: "fa-triangle-exclamation" },
-    { days: 30, label: "Ngày cuối cùng có thể gia hạn",   desc: "Tên miền chuyển sang trạng thái chờ thu hồi sau ngày này. Sau ngày này tên miền không thể thực hiện duy trì.",               type: "muted",   icon: "fa-hourglass-half" },
-    { days: 65, label: "Pending Delete",      desc: "Tên miền chuẩn bị xóa hoàn toàn. Sau ~5 ngày bất kỳ ai có thể đăng ký lại.",  type: "muted",   icon: "fa-skull-crossbones" },
+    { days: 0,  label: "Hết hạn",            desc: "Tên miền đến ngày hết hạn sử dụng.",                                          type: "expiry",  icon: "fa-clock" },
+    { days: 1,  label: "Gia hạn bình thường", desc: "Tên miền bị tạm ngưng. Bạn vẫn có thể gia hạn với giá thông thường.",           type: "danger",  icon: "fa-triangle-exclamation" },
+    { days: 41, label: "Giai đoạn Chuộc",     desc: "Tên miền có thể được chuộc lại với chi phí rất cao (Redemption Period).",      type: "muted",   icon: "fa-money-bill-transfer" },
+    { days: 71, label: "Chờ xóa",            desc: "Tên miền chuẩn bị xóa hoàn toàn (Pending Delete). Không thể gia hạn/chuộc.",    type: "muted",   icon: "fa-hourglass-end" },
+    { days: 76, label: "Giải phóng",         desc: "Tên miền sẵn sàng cho bất kỳ ai đăng ký mới.",                                   type: "muted",   icon: "fa-skull-crossbones" },
 ];
 
 // =============================================
@@ -175,7 +176,7 @@ function init() {
             const statuses = json.data.status || [];
             const isAvailable = statuses.some(s => s.toLowerCase() === "available");
             if (isAvailable) {
-                showAvailable(json.data.domain || domain);
+                showAvailable(json.data.domain || domain, json.meta);
                 return;
             }
 
@@ -205,12 +206,28 @@ function init() {
     // ============================================
     //  SHOW AVAILABLE (Domain not registered)
     // ============================================
-    function showAvailable(domain) {
+    function showAvailable(domain, meta) {
         showElements("none", resultCard, shareCard);
 
         // Reset title
         renderSuccessHeader(resultTitle, `Kết quả tra cứu: <span class="">"${escapeHTML(domain)}"</span>`);
         
+        // Cache Notice
+        if (meta && meta.fetched_at) {
+            const timeStr = new Date(meta.fetched_at).toLocaleString("vi-VN");
+            const spanEl = cacheNotice.querySelector("span");
+            if (spanEl) {
+                if (meta.cached) {
+                    spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+                } else {
+                    spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+                }
+            }
+            setDisplay(cacheNotice, "flex");
+        } else {
+            setDisplay(cacheNotice, "none");
+        }
+
         // Ẩn layout chứa 2 cột thông tin đăng ký / vòng đời
         if (whoisLayout) whoisLayout.classList.add("d-none");
         
@@ -259,7 +276,6 @@ function init() {
         
         // Ẩn các phần không cần thiết
         setDisplay(rawCard, "none");
-        setDisplay(cacheNotice, "none");
 
         setDisplay(resultCard, "block");
         resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -277,12 +293,14 @@ function init() {
         // Cache Notice
         if (meta && meta.fetched_at) {
             const timeStr = new Date(meta.fetched_at).toLocaleString("vi-VN");
-            if (cacheText) {
-                cacheText.textContent = meta.cached 
-                    ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc" 
-                    : "Kết quả tra cứu mới nhất lúc";
+            const spanEl = cacheNotice.querySelector("span");
+            if (spanEl) {
+                if (meta.cached) {
+                    spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+                } else {
+                    spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+                }
             }
-            if (cacheTime) cacheTime.textContent = timeStr;
             setDisplay(cacheNotice, "flex");
         }
 
@@ -340,7 +358,8 @@ function init() {
         const fields = [
             { icon: "fa-globe", label: "Tên miền", value: data.domain || "-" },
             { icon: "fa-building", label: "Nhà đăng ký", value: data.registrar || "-" },
-            { icon: "fa-user", label: "Chủ sở hữu", value: registrantDisplay },
+            // Chỉ hiển thị Chủ sở hữu cho tên miền Việt Nam
+            ...(data.is_vn_domain ? [{ icon: "fa-user", label: "Chủ sở hữu", value: registrantDisplay }] : []),
             { icon: "fa-calendar-plus", label: "Ngày đăng ký", value: formatDateTime(data.registered_on) },
             { icon: "fa-calendar-xmark", label: "Ngày hết hạn", value: data.expires_on, isExpiry: true },
             { icon: "fa-server", label: "Name Servers", value: (data.nameservers && data.nameservers.length) ? data.nameservers.map(ns => `<span>${escapeHTML(ns.toLowerCase())}</span>`).join("") : "-" },
