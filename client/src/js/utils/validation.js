@@ -112,7 +112,11 @@ export function isValidHostname(val) {
     if (!val) return false;
     const stripped = val.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
     if (!stripped) return false;
-    return DOMAIN_RE.test(stripped) || IPV4_RE.test(stripped) || IPV6_RE.test(stripped);
+
+    // Ưu tiên check IP trước để tránh Regex domain "nhận nhầm" chuỗi số
+    if (IPV4_RE.test(stripped) || IPV6_RE.test(stripped)) return true;
+    
+    return DOMAIN_RE.test(stripped);
 }
 
 /**

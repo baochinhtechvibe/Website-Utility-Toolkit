@@ -36,7 +36,8 @@ import {
     getWhoisDomain,
 
     /* validation.js */
-    createRealtimeDomainValidator
+    createRealtimeDomainValidator,
+    isValidHostname
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
@@ -83,7 +84,7 @@ const traceRootCheckbox = document.getElementById("traceRoot");
 const traceRootContainer = document.getElementById("traceRootContainer");
 const traceLogBox = document.getElementById("traceLogBox");
 
-// Task 11: Removed hardcoded BLACKLIST_PROVIDERS. 
+// Task 11: Removed hardcoded BLACKLIST_PROVIDERS.
 // Now dynamically loaded from backend via BLACKLIST_INIT event.
 
 
@@ -103,7 +104,7 @@ const dLookupLoading = document.getElementById("dnsLookupLoading");
 //  LOW-LEVEL UTILS
 //==================================//
 
-// -------- Removed getDNSServerName ------- 
+// -------- Removed getDNSServerName -------
 // ======== ISP / ORG normalization ========
 function getISPDisplay(record) {
     const source = record.org || record.isp;
@@ -231,8 +232,8 @@ function updateURL(host, type) {
  */
 async function performDNSLookup(hostname, type, bypassCache = false, traceRoot = false) {
     showElements("none", resultsSection, shareLinkSection, errorSection);
-    if(traceLogBox) setDisplay(traceLogBox, "none");
-    if(cacheNotice) cacheNotice.classList.add("d-none");
+    if (traceLogBox) setDisplay(traceLogBox, "none");
+    if (cacheNotice) cacheNotice.classList.add("d-none");
     try {
         const response = await fetch(`${API_BASE_URL}/dns/lookup`, {
             method: "POST",
@@ -380,7 +381,7 @@ function performBlacklistStream(ip) {
                 blacklistEventSource.close();
                 blacklistEventSource = null;
             }
-            
+
             toggleLoading(
                 btnResolve,
                 dLookupIcon,
@@ -500,7 +501,13 @@ function resetUI() {
         resultDNSSECSection,
         shareLinkSection
     );
-    if(cacheNotice) setDisplay(cacheNotice, "none"); // Reset cache text
+
+    // Ẩn bảng lỗi validation bằng đúng cơ chế d-none (để validator realtime vẫn hoạt động đúng)
+    const validationError = document.getElementById('domainValidationError');
+    if (validationError) validationError.classList.add('d-none');
+    hostnameInput.classList.remove('is-invalid');
+
+    if (cacheNotice) setDisplay(cacheNotice, "none"); // Reset cache text
     setDisplay(resultsSection, "none"); // Hide main card
 
     tableWrapper.style.removeProperty("max-height");
@@ -696,33 +703,44 @@ function createTableRow(record, domain) {
  * Display results in table
  */
 function displayResults(data) {
-    // LUÔN show section
-    setDisplay(resultsSection, "block");
-    showElements("block", resultsTitle, tableWrapper, shareLinkSection);
-
     // 🔴 CHẶN LỖI PTR / INVALID / NOT FOUND
     if (!data || data.success === false) {
-        showElements("none", btnWhois, resultsTitle, resultsSection, shareLinkSection, cacheNotice);
-        if (btnWhois) btnWhois.onclick = null;
-        setDisplay(errorSection, "block");
-        showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS cho truy vấn này", [
-            shareLinkSection, resultsSection
-        ]);
-        return;
+        // Nếu là lỗi nhưng có Trace Logs (nhật ký hành trình) thì vẫn phải hiện kết quả lên để xem logs
+        const hasTraceLogs = data.data && data.data.traceLogs && data.data.traceLogs.length > 0;
+
+        if (hasTraceLogs) {
+            setDisplay(resultsSection, "block");
+            showElements("block", resultsTitle);
+            // Ẩn share card khi lỗi
+            showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS!", [shareLinkSection]);
+            // Vẫn tiếp tục chạy xuống dưới để render nốt cái Trace Logs
+        } else {
+            showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS cho truy vấn này!", [
+                shareLinkSection, resultsSection
+            ]);
+            return;
+        }
+    } else {
+        // Nếu thành công, ẩn bảng lỗi cũ đi và hiện share card
+        setDisplay(errorSection, "none");
+        setDisplay(shareLinkSection, "block");
     }
+
+    // LUÔN show section khi có kết quả thành công (hoặc lỗi có trace)
+    setDisplay(resultsSection, "block");
+    showElements("block", resultsTitle);
 
     const { query, records, nameservers } = data.data;
     const hostname = query.hostname;
     const type = query.type;
-    const resultsMessage = data.message;
     if (cacheNotice && data.meta) {
         setDisplay(cacheNotice, "flex");
         const timeStr = new Date(data.meta.fetched_at).toLocaleString('vi-VN');
         const spanEl = cacheNotice.querySelector("span");
         if (data.meta.cached) {
-            spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
+            spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
         } else {
-            spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
+            spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
         }
     } else if (cacheNotice) {
         setDisplay(cacheNotice, "none");
@@ -733,16 +751,16 @@ function displayResults(data) {
         let traceHtml = `<div class="trace-log__title">
             <i class="fa-solid fa-route"></i> DNS Trace từ Root Server:
         </div>`;
-        
+
         data.data.traceLogs.forEach(step => {
             const hasEnrichment = !!step.enrichment;
             const safeMsg = escapeHTML(step.message);
             const boldedMessage = safeMsg.replace(/(\.\.\.took \d+ ms)/g, '<b>$1</b>');
-            
+
             if (hasEnrichment) {
                 const en = step.enrichment;
                 const nodeTypeClass = `node-type--${en.nodeType.toLowerCase()}`;
-                
+
                 traceHtml += `
                     <div class="trace-log__item trace-log__item--expandable">
                         <div class="trace-log__header">
@@ -783,7 +801,7 @@ function displayResults(data) {
                     </div>`;
             }
         });
-        
+
         traceLogBox.innerHTML = traceHtml;
         setDisplay(traceLogBox, "block");
 
@@ -894,23 +912,35 @@ function displayResults(data) {
     // Clear previous results
     resultsTableBody.innerHTML = "";
 
-    // Check if we have actual records
+    // Check if we have actual records OR trace logs
+    const hasRecords = actualRecords && actualRecords.length > 0;
     const hasTraceLogs = data.data && data.data.traceLogs && data.data.traceLogs.length > 0;
 
-    if (!actualRecords || actualRecords.length === 0) {
-        setDisplay(tableWrapper, "none");
-        setDisplay(resultsSection, "block");
-        showElements("block", resultsTitle); // Keep title visible
-        setDisplay(shareLinkSection, "none"); 
-        if (cacheNotice) setDisplay(cacheNotice, "none"); // 🚨 Ẩn Cache Banner khi lỗi
-        
-        // Show error message inside the result area, don't hide resultsSection
-        showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS", []);
+    if (!hasRecords && !hasTraceLogs) {
+        // Thực sự không có gì để hiện
+        showError(errorSection, errorMessage, data?.message || `Không tìm thấy bản ghi ${type} cho hostname này!`, [
+            resultsSection, shareLinkSection
+        ]);
     } else {
-        setDisplay(tableWrapper, "block");
+        // Có kết quả thực tế hoặc có Trace Logs
         setDisplay(resultsSection, "block");
-        showElements("block", resultsTitle, tableWrapper, shareLinkSection);
-        setDisplay(errorSection, "none"); // Hide error if we have records
+
+        if (hasRecords) {
+            setDisplay(tableWrapper, "block");
+            setDisplay(errorSection, "none"); // Có records thì ẩn lỗi đi (thành công)
+            setDisplay(shareLinkSection, "block"); // Hiện share card khi thành công
+        } else {
+            // Trường hợp chỉ có Trace Logs nhưng không có Records (ví dụ lỗi NXDOMAIN khi trace)
+            setDisplay(tableWrapper, "none");
+            setDisplay(shareLinkSection, "none"); // Ẩn share card khi lỗi
+
+            // 🚨 QUAN TRỌNG: Nếu là lỗi (success=false) thì phải hiện message-card--error lên
+            if (data.success === false) {
+                showError(errorSection, errorMessage, data?.message || "Không tìm thấy bản ghi DNS!", []);
+            }
+        }
+
+        showElements("block", resultsTitle);
     }
 
     // Add nameservers as NS records (for ALL type, show them)
@@ -947,8 +977,12 @@ function displayResults(data) {
         }
     });
 
-    // Scroll to results
-    resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    // 6. Scroll to results or error
+    if (data.success === false) {
+        errorSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+        resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
 
 async function handleBlacklistSubmit(hostname) {
@@ -959,7 +993,7 @@ async function handleBlacklistSubmit(hostname) {
     if (!isIP(hostname)) {
         ip = await resolveIPv4(hostname);
         if (!ip) {
-            throw new Error("Không tìm thấy bản ghi A để kiểm tra blacklist");
+            throw new Error("Không tìm thấy bản ghi A để kiểm tra blacklist!");
         }
     }
 
@@ -1019,7 +1053,7 @@ function displayDNSSECResults(data) {
     resultsTableBodyRRSIG.innerHTML = "";
 
     if (!dnssec || !Array.isArray(dnssec.records) || dnssec.records.length === 0) {
-        showError(errorSection, errorMessage, "Không tìm thấy bản ghi DNS cho truy vấn này", [shareLinkSection, resultsSection]);
+        showError(errorSection, errorMessage, "Không tìm thấy bản ghi DNS cho truy vấn này!", [shareLinkSection, resultsSection]);
         return;
     }
 
@@ -1248,21 +1282,26 @@ function initApp() {
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // Reset UI && BlacklistStream();
-    cleanupBlacklistStream();
-    setElementsEnabled([hostnameInput, recordTypeSelect], false);
-    resetUI();
     const rawHostname = hostnameInput.value.trim();
     const hostname = normalizeHostnameInput(rawHostname);
     hostnameInput.value = hostname;
-    if (!hostname) return;
+
+    // 💡 Mẹo: Phát sự kiện 'input' để thằng validator realtime nó biết mà check lại giá trị mới (ví dụ 8.8.8 -> 8.8.0.8)
+    hostnameInput.dispatchEvent(new Event('input'));
+
+    // 🛑 CHẶN SỚM: Nếu hostname không hợp lệ thì dừng ngay, chưa làm gì đến UI cả
+    if (!hostname || !isValidHostname(hostname)) return;
+
+    // Sau khi đã hợp lệ mới bắt đầu xử lý UI và gửi request
+    cleanupBlacklistStream();
+    setElementsEnabled([hostnameInput, recordTypeSelect], false);
+    resetUI();
 
     let type = normalizeRecordType(hostname, recordTypeSelect.value);
- 
- 	updateURL(hostname, type);
- 	
- 	// 🔄 Use module-level cached refs for toggleLoading
- 	toggleLoading(btnResolve, dLookupIcon, dLookupLoading, true);
+    updateURL(hostname, type);
+
+    // 🔄 Use module-level cached refs for toggleLoading
+    toggleLoading(btnResolve, dLookupIcon, dLookupLoading, true);
 
     try {
         if (type === "BLACKLIST") {
@@ -1285,7 +1324,7 @@ form.addEventListener("submit", async (e) => {
 
 btnBypassCache?.addEventListener("click", () => {
     isBypassCache = true;
-    
+
     // Khôi phục giá trị đang hiển thị trên URL để tránh refresh nhầm record vừa select mà chưa submit
     const urlParams = new URLSearchParams(window.location.search);
     const host = urlParams.get("host");
@@ -1319,6 +1358,10 @@ hostnameInput.addEventListener("input", () => {
 
 recordTypeSelect.addEventListener("change", () => {
     updateTraceVisibility();
+    // Ẩn kết quả cũ hoặc lỗi cũ ngay khi người dùng thay đổi loại bản ghi
+    setDisplay(errorSection, "none");
+    setDisplay(resultsSection, "none");
+    setDisplay(shareLinkSection, "none");
 });
 
 /**
