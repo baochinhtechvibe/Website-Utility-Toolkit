@@ -13,8 +13,10 @@ type WhoisResponse struct {
 	Status       []string `json:"status"`
 	Nameservers  []string `json:"nameservers"`
 	// Flags
-	IsParseFailed bool `json:"is_parse_failed"`
-	IsVNDomain    bool `json:"is_vn_domain"`
+	IsParseFailed   bool                  `json:"is_parse_failed"`
+	IsVNDomain      bool                  `json:"is_vn_domain"`
+	IsAvailable     bool                  `json:"is_available"`
+	AvailableSource string                `json:"available_source,omitempty"`
 	// Raw text fallback (khi parse thất bại hoặc VNNIC)
 	RawText string `json:"raw_text,omitempty"`
 	// DNSSEC Info

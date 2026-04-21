@@ -309,6 +309,17 @@
     margin-bottom: var(--space-1);
 }
 
+.whois__timeline-label .badge {
+    white-space: normal;    /* Cho phép xuống dòng */
+    word-break: break-word;
+    display: inline-block;  /* Hỗ trợ wrap tốt hơn inline-flex */
+    text-align: left;
+    max-width: 100%;
+    line-height: 1.4;
+    padding-top: var(--pad-y-1);
+    padding-bottom: var(--pad-y-1);
+}
+
 
 
 .whois__timeline-desc {
@@ -321,22 +332,6 @@
 @media (max-width: 480px) {
     .whois__timeline-item {
         gap: var(--space-3);
-    }
-
-    /* .whois__timeline-date {
-        font-size: var(--text-base);
-    } */
-
-    .whois__timeline-label .badge {
-        white-space: normal; /* Cho phép xuống dòng */
-        word-break: break-word;
-        text-align: left;
-        display: inline-block;
-        font-size: var(--text-sm);
-        max-width: 100%;
-        line-height: 1.3;
-        padding-top: var(--pad-y-1);
-        padding-bottom: var(--pad-y-1);
     }
 }
 

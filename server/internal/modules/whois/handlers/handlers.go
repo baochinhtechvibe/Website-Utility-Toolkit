@@ -61,7 +61,7 @@ func HandleWhoisLookup(c *gin.Context) {
 
 	log.Info().Str("domain", domain).Bool("bypassCache", bypassCache).Msg("WHOIS lookup request")
 
-	resp, meta, err := service.LookupWhois(c.Request.Context(), domain, bypassCache)
+	resp, meta, err := service.LookupWhois(c.Request.Context(), domain, bypassCache, c.ClientIP())
 	if err != nil {
 		log.Error().Err(err).Str("domain", domain).Msg("WHOIS lookup error")
 		

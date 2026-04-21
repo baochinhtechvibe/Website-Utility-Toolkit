@@ -15,54 +15,54 @@ import { API_BASE_URL } from "../../config.js";
 //  TIMELINE CONSTANTS
 // =============================================
 const VN_TIMELINE = [
-    { days: 0,  label: "Hết hạn",            desc: "Tên miền chính thức hết hạn đăng ký.",                                   type: "expiry",  icon: "fa-clock" },
-    { days: 1,  label: "Tạm ngưng hoạt động", desc: "Tên miền bị tạm ngưng. Bạn có 25 ngày để gia hạn với giá bình thường.",    type: "danger",  icon: "fa-triangle-exclamation" },
-    { days: 26, label: "Chờ thu hồi",         desc: "Tên miền chuyển sang trạng thái chờ thu hồi (Pending Delete). Không thể gia hạn.", type: "muted",   icon: "fa-hourglass-half" },
-    { days: 31, label: "Giải phóng",          desc: "VNNIC hoàn tất thu hồi. Tên miền sẵn sàng cho đăng ký mới.",                type: "muted",   icon: "fa-skull-crossbones" },
+    { days: 0, label: "Hết hạn", desc: "Tên miền chính thức hết hạn đăng ký.", type: "expiry", icon: "fa-clock" },
+    { days: 1, label: "Tạm ngưng hoạt động", desc: "Tên miền bị tạm ngưng. Bạn có 30 ngày để gia hạn với giá bình thường.", type: "danger", icon: "fa-triangle-exclamation" },
+    { days: 31, label: "Xử lý thu hồi", desc: "Tên miền bị xoá bản ghi trên hệ thống DNS Quốc gia, xử lý thu hồi trong 15 ngày. Không thể gia hạn.", type: "muted", icon: "fa-skull-crossbones" },
+    { days: 46, label: "Giải phóng", desc: "Tên miền về trạng thái chưa đăng ký, sẵn sàng cho bất kỳ ai đăng ký mới.", type: "muted", icon: "fa-fire" },
 ];
 
 const INTL_TIMELINE = [
-    { days: 0,  label: "Hết hạn",            desc: "Tên miền đến ngày hết hạn sử dụng.",                                          type: "expiry",  icon: "fa-clock" },
-    { days: 1,  label: "Gia hạn bình thường", desc: "Tên miền bị tạm ngưng. Bạn vẫn có thể gia hạn với giá thông thường.",           type: "danger",  icon: "fa-triangle-exclamation" },
-    { days: 41, label: "Giai đoạn Chuộc",     desc: "Tên miền có thể được chuộc lại với chi phí rất cao (Redemption Period).",      type: "muted",   icon: "fa-money-bill-transfer" },
-    { days: 71, label: "Chờ xóa",            desc: "Tên miền chuẩn bị xóa hoàn toàn (Pending Delete). Không thể gia hạn/chuộc.",    type: "muted",   icon: "fa-hourglass-end" },
-    { days: 76, label: "Giải phóng",         desc: "Tên miền sẵn sàng cho bất kỳ ai đăng ký mới.",                                   type: "muted",   icon: "fa-skull-crossbones" },
+    { days: 0, label: "Hết hạn", desc: "Tên miền chính thức hết hạn đăng ký (Expired).", type: "expiry", icon: "fa-clock" },
+    { days: 1, label: "Auto-Renew Grace Period", desc: "Tên miền bị tạm ngưng. Chủ sở hữu vẫn có thể gia hạn hoặc chuyển nhượng với giá thông thường (0–45 ngày).", type: "danger", icon: "fa-triangle-exclamation" },
+    { days: 45, label: "Redemption Grace Period", desc: "Tên miền có thể được chuộc lại với chi phí rất cao. Website và email ngừng hoạt động hoàn toàn (30 ngày).", type: "muted", icon: "fa-money-bill-transfer" },
+    { days: 75, label: "Pending Delete", desc: "Tên miền chuẩn bị bị xóa vĩnh viễn khỏi Registry. Không thể gia hạn hay chuộc lại (5 ngày).", type: "muted", icon: "fa-skull-crossbones" },
+    { days: 80, label: "Giải phóng", desc: "Tên miền được trả về trạng thái Available, bất kỳ ai cũng có thể đăng ký mới.", type: "muted", icon: "fa-fire" },
 ];
 
 // =============================================
 //  INIT
 // =============================================
 function init() {
-    const form           = document.getElementById("whoisForm");
-    const domainInput    = document.getElementById("whoisDomain");
-    const btnLookup      = document.getElementById("btnWhoisLookup");
-    const lookupIcon     = document.getElementById("whoisLookupIcon");
-    const lookupLoading  = document.getElementById("whoisLookupLoading");
+    const form = document.getElementById("whoisForm");
+    const domainInput = document.getElementById("whoisDomain");
+    const btnLookup = document.getElementById("btnWhoisLookup");
+    const lookupIcon = document.getElementById("whoisLookupIcon");
+    const lookupLoading = document.getElementById("whoisLookupLoading");
     const validationError = document.getElementById("whoisValidationError");
 
-    const resultCard     = document.getElementById("whoisResultCard");
-    const resultTitle    = document.getElementById("whoisResultTitle");
-    const errorCard      = document.getElementById("whoisErrorCard");
-    const errorMessage   = document.getElementById("whoisErrorMessage");
+    const resultCard = document.getElementById("whoisResultCard");
+    const resultTitle = document.getElementById("whoisResultTitle");
+    const errorCard = document.getElementById("whoisErrorCard");
+    const errorMessage = document.getElementById("whoisErrorMessage");
 
 
-    const cacheNotice    = document.getElementById("cacheNotice");
-    const cacheText      = document.getElementById("cacheText");
-    const cacheTime      = document.getElementById("cacheTime");
-    const btnBypass      = document.getElementById("btnBypassCache");
+    const cacheNotice = document.getElementById("cacheNotice");
+    const cacheText = document.getElementById("cacheText");
+    const cacheTime = document.getElementById("cacheTime");
+    const btnBypass = document.getElementById("btnBypassCache");
 
-    const infoList       = document.getElementById("whoisInfoList");
-    const rawCard        = document.getElementById("whoisRawCard");
-    const rawText        = document.getElementById("whoisRawText");
-    const timelineBadge  = document.getElementById("whoisTimelineBadge");
-    const timelineList   = document.getElementById("whoisTimelineList");
+    const infoList = document.getElementById("whoisInfoList");
+    const rawCard = document.getElementById("whoisRawCard");
+    const rawText = document.getElementById("whoisRawText");
+    const timelineBadge = document.getElementById("whoisTimelineBadge");
+    const timelineList = document.getElementById("whoisTimelineList");
 
-    const shareCard      = document.getElementById("whoisShareCard");
-    const shareLink      = document.getElementById("whoisShareLink");
-    const btnCopyLink    = document.getElementById("btnCopyWhoisLink");
+    const shareCard = document.getElementById("whoisShareCard");
+    const shareLink = document.getElementById("whoisShareLink");
+    const btnCopyLink = document.getElementById("btnCopyWhoisLink");
 
-    const availableMsg   = document.getElementById("whoisAvailableMsg");
-    const whoisLayout    = document.getElementById("whoisLayout");
+    const availableMsg = document.getElementById("whoisAvailableMsg");
+    const whoisLayout = document.getElementById("whoisLayout");
 
     let currentDomain = "";
     let isProcessing = false;
@@ -211,7 +211,7 @@ function init() {
 
         // Reset title
         renderSuccessHeader(resultTitle, `Kết quả tra cứu: <span class="">"${escapeHTML(domain)}"</span>`);
-        
+
         // Cache Notice
         if (meta && meta.fetched_at) {
             const timeStr = new Date(meta.fetched_at).toLocaleString("vi-VN");
@@ -230,7 +230,7 @@ function init() {
 
         // Ẩn layout chứa 2 cột thông tin đăng ký / vòng đời
         if (whoisLayout) whoisLayout.classList.add("d-none");
-        
+
         // Hiển thị thông báo "chưa đăng ký" kèm nút Mua full-width ở ngoài
         availableMsg.innerHTML = `
             <div class="message-card message-card--info">
@@ -249,17 +249,17 @@ function init() {
             </div>
         `;
         setDisplay(availableMsg, "block");
-        
+
         // Gán sự kiện cho nút Mua
         const btnBuy = document.getElementById("btnBuyDomain");
         if (btnBuy) {
             btnBuy.onclick = () => {
                 const affUrl = "https://tino.vn/ten-mien?php=2925";
                 const cartUrl = `https://tino.vn/cart/domain?sld=${encodeURIComponent(domain)}`;
-                
+
                 // Bước 1: Mở tab mới truy cập link Affiliate để set cookie
                 const win = window.open(affUrl, "_blank");
-                
+
                 // Bước 2: Sau 1 giây, "lái" cái tab đó sang trang giỏ hàng
                 if (win) {
                     setTimeout(() => {
@@ -273,7 +273,7 @@ function init() {
                 }
             };
         }
-        
+
         // Ẩn các phần không cần thiết
         setDisplay(rawCard, "none");
 
@@ -471,12 +471,10 @@ function init() {
 
         // "Còn X ngày" badge — dùng badge.css component
         let daysBadgeHtml = "";
-        if (diffDays > 90) {
-            daysBadgeHtml = `<span class="badge badge-success"><i class="fa-solid fa-circle-check mr-1"></i> Còn ${diffDays} ngày</span>`;
-        } else if (diffDays > 30) {
-            daysBadgeHtml = `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Còn ${diffDays} ngày</span>`;
-        } else if (diffDays > 0) {
-            daysBadgeHtml = `<span class="badge badge-error"><i class="fa-solid fa-fire mr-1"></i> Còn ${diffDays} ngày — Gia hạn ngay!</span>`;
+        if (diffDays > 30) {
+            daysBadgeHtml = `<span class="badge badge-success"><i class="fa-solid fa-circle-check mr-1"></i> Hết hạn sau ${diffDays} ngày</span>`;
+        } else if (diffDays >= 0) {
+            daysBadgeHtml = `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Hết hạn sau ${diffDays} ngày</span>`;
         } else {
             const expiredDays = Math.abs(diffDays);
             daysBadgeHtml = `<span class="badge badge-error"><i class="fa-solid fa-circle-xmark mr-1"></i> Đã hết hạn ${expiredDays} ngày trước</span>`;
@@ -640,7 +638,7 @@ function init() {
         try {
             const d = new Date(str);
             if (isNaN(d.getTime())) return str;
-            
+
             // Format: DD/MM/YYYY HH:mm:ss (GMT+7)
             const options = {
                 timeZone: "Asia/Ho_Chi_Minh",
@@ -652,7 +650,7 @@ function init() {
                 second: "2-digit",
                 hour12: false
             };
-            
+
             return d.toLocaleString("vi-VN", options);
         } catch {
             return str;
