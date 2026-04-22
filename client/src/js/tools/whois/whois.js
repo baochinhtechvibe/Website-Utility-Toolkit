@@ -8,6 +8,7 @@ import {
     escapeHTML,
     createRealtimeDomainValidator,
     renderSuccessHeader,
+    normalizeHostnameInput,
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
@@ -107,7 +108,13 @@ function init() {
     // -------- Form Submit --------
     form.addEventListener("submit", (e) => {
         e.preventDefault();
-        const domain = domainInput.value.trim();
+        const rawDomain = domainInput.value.trim();
+        const domain = normalizeHostnameInput(rawDomain);
+
+        // Cập nhật ngược lại UI
+        domainInput.value = domain;
+        domainInput.dispatchEvent(new Event('input'));
+
         if (!domain || btnLookup.disabled) return;
         performLookup(domain, false);
     });
