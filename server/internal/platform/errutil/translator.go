@@ -129,6 +129,9 @@ func TranslateError(err error) string {
 	if strings.Contains(msgLower, "website trả về mã lỗi http") {
 		return "Máy chủ website mục tiêu trả về lỗi HTTP (4xx/5xx). Không thể thu thập liên kết."
 	}
+	if strings.Contains(msgLower, "too many requests") || strings.Contains(msgLower, "rate limit") {
+		return "Bạn đã vượt quá số lượt yêu cầu cho phép trong một khoảng thời gian. Vui lòng đợi một lát rồi thử lại."
+	}
 
 	// ─── FALLBACK: Không trả lỗi gốc ra client! ─────────────────────────────
 	// Log lỗi nội bộ để debug, nhưng chỉ trả message generic cho user.

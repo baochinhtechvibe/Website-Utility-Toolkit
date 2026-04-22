@@ -183,3 +183,39 @@ export function normalizeHostnameInput(input) {
     }
 }
 
+
+/**
+ * Chuẩn hóa URL người dùng nhập
+ *
+ * Khác với normalizeHostnameInput, hàm này giữ nguyên đường dẫn (path) và tham số (query)
+ *
+ * Xử lý:
+ * - Trim khoảng trắng
+ * - Tự thêm https:// nếu thiếu protocol
+ *
+ * @param {string} input - Dữ liệu user nhập
+ * @returns {string} URL đã được chuẩn hóa
+ */
+export function normalizeURLInput(input) {
+    if (!input) return "";
+
+    input = input.trim();
+
+    // Nếu bắt đầu bằng // (protocol relative) → mặc định https
+    if (input.startsWith("//")) {
+        input = "https:" + input;
+    }
+
+    // Nếu chưa có protocol → mặc định https
+    if (!input.match(/^[a-zA-Z0-9+.-]+:\/\//)) {
+        input = "https://" + input;
+    }
+
+    try {
+        const url = new URL(input);
+        return url.toString();
+    } catch (e) {
+        return input;
+    }
+}
+

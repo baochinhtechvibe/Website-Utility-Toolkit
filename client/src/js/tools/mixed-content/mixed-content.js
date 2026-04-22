@@ -7,10 +7,11 @@ import {
     setDisplay,
     toggleLoading,
     setElementsEnabled,
-    createRealtimeURLValidator,
+    createRealtimeDomainValidator,
 
     /* format.js */
     escapeHTML,
+    normalizeURLInput,
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
@@ -24,10 +25,6 @@ const state = {
 };
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-function validateURL(url) {
-    const lower = url.toLowerCase();
-    return lower.startsWith("http://") || lower.startsWith("https://");
-}
 
 function getSeverityBadge(type) {
     if (type === "Active") {
@@ -210,9 +207,7 @@ function init() {
     const btnExportXlsx = document.getElementById("btnExportXlsx");
     const btnCopyFixes = document.getElementById("btnCopyFixes");
     const cacheNotice = document.getElementById("cacheNotice");
-    const cacheNoticeText = document.getElementById("cacheNoticeText");
-    const cacheTime = document.getElementById("cacheTime");
-    const cacheNoticeIcon = document.getElementById("cacheNoticeIcon");
+
     const btnBypassCache = document.getElementById("btnBypassCache");
 
     let isScanning = false;
@@ -238,17 +233,16 @@ function init() {
         setDisplay(truncatedBanner, data.truncated ? "flex" : "none");
 
         // Cache Notice
-        if (meta) {
-            if (meta.cached) {
-                cacheNoticeText.textContent = "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc";
-                cacheNoticeIcon.className = "fa-solid fa-clock";
-            } else {
-                cacheNoticeText.textContent = "Kết quả tra cứu mới nhất lúc";
-                cacheNoticeIcon.className = "fa-solid fa-bolt";
-            }
-            if (meta.fetched_at) {
-                const date = new Date(meta.fetched_at);
-                cacheTime.textContent = date.toLocaleString("vi-VN");
+        if (meta && meta.fetched_at) {
+            const date = new Date(meta.fetched_at);
+            const timeStr = date.toLocaleString("vi-VN");
+            const spanEl = cacheNotice.querySelector("span");
+            if (spanEl) {
+                if (meta.cached) {
+                    spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+                } else {
+                    spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+                }
             }
             setDisplay(cacheNotice, "flex");
         } else {
@@ -446,8 +440,16 @@ function init() {
     async function performScan(bypassCache = false) {
         if (isScanning) return;
         resetUI();
+        
         const rawUrl = urlInput.value.trim();
-        if (!rawUrl || !validateURL(rawUrl)) {
+        const url = normalizeURLInput(rawUrl);
+
+        // Cập nhật lại UI để user thấy URL đã được chuẩn hóa
+        urlInput.value = url;
+        // Phát sự kiện input để validator realtime (nếu có) check lại giá trị mới
+        urlInput.dispatchEvent(new Event('input'));
+
+        if (!url) {
             setDisplay(urlError, "block");
             return;
         }
@@ -461,7 +463,7 @@ function init() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    url: rawUrl,
+                    url: url,
                     ignoreTLSErrors: ignoreTLSInput?.checked || false,
                     bypassCache: bypassCache
                 }),
@@ -523,13 +525,13 @@ function init() {
     });
 
     // Fix lỗi #12: Chỉ ẩn errorCard + resultSection, KHÔNG ẩn urlError
-    // để tránh xung đột với createRealtimeURLValidator (Quy tắc #26)
+    // để tránh xung đột với createRealtimeDomainValidator (Quy tắc #26)
     urlInput?.addEventListener("input", () => {
         resetUI();
     });
 
     // ─── Setup ────────────────────────────────────────────────────────────
-    createRealtimeURLValidator(urlInput, urlError, btnScan);
+    createRealtimeDomainValidator(urlInput, urlError, btnScan);
     setupInteractions();
 
     // Auto-scan từ URL params

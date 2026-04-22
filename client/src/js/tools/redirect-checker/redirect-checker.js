@@ -4,7 +4,7 @@
  * Refactored for Design System compliance
  */
 
-import { $, $$, createRealtimeURLValidator } from '../../utils/index.js';
+import { $, $$, createRealtimeDomainValidator, normalizeURLInput } from '../../utils/index.js';
 import { API_BASE_URL } from '../../config.js';
 
 // ==============================
@@ -12,6 +12,7 @@ import { API_BASE_URL } from '../../config.js';
 // ==============================
 let isProcessing = false;
 let _lastData = null;
+let _abortController = null; // To cancel pending requests
 
 /**
  * Initialize the tool
@@ -19,6 +20,9 @@ let _lastData = null;
 function init() {
     console.log("🚀 Redirect Analyzer Tool Initialized");
     setupEventListeners();
+    
+    // 🚨 IMPORTANT: normalizeInputUrl is called in loadFromURL()
+    // Must be called AFTER setupEventListeners so validators are already attached.
     loadFromURL();
 
     // Handle back/forward browser buttons
@@ -56,7 +60,7 @@ function setupEventListeners() {
 
     // Real-time URL validation
     if (urlInput) {
-        createRealtimeURLValidator(
+        createRealtimeDomainValidator(
             urlInput,
             $('#urlValidationError'),
             $('#btnAnalyze')
@@ -145,8 +149,28 @@ function loadFromURL() {
     const url = params.get('url');
     if (url) {
         const input = $('#redirectUrl');
-        if (input) input.value = url;
+        if (input) {
+            input.value = url;
+            // Normalize and trigger validation
+            normalizeInputUrl(input);
+        }
         handleAnalyze();
+    }
+}
+
+/**
+ * Normalize URL input (add http:// if missing)
+ * And trigger 'input' event to refresh validation UI
+ */
+function normalizeInputUrl(input) {
+    if (!input) return;
+    const val = input.value.trim();
+    const normalized = normalizeURLInput(val);
+    
+    if (normalized !== val) {
+        input.value = normalized;
+        // Trigger input event to let validator know it's changed
+        input.dispatchEvent(new Event('input'));
     }
 }
 
@@ -155,6 +179,10 @@ function loadFromURL() {
  */
 async function handleAnalyze(bypassCache = false) {
     const urlInput = $('#redirectUrl');
+    
+    // Auto-fix URL before validation/sending
+    normalizeInputUrl(urlInput);
+    
     const url = urlInput?.value.trim();
 
     if (!url || !isValidURL(url)) {
@@ -162,7 +190,16 @@ async function handleAnalyze(bypassCache = false) {
         return;
     }
 
-    if (isProcessing) return;
+    if (isProcessing) {
+        if (_abortController) {
+            _abortController.abort();
+        }
+        // Force reset so the new request can start immediately
+        isProcessing = false;
+        setLoading(false);
+    }
+
+    _abortController = new AbortController();
     isProcessing = true;
 
     const ua = getEffectiveUA();
@@ -179,28 +216,30 @@ async function handleAnalyze(bypassCache = false) {
     if (cn) cn.classList.add('d-none');
 
     try {
-        const data = await fetchAnalysis(url, ua, deepScan, ignoreTlsErrors, bypassCache);
+        const data = await fetchAnalysis(url, ua, deepScan, ignoreTlsErrors, bypassCache, _abortController.signal);
         renderResults(data.data, url, data.meta);
 
         if (compareMode) {
-            const compData = await fetchCompareUAs(url);
+            const compData = await fetchCompareUAs(url, _abortController.signal);
             renderCompare(compData);
         }
 
         updateShareLink(url);
         updateURL(url);
     } catch (err) {
+        if (err.name === 'AbortError') return; // Ignore cancelled requests
         showError(err.message || 'Không thể phân tích chuyển hướng. Vui lòng thử lại!');
     } finally {
         isProcessing = false;
         setLoading(false);
+        _abortController = null;
     }
 }
 
 /**
  * Fetch analysis data from API
  */
-async function fetchAnalysis(url, ua, deepScan, ignoreTlsErrors = false, bypassCache = false) {
+async function fetchAnalysis(url, ua, deepScan, ignoreTlsErrors = false, bypassCache = false, signal = null) {
     let endpoint = `${API_BASE_URL}/redirect-checker/analyze`;
     if (bypassCache) {
         endpoint += '?bypassCache=true';
@@ -209,7 +248,8 @@ async function fetchAnalysis(url, ua, deepScan, ignoreTlsErrors = false, bypassC
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, userAgent: ua, deepScan, ignoreTlsErrors })
+        body: JSON.stringify({ url, userAgent: ua, deepScan, ignoreTlsErrors }),
+        signal: signal // Attach abort signal
     });
 
     if (!response.ok) {
@@ -240,7 +280,7 @@ function getEffectiveUA() {
 /**
  * Multi-UA Comparison
  */
-async function fetchCompareUAs(url) {
+async function fetchCompareUAs(url, signal = null) {
     const UAs = [
         { label: 'Chrome Desktop', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' },
         { label: 'iPhone Safari', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' },
@@ -249,7 +289,7 @@ async function fetchCompareUAs(url) {
 
     const results = await Promise.allSettled(
         UAs.map(({ label, ua }) =>
-            fetchAnalysis(url, ua, false)
+            fetchAnalysis(url, ua, false, false, false, signal)
                 .then(data => ({ label, data }))
                 .catch(() => ({ label, data: null }))
         )
@@ -276,13 +316,14 @@ function renderResults(res, url, meta) {
     const perf = res.performance || {};
     
     const lastHop = chain[chain.length - 1];
-    const isError = lastHop && lastHop.statusCode >= 400;
+    const isError = lastHop && (lastHop.statusCode >= 400 || !!lastHop.error);
 
     // Manage dynamic title
     const titleEl = $('#resultsTitle');
     if (titleEl) {
         if (isError) {
-            titleEl.innerHTML = `<i class="fa-solid fa-circle-xmark text-error mr-2"></i> Phát hiện lỗi ${lastHop.statusCode} tại trang đích`;
+            const errCode = lastHop.statusCode ? lastHop.statusCode : 'Network';
+            titleEl.innerHTML = `<i class="fa-solid fa-circle-xmark text-error mr-2"></i> Phát hiện lỗi ${errCode} tại trang đích`;
             titleEl.classList.add('text-error');
         } else {
             titleEl.innerHTML = `<i class="fa-solid fa-circle-check text-success mr-2"></i> Kết quả phân tích cho "${escHtml(url)}"`;
@@ -290,29 +331,25 @@ function renderResults(res, url, meta) {
         }
     }
 
-    // Managed Cache Notice
-    const cacheNotice = $('#cacheNotice');
+    // Managed Cache Notice (GEMINI.md Rule #11)
+    const cacheNotice = document.getElementById('cacheNotice');
     if (cacheNotice && meta && meta.fetched_at) {
-        const cacheTime = $('#cacheTime');
-        const cacheText = $('#cacheText');
-        
         const date = new Date(meta.fetched_at);
         const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + date.toLocaleDateString('vi-VN');
         
-        if (cacheTime) cacheTime.textContent = timeStr;
-        if (cacheText) {
-            const isCached = !!meta.cached;
-            cacheText.textContent = isCached 
-                ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc" 
-                : "Kết quả tra cứu mới nhất lúc";
-            
-            // Cập nhật icon: Đồng hồ (cached) vs Tia sét (fresh)
-            const icon = cacheNotice.querySelector('i');
-            if (icon) {
-                icon.className = isCached ? 'fa-solid fa-clock' : 'fa-solid fa-bolt';
-            }
-        }
+        const cacheText = document.getElementById('cacheText');
+        const cacheTimeVal = document.getElementById('cacheTime');
+        const iconEl = cacheNotice.querySelector('i');
 
+        if (meta.cached) {
+            if (cacheText) cacheText.textContent = 'Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc ';
+            if (iconEl) iconEl.className = 'fa-solid fa-clock';
+        } else {
+            if (cacheText) cacheText.textContent = 'Kết quả tra cứu mới nhất lúc ';
+            if (iconEl) iconEl.className = 'fa-solid fa-bolt';
+        }
+        
+        if (cacheTimeVal) cacheTimeVal.textContent = timeStr;
         cacheNotice.classList.remove('d-none');
     }
     
@@ -343,7 +380,8 @@ function renderResults(res, url, meta) {
     
     if (isError) {
         score -= 50;
-        issues.push({ type: 'deduct', label: `Trang đích trả về lỗi ${lastHop.statusCode}`, value: 50 });
+        const errCode = lastHop.statusCode ? lastHop.statusCode : 'Mạng (Network)';
+        issues.push({ type: 'deduct', label: `Trang đích hoặc chuỗi kết nối gặp lỗi ${errCode}`, value: 50 });
     }
     if (sec.isHttpsDowngrade) { score -= 30; issues.push({ type: 'deduct', label: 'HTTPS Downgrade (Nguy hiểm)', value: 30 }); }
     if (sec.isOpenRedirect) { score -= 40; issues.push({ type: 'deduct', label: 'Có dấu hiệu Open Redirect', value: 40 }); }
@@ -364,7 +402,7 @@ function renderResults(res, url, meta) {
     const totalTime = perf.totalTime || 0;
     if (totalTime > 1500) { score -= 15; issues.push({ type: 'deduct', label: 'Tổng thời gian phản hồi quá chậm (>1.5s)', value: 15 }); }
 
-    res.computedScore = Math.max(0, score);
+    res.computedScore = Math.max(0, Math.min(100, score));
     res.computedIssues = issues;
 
     // Trigger rendering of components
@@ -473,7 +511,7 @@ function renderChain(steps) {
 }
 
 function getStatusGroup(code) {
-    if (!code) return '3xx';
+    if (!code) return '5xx';
     if (code === 301) return '301';
     if (code === 302) return '302';
     if (code >= 200 && code < 300) return '2xx';
@@ -483,7 +521,7 @@ function getStatusGroup(code) {
 }
 
 function renderBadge(code) {
-    if (!code) return '<span class="badge badge-default">?</span>';
+    if (!code) return '<span class="badge badge-error">LỖI</span>';
     const group = getStatusGroup(code);
     const map = {
         '2xx': 'badge-success',
@@ -623,12 +661,16 @@ function renderCompare(results) {
     const msg = $('#compareWarningMsg');
     if (!tbody) return;
 
-    const destinations = results.map(r => r.data?.data?.chain?.at(-1)?.url || '').filter(Boolean);
+    const destinations = results.map(r => {
+        const steps = r.data?.data?.chain || [];
+        return steps.length > 0 ? steps[steps.length - 1].url : '';
+    }).filter(Boolean);
+    
     const differs = destinations.length > 1 && !destinations.every(d => d === destinations[0]);
 
     tbody.innerHTML = results.map(r => {
         const steps = r.data?.data?.chain || [];
-        const last = steps.at(-1);
+        const last = steps.length > 0 ? steps[steps.length - 1] : null;
         return `
         <tr>
             <td class="text-sm">${escHtml(r.label)}</td>
@@ -721,10 +763,16 @@ function copyChain() {
 function exportJson() {
     if (!_lastData) return;
     const blob = new Blob([JSON.stringify(_lastData, null, 2)], { type: 'application/json' });
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = objectUrl;
     a.download = `redirect-checker-${new Date().getTime()}.json`;
     a.click();
+    
+    // Memory leak fix: revoke URL after download
+    setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+    }, 1000);
 }
 
 async function copyText(text, btn) {

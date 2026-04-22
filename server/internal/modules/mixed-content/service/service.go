@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/html"
+	cache "github.com/go-pkgz/expirable-cache/v3"
 	"tools.bctechvibe.com/server/internal/modules/mixed-content/models"
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
@@ -27,65 +29,74 @@ const (
 	scanUserAgent   = "MixedContentScanner/1.0 (+https://tools.bctechvibe.com)"
 )
 
-// ─── Cache ────────────────────────────────────────────────────────────────────
+// ─── Cache & Rate Limiting ──────────────────────────────────────────────────
 
 type cacheEntry struct {
-	data      *models.ScanData
-	fetchedAt time.Time
-	expiresAt time.Time
+	Data      *models.ScanData
+	FetchedAt time.Time
 }
 
 var (
-	cacheMap sync.Map
+	// Bộ nhớ tạm cho kết quả scan (TTL 5 phút)
+	scanCache cache.Cache[string, cacheEntry]
+
+	// Bộ nhớ tạm để giới hạn lượt bấm "Làm mới" theo IP (5 lần/phút)
+	ipLimiter cache.Cache[string, []time.Time]
+
+	// Khóa để tránh race condition khi cập nhật danh sách IP
+	ipMutex sync.Mutex
+
+	// ErrRateLimited là lỗi sentinel cho rate limit (Quy tắc #45)
+	ErrRateLimited = errors.New("rate_limited")
 )
 
-// Cleanup goroutine: dọn cache hết hạn định kỳ, tránh memory leak
 func init() {
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			now := time.Now()
-			cacheMap.Range(func(key, value interface{}) bool {
-				if entry, ok := value.(cacheEntry); ok {
-					if now.After(entry.expiresAt) {
-						cacheMap.Delete(key)
-					}
-				}
-				return true
-			})
+	// Khởi tạo cache với LRU và TTL chuẩn của github.com/go-pkgz/expirable-cache/v3
+	scanCache = cache.NewCache[string, cacheEntry]().WithLRU().WithTTL(cacheTTL)
+	ipLimiter = cache.NewCache[string, []time.Time]().WithLRU().WithTTL(1 * time.Minute)
+}
+
+// checkRateLimit kiểm tra xem IP có vượt quá 5 lần bấm "Làm mới" trong 1 phút không
+func checkRateLimit(ip string) error {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return nil // Không limit localhost
+	}
+
+	ipMutex.Lock()
+	defer ipMutex.Unlock()
+
+	now := time.Now()
+	oneMinuteAgo := now.Add(-1 * time.Minute)
+
+	history, _ := ipLimiter.Get(ip)
+
+	// Lọc bỏ các request cũ hơn 1 phút
+	var validRequests []time.Time
+	for _, t := range history {
+		if t.After(oneMinuteAgo) {
+			validRequests = append(validRequests, t)
 		}
-	}()
-}
-
-func cacheGet(key string) (*models.ScanData, time.Time, bool) {
-	v, ok := cacheMap.Load(key)
-	if !ok {
-		return nil, time.Time{}, false
 	}
-	entry := v.(cacheEntry)
-	if time.Now().After(entry.expiresAt) {
-		cacheMap.Delete(key)
-		return nil, time.Time{}, false
-	}
-	return entry.data, entry.fetchedAt, true
-}
 
-func cacheSet(key string, data *models.ScanData, fetchedAt time.Time) {
-	cacheMap.Store(key, cacheEntry{
-		data:      data,
-		fetchedAt: fetchedAt,
-		expiresAt: time.Now().Add(cacheTTL),
-	})
+	if len(validRequests) >= 5 {
+		return ErrRateLimited
+	}
+
+	// Thêm request hiện tại vào lịch sử
+	validRequests = append(validRequests, now)
+	ipLimiter.Set(ip, validRequests, 2*time.Minute)
+
+	return nil
 }
 
 // ─── SSRF Protection (Delegated to platform/validator) ────────────
 
 // Singleton HTTP clients: reuse TCP connection pool + TLS session cache
 var (
-	defaultClient  *http.Client
-	insecureClient *http.Client
-	clientOnce     sync.Once
+	defaultClient      *http.Client
+	insecureClient     *http.Client
+	defaultClientOnce  sync.Once
+	insecureClientOnce sync.Once
 )
 
 func buildSecureClient(ignoreTLS bool) *http.Client {
@@ -136,13 +147,15 @@ func buildSecureClient(ignoreTLS bool) *http.Client {
 }
 
 func getSecureClient(ignoreTLS bool) *http.Client {
-	clientOnce.Do(func() {
-		defaultClient = buildSecureClient(false)
-		insecureClient = buildSecureClient(true)
-	})
 	if ignoreTLS {
+		insecureClientOnce.Do(func() {
+			insecureClient = buildSecureClient(true)
+		})
 		return insecureClient
 	}
+	defaultClientOnce.Do(func() {
+		defaultClient = buildSecureClient(false)
+	})
 	return defaultClient
 }
 
@@ -197,7 +210,7 @@ func makeFix(rawURL string) string {
 
 var reInlineStyleURL = regexp.MustCompile(`(?i)url\s*\(\s*['"]?\s*(http://[^'"\)\s]+)\s*['"]?\s*\)`)
 
-func extractMixedItems(body io.Reader, baseHost string) ([]models.MixedItem, bool) {
+func extractMixedItems(ctx context.Context, body io.Reader, baseHost string) ([]models.MixedItem, bool) {
 	var items []models.MixedItem
 	truncated := false
 
@@ -227,10 +240,20 @@ func extractMixedItems(body io.Reader, baseHost string) ([]models.MixedItem, boo
 		return items, truncated
 	}
 
+	nodeCount := 0
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if truncated {
 			return
+		}
+		// Kiểm tra context định kỳ để dừng nếu timeout (Quy tắc #41)
+		nodeCount++
+		if nodeCount%100 == 0 {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 		}
 		if n.Type == html.ElementNode {
 			tag := strings.ToLower(n.Data)
@@ -340,7 +363,7 @@ func parseSrcset(srcset string) []string {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 // ScanMixedContent fetch URL, parse HTML, trả danh sách HTTP resources
-func ScanMixedContent(ctx context.Context, req models.ScanRequest) (scanRes *models.ScanData, errRes error, isCached bool, fetchedAt time.Time) {
+func ScanMixedContent(ctx context.Context, req models.ScanRequest, clientIP string) (scanRes *models.ScanData, errRes error, isCached bool, fetchedAt time.Time) {
 	rawURL := strings.TrimSpace(req.URL)
 
 	// Validate scheme
@@ -359,11 +382,19 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest) (scanRes *mod
 		return nil, err, false, time.Time{}
 	}
 
+	// Cache key bao gồm TLS mode (Quy tắc #42)
+	cacheKey := fmt.Sprintf("%s|tls=%v", rawURL, req.IgnoreTLSErrors)
+
 	// Cache lookup (chỉ khi không bypass)
 	if !req.BypassCache {
-		if cached, fetchedAt, ok := cacheGet(rawURL); ok {
+		if cached, ok := scanCache.Get(cacheKey); ok {
 			log.Debug().Str("url", rawURL).Msg("mixedcontent cache hit")
-			return cached, nil, true, fetchedAt
+			return cached.Data, nil, true, cached.FetchedAt
+		}
+	} else {
+		// Kiểm tra Rate Limit khi Bypass Cache
+		if err := checkRateLimit(clientIP); err != nil {
+			return nil, err, false, time.Time{}
 		}
 	}
 
@@ -393,7 +424,7 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest) (scanRes *mod
 	limitedBody := io.LimitReader(resp.Body, maxBodySize)
 	baseHost := parsed.Hostname()
 
-	items, truncated := extractMixedItems(limitedBody, baseHost)
+	items, truncated := extractMixedItems(ctx, limitedBody, baseHost)
 
 	activeCount, passiveCount := 0, 0
 	for _, it := range items {
@@ -415,6 +446,10 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest) (scanRes *mod
 		Truncated:    truncated,
 	}
 
-	cacheSet(rawURL, data, fetchedAt)
+	cacheSetEntry := cacheEntry{
+		Data:      data,
+		FetchedAt: fetchedAt,
+	}
+	scanCache.Set(cacheKey, cacheSetEntry, cacheTTL)
 	return data, nil, false, fetchedAt
 }

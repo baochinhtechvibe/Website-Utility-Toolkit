@@ -43,7 +43,7 @@
 - **Lưu ý quan trọng:** Cần quy định cách import CSS cho tool mới để duy trì hiệu suất và nguyên tắc "1 file CSS duy nhất".
 - **Cách khắc phục đúng:**
   - Trong trang HTML của tool mới, CHỈ ĐƯỢC PHÉP có duy nhất một thẻ import CSS ở `<head>`: `<link rel="stylesheet" href="../../src/css/main.css">`. Tuyệt đối không dùng nhiều thẻ `<link>` lẻ tẻ.
-  - Nếu tool mới cần file CSS custom riêng chứa các logic layout phức tạp, hãy tạo file đó (VD: `src/css/tools/ten-tool.css`), và sau đó mở file `src/css/main.css` để **gắn câu lệnh `@import`** vào trong đó (VD: `@import url('./tools/ten-tool.css');`). Bằng cách này, mọi style sẽ được gộp chung vào 1 entry point duy nhất.
+  - If tool mới cần file CSS custom riêng chứa các logic layout phức tạp, hãy tạo file đó (VD: `src/css/tools/ten-tool.css`), và sau đó mở file `src/css/main.css` để **gắn câu lệnh `@import`** vào trong đó (VD: `@import url('./tools/ten-tool.css');`). Bằng cách này, mọi style sẽ được gộp chung vào 1 entry point duy nhất.
 
 ### 8. CẬP NHẬT TRANG CHỦ KHI TẠO TOOL MỚI
 - **Lưu ý quan trọng:** Khi hoàn thành một tool mới, phải bổ sung đường dẫn và thông tin tool đó ra ngoài trang chủ (`index.html`) để user có thể truy cập được.
@@ -180,5 +180,122 @@
 ### 29. TUYỆT ĐỐI ĐỒNG BỘ CLASS KHI REFACTOR
 - **Lưu ý quan trọng:** Việc đổi tên class cho "sang" hơn trong CSS mà quên cập nhật HTML/JS là lỗi sơ đẳng gây lãng phí Token và thời gian.
 - **Cách khắc phục đúng:** Khi rewrite một khối CSS, phải dùng chức năng Search toàn project để đảm bảo mọi nơi gọi tới class cũ đều đã được cập nhật sang class mới. Luôn kiểm tra lại giao diện thực tế ngay sau khi đổi tên.
+
+### 30. KHÔNG DÙNG CLASS LAYOUT DƯ THỪA KHI COMPONENT ĐÃ CÓ SẴN
+- **Lỗi đã mắc:** Thêm các class utility như `.flex-row`, `.justify-between`, `.items-center` vào thẻ HTML của `.cache-card` trong khi file `components/cache-card.css` đã định nghĩa sẵn các thuộc tính này (sử dụng `!important`).
+- **Cách khắc phục đúng:** LUÔN LUÔN đọc nội dung file CSS của component trước khi viết HTML. Nếu component đã có sẵn layout bên trong, chỉ cần dùng đúng class tên component đó là đủ. Việc nhồi nhét thêm class utility chỉ làm rối mã nguồn và gây khó khăn khi bảo trì.
+
+### 31. TÍNH NHẤT QUÁN UI/UX GIỮA CÁC CÔNG CỤ TƯƠNG ĐỒNG
+- **Lưu ý quan trọng:** Các công cụ có chung hành vi (như tra cứu/lookup) phải có trải nghiệm người dùng y hệt nhau.
+- **Cách khắc phục đúng:** 
+  - Nếu tool DNS dùng icon sét (`fa-bolt`) cho dữ liệu mới và icon đồng hồ (`fa-clock`) cho dữ liệu cache, thì tool WHOIS cũng phải làm y chang. 
+  - Không được tự ý thay đổi bộ icon hoặc cấu trúc thông báo (`cache-card`) nếu không có lý do cực kỳ đặc biệt.
+
+### 32. TUÂN THỦ TIÊU CHUẨN NGHIỆP VỤ (BUSINESS LOGIC) CỦA NGÀNH
+- **Lỗi đã mắc:** Thiết lập vòng đời tên miền (lifecycle) theo cảm tính hoặc thiếu các giai đoạn quan trọng (ví dụ: thiếu "Giai đoạn Chuộc - Redemption Period" của tên miền quốc tế).
+- **Cách khắc phục đúng:** Khi code các công cụ chuyên ngành (DNS, WHOIS, SSL...), phải tra cứu kỹ quy chuẩn của các tổ chức quốc tế (ICANN, VNNIC, IETF...). Một công cụ đẹp nhưng logic sai lệch so với thực tế sẽ làm mất uy tín của hệ thống.
+
+### 33. TIÊU CHUẨN BACKEND PRODUCTION (SHARED COMPONENTS)
+- **Lưu ý quan trọng:** Để đảm bảo tính bảo mật, hiệu suất và đồng bộ dữ liệu, mọi tool backend mới PHẢI tuân thủ bộ khung Shared Components đã được refactor.
+- **Cách khắc phục đúng:**
+  - **Phản hồi chuẩn:** LUÔN LUÔN dùng package `internal/response` (hàm `Success`, `SuccessWithMessage`, `Error`) để trả về dữ liệu. Tuyệt đối không dùng `c.JSON` thủ công cho các endpoint API.
+  - **Dịch lỗi bảo mật:** LUÔN LUÔN truyền lỗi qua `errutil.TranslateError(err)` trước khi trả về cho user. Không bao giờ được trả lỗi `err.Error()` gốc ra client để tránh lộ lọt thông tin hệ thống (path, IP, stack trace).
+  - **Bộ nhớ tạm (Cache):** Sử dụng bộ Cache Generics mới (`cache.New[K, V]`) thay vì các legacy cache cũ. Đảm bảo có logic bypass cache (`bypassCache=true`) cho các tool tra cứu.
+  - **Kiểm tra dữ liệu (Validation):** Sử dụng `internal/platform/validator` cho mọi input từ người dùng. Đặc biệt lưu ý dùng `IsSafeHostname` để chống tấn công SSRF (quét mạng nội bộ).
+  - **Mã lỗi HTTP:** Trả về đúng Status Code theo ngữ cảnh (400: Input sai, 429: Too many requests, 422: Lỗi logic nghiệp vụ, 500: Lỗi server). Đừng lạm dụng 200 OK cho mọi trường hợp `success: false`.
+
+### 34. PHÒNG TRÁNH LỖI ENCODING (FONT) KHI EDIT TRÊN WINDOWS
+- **Lưu ý quan trọng:** Môi trường Windows (PowerShell/CMD) rất dễ làm sai lệch Codepage, dẫn đến việc các chuỗi Tiếng Việt UTF-8 bị biến thành rác (VD: `Ã´`, `áº`, `ờ‹`). Một khi file đã bị lỗi font, việc dùng các tool Search/Replace thông thường sẽ rất khó khớp dữ liệu.
+- **Cách khắc phục đúng:**
+  - **Mặc định UTF-8:** Luôn đảm bảo Editor và các script xử lý file sử dụng Encoding là `UTF-8 (No BOM)`.
+  - **Cẩn trọng với Scripts:** Tuyệt đối không dùng lệnh redirect `>` hoặc `Set-Content` của PowerShell để ghi file chứa Tiếng Việt nếu không khai báo rõ `-Encoding utf8`.
+  - **Xử lý khi bị lỗi:** Nếu phát hiện lỗi font (xuất hiện các ký tự lạ trên UI), không nên cố sửa thủ công bằng tay vì dễ sót. Hãy dùng script Python (môi trường xử lý chuỗi cực tốt) để quét và replace hàng loạt dựa trên bảng mã map UTF-8 chuẩn.
+  - **Kiểm tra sau khi Edit:** Sau khi dùng các công cụ tự động để refactor code backend, phải mở file kiểm tra tận mắt các chuỗi String trong file Go xem có còn nguyên vẹn Tiếng Việt hay không trước khi commit/chạy server.
+
+### 35. NGÔN NGỮ PHẢN HỒI (TIẾNG VIỆT) VÀ ENCODING UTF-8
+- **Lưu ý quan trọng:** Mọi thông báo lỗi, hướng dẫn hoặc kết quả trả về cho người dùng PHẢI sử dụng Tiếng Việt rõ ràng, dễ hiểu. Tránh dùng thuật ngữ kỹ thuật khô khan hoặc lỗi gốc tiếng Anh từ hệ thống.
+- **Cách làm chuẩn:**
+  - Sử dụng `internal/platform/errutil.TranslateError(err)` để dịch lỗi.
+  - Nếu lỗi mang tính chất đặc thù của tool, hãy định nghĩa thêm trong `translator.go` hoặc xử lý riêng tại tool đó bằng Tiếng Việt.
+  - **TUYỆT ĐỐI TUÂN THỦ ENCODING:** Mọi file chứa ký tự Tiếng Việt (Go, HTML, JS) phải được lưu ở định dạng **UTF-8 (No BOM)**. Khi sửa file trên Windows, phải cực kỳ cẩn thận để không làm biến thành rác mã hóa (ví dụ: `Ã´`, `áº`).
+
+### 36. CHẶN TRUY CẬP NỘI BỘ (SSRF PROTECTION) CHO MỌI TOOL
+- **Lưu ý quan trọng:** Mọi tool nhận input là Domain hoặc IP (DNS, SSL, Redirect, etc.) đều tiềm ẩn rủi ro hacker dùng để thăm dò mạng nội bộ của server.
+- **Cách làm chuẩn:**
+  - Tại Backend, trước khi thực hiện bất kỳ logic nào, phải gọi `validator.IsSafeHostname(req.Hostname)` (hoặc `IsSafeIP`).
+  - Nếu kết quả trả về là `false`, lập tức trả về lỗi `400 Bad Request` kèm thông báo chặn truy cập nội bộ rõ ràng. Không bao giờ được "thả cửa" cho tra cứu IP Private trừ khi có lý do cực kỳ đặc biệt.
+
+### 37. ĐỒNG BỘ VALIDATOR KHI GÁN GIÁ TRỊ BẰNG JAVASCRIPT
+- **Lỗi đã mắc:** Khi chuẩn hóa giá trị (normalize) và gán lại vào `input.value = newValue`, trình duyệt không tự phát ra sự kiện `input`, khiến các validator realtime không biết giá trị đã thay đổi (vẫn hiện lỗi đỏ dù giá trị mới đã đúng).
+- **Cách khắc phục đúng:** Sau mỗi dòng lệnh gán giá trị cho input bằng code, bắt buộc phải gọi: `input.dispatchEvent(new Event('input'));` để kích hoạt lại logic kiểm tra của validator.
+
+### 38. THỐNG NHẤT CƠ CHẾ ẨN/HIỆN LỖI TRONG UI
+- **Lỗi đã mắc:** Validator dùng class `.d-none` để ẩn hiện, nhưng hàm `resetUI` lại dùng `element.style.display = 'none'`. Việc này gây xung đột (style display có độ ưu tiên cao hơn class) khiến validator không thể hiện lại lỗi sau khi đã reset.
+- **Cách khắc phục đúng:** Thống nhất sử dụng cơ chế của validator. Trong hàm `resetUI`, hãy ẩn bảng lỗi bằng cách gọi `errorEl.classList.add('d-none')` và xóa class `is-invalid` trên ô input.
+
+### 39. PHÂN ĐỊNH LỖI INPUT (400) VÀ LỖI NGHIỆP VỤ (200/FALSE)
+- **Quy tắc Backend:** 
+  - Trả về mã **400 Bad Request** khi: Định dạng sai, IP không hợp lệ, IP bị chặn (SSRF). Đây là những lỗi do người dùng nhập sai.
+  - Trả về mã **200 OK** kèm `success: false` khi: Hệ thống hoạt động tốt nhưng không tìm thấy dữ liệu (ví dụ: Không có bản ghi PTR cho IP hợp lệ). Việc trả về 200 cho phép gửi kèm các dữ liệu phụ như `traceLogs` để người dùng hiểu tại sao không có kết quả.
+- **Quy tắc Frontend:** 
+  - Trong block `catch`, xử lý các lỗi 400/500 thành `message-card--error`.
+  - Trong logic xử lý response, nếu nhận được `success: false` nhưng có dữ liệu phụ (trace), vẫn phải render các dữ liệu đó thay vì chỉ hiện một bảng lỗi trống trơn.
+
+### 40. BẢO MẬT LOG VÀ TRÁNH LOG INJECTION
+- **Lưu ý quan trọng:** Việc log trực tiếp dữ liệu từ người dùng (URL, Query String...) mà không qua xử lý có thể tạo điều kiện cho hacker tấn công Log Injection hoặc làm giả file log.
+- **Cách làm chuẩn:**
+  - Luôn sanitize input trước khi log: Cắt tỉa độ dài (truncate), loại bỏ các ký tự điều khiển như xuống dòng (`\n`, `\r`).
+  - Sử dụng structured logging (zerolog) với các field riêng biệt (`.Str("url", safeURL)`) thay vì cộng chuỗi vào message.
+
+### 41. QUẢN LÝ TIMEOUT VÀ CONTEXT TRONG HANDLER
+- **Lưu ý quan trọng:** Các tool có thời gian xử lý lâu (fetch trang web, parse DOM phức tạp) có thể làm treo goroutine nếu không giới hạn thời gian thực thi.
+- **Cách làm chuẩn:**
+  - **Tầng Handler:** Phải tạo một context có deadline (ví dụ `context.WithTimeout(c.Request.Context(), 20*time.Second)`) cho mọi flow scan.
+  - **Tầng Service:** Các vòng lặp hoặc quá trình xử lý CPU-intensive (như walk DOM) phải kiểm tra `ctx.Done()` định kỳ để dừng ngay lập tức nếu request bị hủy hoặc timeout.
+
+### 42. PHÂN LOẠI MÃ LỖI HTTP CHI TIẾT (FAIL-SAFE)
+- **Lưu ý quan trọng:** Việc chỉ trả về 400 cho mọi lỗi khiến frontend khó xử lý logic thông minh và người dùng khó hiểu vấn đề.
+- **Cách làm chuẩn:** Phải phân loại lỗi cụ thể dựa trên error type:
+  - `429 Too Many Requests`: Khi user vượt quá rate limit (ví dụ bấm Làm mới quá nhanh).
+  - `504 Gateway Timeout`: Khi xử lý phía backend bị quá giờ (context timeout).
+  - `502 Bad Gateway`: Khi trang web đích không thể kết nối hoặc trả về lỗi mạng (upstream error).
+  - `400 Bad Request`: Chỉ dùng cho lỗi input, sai định dạng, hoặc bị chặn bởi SSRF.
+
+### 43. QUY CHUẨN ĐẶT CACHE KEY (UNIQUE IDENTIFIER)
+- **Lưu ý quan trọng:** Sử dụng cache key quá đơn giản (chỉ mỗi URL) sẽ dẫn đến việc trả về kết quả sai nếu người dùng yêu cầu các tùy chọn khác nhau (ví dụ: quét có bỏ qua SSL hay không).
+- **Cách làm chuẩn:**
+  - Cache key phải bao gồm tất cả các tham số ảnh hưởng đến kết quả đầu ra.
+  - Ví dụ: `fmt.Sprintf("%s|tls=%v", rawURL, req.IgnoreTLSErrors)`.
+
+### 44. BẢO MẬT IP CLIENT (SETTRUSTEDPROXIES)
+- **Lưu ý quan trọng:** Gin mặc định tin tưởng header `X-Forwarded-For`, cho phép attacker giả mạo IP để bypass rate limit nếu không cấu hình đúng.
+- **Cách làm chuẩn:**
+  - Trong `router.go`, luôn phải gọi `r.SetTrustedProxies(nil)` để mặc định không tin tưởng header nào.
+  - Chỉ cấu hình danh sách IP proxy tin cậy (như Nginx nội bộ) qua biến môi trường `TRUSTED_PROXIES`.
+
+### 45. ƯU TIÊN SENTINEL ERRORS THAY VÌ SO SÁNH CHUỖI
+- **Lưu ý quan trọng:** So sánh chuỗi lỗi (`strings.Contains`) rất dễ vỡ khi thư viện update và không an toàn với Unicode (Tiếng Việt).
+- **Cách làm chuẩn:**
+    - Định nghĩa các lỗi cố định ở tầng Service: `var ErrSomething = errors.New("something_error")`.
+    - Tại Handler, sử dụng `errors.Is(err, service.ErrSomething)` để kiểm tra.
+    - Đối với các lỗi hệ thống (Network, DNS), sử dụng `errors.As(err, &target)` để kiểm tra type-safe.
+
+### 46. HẠN CHẾ OVER-COUPLING CONTEXT TRONG HELPER
+- **Lưu ý quan trọng:** Không nên truyền cả `context.Context` vào các hàm helper thuần túy (tính toán, phân loại mã lỗi) nếu chỉ cần lấy `ctx.Err()`.
+- **Cách làm chuẩn:**
+    - Hàm helper nên nhận các tham số cụ thể cần thiết: `func resolveStatus(err error, ctxErr error) int`.
+    - Điều này giúp hàm dễ test hơn và không bị phụ thuộc vào vòng đời của context.
+
+### 47. THỨ TỰ CHECK ERRORS.AS (INTERFACE VS STRUCT)
+- **Lưu ý quan trọng:** Nhiều struct lỗi (như `net.DNSError`) thực thi các interface chung (như `net.Error`). Nếu check interface trước, struct con sẽ bị "nuốt" mất, dẫn đến dead code ở các branch sau.
+- **Cách làm chuẩn:**
+    - Luôn check các struct lỗi cụ thể (Specialized) TRƯỚC khi check interface chung (Generalized).
+    - Hoặc nếu cả hai đều trả về cùng một kết quả, hãy gộp chung vào check interface để code gọn sạch.
+
+### 48. TỐI ƯU HÓA ALLOCATION CHO CÁC HELPER IMMUTABLE
+- **Lưu ý quan trọng:** Việc khởi tạo các đối tượng immutable như `strings.Replacer` hay `regexp.Regexp` bên trong hàm được gọi thường xuyên sẽ gây lãng phí tài nguyên và tăng áp lực cho Garbage Collector (GC).
+- **Cách làm chuẩn:**
+    - Khởi tạo các đối tượng này một lần duy nhất dưới dạng biến cấp package (`var`).
+    - Các đối tượng này của Go thường là thread-safe, nên có thể dùng chung giữa các goroutine mà không cần khóa (mutex).
 
 - **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"
