@@ -18,7 +18,7 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
-	logger.InitLogger(cfg.LogLevel)
+	logger.InitLogger(cfg.LogLevel, cfg.AppEnv)
 
 	// Dọn dẹp các file tạm của tiến trình IMAP Migrator nếu có từ trước
 	service.StartupCleanup()

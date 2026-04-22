@@ -9,11 +9,10 @@
         content="default-src 'self'; 
                    script-src 'self' 'unsafe-inline' https://unpkg.com; 
                    style-src 'self' 'unsafe-inline' https://unpkg.com; 
-                   img-src 'self' https://flagcdn.com https://*.tile.openstreetmap.org data:; 
+                   img-src 'self' https://flagcdn.com https://*.tile.openstreetmap.org https://unpkg.com data:; 
                    connect-src 'self' http://127.0.0.1:3101 https://api.ipify.org https://api4.my-ip.io https://ipapi.co https://unpkg.com;">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../src/css/tools/ip-lookup.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
@@ -99,10 +98,7 @@
                     <h3 id="detailIPTitle" class="ip-details-title font-bold">IP Details For <span id="detailIPTarget"
                             class="ip-detail-target loading-text">Checking...</span></h3>
                     <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
-                        <div class="cache-card__content">
-                            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
-                            <span class="cache-card__text">Kết quả tra cứu mới nhất lúc <b id="cacheTime"></b>.</span>
-                        </div>
+                        <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime"></b></span>
                         <button type="button" id="btnRefreshIP" class="btn btn-sm btn-outline cache-card__btn"
                             aria-label="Làm mới thông tin IP">
                             <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới

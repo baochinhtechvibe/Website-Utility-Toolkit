@@ -7,24 +7,30 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 var (
-	defaultClient  *http.Client
-	insecureClient *http.Client
-	once           sync.Once
+	defaultClient      *http.Client
+	insecureClient     *http.Client
+	defaultBaseClient  *http.Client
+	insecureBaseClient *http.Client
 )
 
-func initClients() {
-	defaultClient = createClient(false)
-	insecureClient = createClient(true)
+func init() {
+	initClients()
 }
 
-func createClient(ignoreTLS bool) *http.Client {
+func initClients() {
+	defaultClient = createClient(false, false)
+	insecureClient = createClient(true, false)
+	defaultBaseClient = createClient(false, true)
+	insecureBaseClient = createClient(true, true)
+}
+
+func createClient(ignoreTLS bool, followRedirect bool) *http.Client {
 	dialer := &net.Dialer{
 		Timeout:   5 * time.Second,
 		KeepAlive: 30 * time.Second, // Tăng keepalive
@@ -73,18 +79,29 @@ func createClient(ignoreTLS bool) *http.Client {
 		},
 	}
 
-	return &http.Client{
+	client := &http.Client{
 		Transport: transport,
 		Timeout:   15 * time.Second, // Timeout tổng quát
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
 	}
+
+	if !followRedirect {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	} else {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("quá nhiều chuyển hướng (5+)")
+			}
+			return nil
+		}
+	}
+
+	return client
 }
 
 // SafeHTTPClient trả về singleton client dựa trên cấu hình TLS
-func SafeHTTPClient(ignoreTLS bool, timeout time.Duration) *http.Client {
-	once.Do(initClients)
+func SafeHTTPClient(ignoreTLS bool) *http.Client {
 	if ignoreTLS {
 		return insecureClient
 	}
@@ -93,13 +110,8 @@ func SafeHTTPClient(ignoreTLS bool, timeout time.Duration) *http.Client {
 
 // SafeBasePageClient trả về client riêng để fetch trang gốc (có follow redirect)
 func SafeBasePageClient(ignoreTLS bool) *http.Client {
-	// Trang gốc cần follow redirect tự động
-	baseClient := createClient(ignoreTLS)
-	baseClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if len(via) >= 5 {
-			return fmt.Errorf("quá nhiều chuyển hướng (5+)")
-		}
-		return nil
+	if ignoreTLS {
+		return insecureBaseClient
 	}
-	return baseClient
+	return defaultBaseClient
 }

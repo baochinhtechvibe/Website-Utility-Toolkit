@@ -1,74 +1,72 @@
 package cache
 
 import (
-	"sync"
 	"time"
+
+	cache "github.com/go-pkgz/expirable-cache/v3"
 )
 
-type item struct {
-	value     interface{}
-	createdAt time.Time
-	expiresAt time.Time
+// Cache là interface chung cho các bộ nhớ tạm trong hệ thống
+type Cache[K comparable, V any] interface {
+	Get(key K) (V, bool)
+	Set(key K, value V, ttl time.Duration)
+	Delete(key K)
 }
 
-type MemoryCache struct {
-	items map[string]item
-	mu    sync.RWMutex
-	ttl   time.Duration
+// memoryCache triển khai Cache interface sử dụng expirable-cache v3
+type memoryCache[K comparable, V any] struct {
+	base cache.Cache[K, V]
 }
 
-func NewMemoryCache(ttl time.Duration) *MemoryCache {
-	c := &MemoryCache{
-		items: make(map[string]item),
-		ttl:   ttl,
-	}
-
-	// Cleanup goroutine
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			c.mu.Lock()
-			now := time.Now()
-			for k, v := range c.items {
-				if now.After(v.expiresAt) {
-					delete(c.items, k)
-				}
-			}
-			c.mu.Unlock()
-		}
-	}()
-
-	return c
+// New tạo một bộ nhớ tạm mới với kích thước tối đa và TTL mặc định
+func New[K comparable, V any](size int, defaultTTL time.Duration) Cache[K, V] {
+	base := cache.NewCache[K, V]().WithMaxKeys(size).WithTTL(defaultTTL).WithLRU()
+	return &memoryCache[K, V]{base: base}
 }
 
-func (c *MemoryCache) Get(key string) (interface{}, time.Time, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	it, ok := c.items[key]
-	if !ok || time.Now().After(it.expiresAt) {
-		return nil, time.Time{}, false
-	}
-	return it.value, it.createdAt, true
+func (c *memoryCache[K, V]) Get(key K) (V, bool) {
+	return c.base.Get(key)
 }
 
-func (c *MemoryCache) Set(key string, value interface{}) {
-	c.SetWithTTL(key, value, c.ttl)
+func (c *memoryCache[K, V]) Set(key K, value V, ttl time.Duration) {
+	c.base.Set(key, value, ttl)
 }
 
-func (c *MemoryCache) SetWithTTL(key string, value interface{}, ttl time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	now := time.Now()
-	c.items[key] = item{
-		value:     value,
-		createdAt: now,
-		expiresAt: now.Add(ttl),
+func (c *memoryCache[K, V]) Delete(key K) {
+	c.base.Invalidate(key)
+}
+
+// ============================================
+// BACKWARDS COMPATIBILITY CHO CÁC MODULE CŨ
+// ============================================
+
+// LegacyCache hỗ trợ interface Get/Set với string key, interface{} value và return (interface{}, time.Time, bool)
+type LegacyCache struct {
+	base Cache[string, cacheItem]
+}
+
+type cacheItem struct {
+	data      interface{}
+	fetchedAt time.Time
+}
+
+func NewMemoryCache(ttl time.Duration) *LegacyCache {
+	return &LegacyCache{
+		base: New[string, cacheItem](5000, ttl),
 	}
 }
 
-func (c *MemoryCache) Delete(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.items, key)
+func (l *LegacyCache) Get(key string) (interface{}, time.Time, bool) {
+	if item, found := l.base.Get(key); found {
+		return item.data, item.fetchedAt, true
+	}
+	return nil, time.Time{}, false
+}
+
+func (l *LegacyCache) Set(key string, value interface{}) {
+	l.base.Set(key, cacheItem{data: value, fetchedAt: time.Now()}, 0) // 0 means default TTL
+}
+
+func (l *LegacyCache) Delete(key string) {
+	l.base.Delete(key)
 }

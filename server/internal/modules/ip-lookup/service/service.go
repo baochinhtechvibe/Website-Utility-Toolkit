@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -52,6 +53,22 @@ func GetIPDetails(ctx context.Context, ipStr string, ua string) *models.IPInfo {
 	fillGeoInfo(ctx, info, ipStr)
 
 	return info
+}
+
+// ResolvePublicIP kiểm tra nếu IP là local (127.0.0.1/::1) thì sẽ lấy IP Public thật của máy server.
+// Giúp ích cho việc debug/test tính năng VPN khi chạy tool ở localhost.
+func ResolvePublicIP(ipStr string) string {
+	if ipStr == "127.0.0.1" || ipStr == "::1" || strings.HasPrefix(ipStr, "192.168.") || strings.HasPrefix(ipStr, "10.") {
+		resp, err := geoClient.Get("https://api.ipify.org")
+		if err == nil {
+			defer resp.Body.Close()
+			ipBytes, _ := io.ReadAll(resp.Body)
+			if len(ipBytes) > 0 {
+				return string(ipBytes)
+			}
+		}
+	}
+	return ipStr
 }
 
 func ipToDecimal(ip net.IP) string {

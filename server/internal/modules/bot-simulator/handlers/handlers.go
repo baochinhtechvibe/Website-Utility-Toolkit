@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"tools.bctechvibe.com/server/internal/modules/bot-simulator/models"
 	"tools.bctechvibe.com/server/internal/modules/bot-simulator/service"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 	"tools.bctechvibe.com/server/internal/response"
 )
 
@@ -92,10 +93,10 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 	// ─── Bước 2: Fetch trang chính ────────────────────────────────────
 	httpResult, fetchErr := service.FetchPage(ctx, targetURL, fetchOpts)
 	if fetchErr != nil && httpResult == nil {
-		// Wrap lỗi network vào serving
+		// Wrap lỗi network đã dịch sang tiếng Việt vào serving để hiển thị cho user
 		httpResult = &service.HTTPResult{
 			FinalURL: targetURL,
-			Error:    fetchErr.Error(),
+			Error:    errutil.TranslateError(fetchErr),
 		}
 	}
 

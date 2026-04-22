@@ -68,6 +68,7 @@ function init() {
         errorCard?.classList.add("d-none");
         shareCard?.classList.add("d-none");
         emptyState?.classList.add("d-none");
+        $("#bls-skipped-warning")?.classList.add("d-none");
     };
 
     // Realtime Validation
@@ -121,6 +122,7 @@ function init() {
         state.abortController = new AbortController();
 
         try {
+            btnExportXlsx?.setAttribute("disabled", "true");
             const response = await fetch(SCAN_ENDPOINT, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -153,6 +155,36 @@ function init() {
 
             state.currentResults = scanData.results || [];
             state.currentPage = 1;
+
+            // Handle Skipped Links Warning (GEMINI Rule #30 & Issue #5)
+            const skippedWarning = $("#bls-skipped-warning");
+            const hasOverLimit = scanData.summary?.skipped_over_limit > 0;
+            const hasOutOfScope = scanData.summary?.skipped_out_of_scope > 0;
+
+            if (skippedWarning && (hasOverLimit || hasOutOfScope)) {
+                skippedWarning.classList.remove("d-none");
+                
+                const overLimitRow = $("#bls-skipped-over-limit-row");
+                const overLimitCount = $("#bls-skipped-count");
+                if (hasOverLimit && overLimitRow && overLimitCount) {
+                    overLimitCount.textContent = scanData.summary.skipped_over_limit;
+                    overLimitRow.classList.remove("d-none");
+                } else {
+                    overLimitRow?.classList.add("d-none");
+                }
+
+                const outScopeRow = $("#bls-skipped-out-scope-row");
+                const outScopeCount = $("#bls-skipped-scope-count");
+                if (hasOutOfScope && outScopeRow && outScopeCount) {
+                    outScopeCount.textContent = scanData.summary.skipped_out_of_scope;
+                    outScopeRow.classList.remove("d-none");
+                } else {
+                    outScopeRow?.classList.add("d-none");
+                }
+            } else {
+                skippedWarning?.classList.add("d-none");
+            }
+
             renderTable("all");
 
             // Cache Banner
@@ -162,9 +194,9 @@ function init() {
                 const spanEl = cacheNotice.querySelector("span");
                 if (spanEl) {
                     if (data.meta.cached) {
-                        spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
+                        spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
                     } else {
-                        spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
+                        spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
                     }
                 }
                 cacheNotice.classList.remove('d-none');
@@ -191,6 +223,11 @@ function init() {
             scanIcon?.classList.remove("d-none");
             scanLoadingState?.classList.add("d-none");
             state.abortController = null;
+            if (state.currentResults.length > 0) {
+                btnExportXlsx?.removeAttribute("disabled");
+            } else {
+                btnExportXlsx?.setAttribute("disabled", "true");
+            }
         }
     }
 
@@ -241,15 +278,19 @@ function init() {
 
             // Map Kind to Icons
             const kindLower = row.kind.toLowerCase();
-            let kindIcon = "fa-link";
+            let kindIcon = "fa-arrow-pointer"; // Mặc định cho thẻ <a> (Anchor)
             if (kindLower.includes("img")) kindIcon = "fa-image";
             else if (kindLower.includes("script")) kindIcon = "fa-code";
-            else if (kindLower.includes("style") || kindLower.includes("link")) kindIcon = "fa-css3";
+            else if (kindLower.includes("style") || kindLower.includes("link")) kindIcon = "fa-link";
             else if (kindLower.includes("iframe")) kindIcon = "fa-window-maximize";
 
             const redirectInfo = row.redirect_count > 0
                 ? `<div class="bls-redirect-info text-warning mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-arrow-right-arrow-left"></i> ${row.redirect_count} chuyển hướng</div>`
                 : "";
+
+            // Point #52: XSS Prevention for dynamic links
+            const safeFinalUrl = isSafeURL(row.final_url) ? row.final_url : "#";
+            const safeOriginalUrl = isSafeURL(row.original_url) ? row.original_url : "#";
 
             tr.innerHTML = `
                 <td>
@@ -265,11 +306,14 @@ function init() {
                 </td>
                 <td class="bls-url-cell">
                     <div class="bls-url-main">
-                        <a href="${escapeHTML(row.final_url)}" target="_blank">
+                        <a href="${escapeHTML(safeFinalUrl)}" target="_blank" rel="noopener noreferrer">
                             ${row.error ? `<span class="text-error">${escapeHTML(row.final_url)} <br/><small class="text-muted"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHTML(row.error)}</small></span>` : escapeHTML(row.final_url)}
                         </a>
                     </div>
-                    <div class="bls-url-parent text-muted"><i class="fa-solid fa-arrow-right mr-1"></i> ${escapeHTML(row.original_url)}</div>
+                    <div class="bls-url-parent text-muted">
+                        <i class="fa-solid fa-arrow-right mr-1"></i> 
+                        <a href="${escapeHTML(safeOriginalUrl)}" target="_blank" rel="noopener noreferrer" class="text-muted">${escapeHTML(row.original_url)}</a>
+                    </div>
                 </td>
                 <td>
                     <div class="bls-latency text-right">
@@ -281,6 +325,19 @@ function init() {
             tbody.appendChild(tr);
         });
         renderPagination(total);
+    }
+
+    function isSafeURL(s) {
+        if (!s) return false;
+        try {
+            const u = new URL(s);
+            // Point #7: Chặn URLs có embedded credentials: http://user:pass@evil.com
+            if (u.username || u.password) return false;
+            // Strict check: Chỉ cho phép http và https cho website bên ngoài (GEMINI Rule #52)
+            return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch {
+            return false; // Reject all relative paths or invalid protocols
+        }
     }
 
     function renderPagination(total) {
@@ -397,9 +454,12 @@ function init() {
     const params = new URLSearchParams(window.location.search);
     const pUrl = params.get('url');
     if (pUrl && urlInput) {
-        urlInput.value = decodeURIComponent(pUrl);
-        urlInput.dispatchEvent(new Event('input'));
-        setTimeout(() => { if (!btnScan.disabled) performScan(false); }, 100);
+        const val = decodeURIComponent(pUrl);
+        urlInput.value = val;
+        // Trực tiếp kiểm tra tính hợp lệ và trigger scan thay vì dùng setTimeout 100ms
+        if (/^https?:\/\//i.test(val)) {
+            performScan(false);
+        }
     }
 }
 

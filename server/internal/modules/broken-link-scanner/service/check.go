@@ -17,7 +17,7 @@ import (
 
 // ProcessScan kicks off the complete scanning phase
 func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, error) {
-	data, validLinks, err := ExtractLinks(req)
+	data, validLinks, err := ExtractLinks(ctx, req)
 	if err != nil {
 		return models.ScanData{}, err
 	}
@@ -30,7 +30,7 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 		workerCount = 50
 	}
 
-	client := SafeHTTPClient(req.IgnoreTlsErrors, 10*time.Second)
+	client := SafeHTTPClient(req.IgnoreTlsErrors)
 
 	results := make([]models.ScanResultRow, len(validLinks))
 	
@@ -52,7 +52,7 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 				case <-ctx.Done():
 					return 
 				default:
-					results[idx] = checkURL(validLinks[idx], client, hostSemaphores, req.IgnoreTlsErrors, req.BypassCache)
+					results[idx] = checkURL(ctx, validLinks[idx], client, hostSemaphores, req.IgnoreTlsErrors, req.BypassCache)
 				}
 			}
 		}(w)
@@ -97,7 +97,7 @@ type CachedVerdict struct {
 	ErrorDetail   string
 }
 
-func checkURL(asset models.ScanResultRow, client *http.Client, hostSems *sync.Map, ignoreTLS bool, bypassCache bool) models.ScanResultRow {
+func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Client, hostSems *sync.Map, ignoreTLS bool, bypassCache bool) models.ScanResultRow {
 	cacheKey := BuildCacheKey(asset.FinalURL, ignoreTLS)
 
 	if !bypassCache {
@@ -131,8 +131,10 @@ func checkURL(asset models.ScanResultRow, client *http.Client, hostSems *sync.Ma
 	defer func() { <-hostSem }()
 
 	start := time.Now()
-
-	verdict := doFetchWithFallback(asset.FinalURL, client, 0)
+	
+	// Point #11: Initialize visited map for loop detection
+	visited := make(map[string]bool)
+	verdict := doFetchWithFallback(ctx, asset.FinalURL, client, 0, visited)
 
 	asset.ResponseMs = time.Since(start).Milliseconds()
 	asset.StatusCode = verdict.StatusCode
@@ -156,14 +158,21 @@ func checkURL(asset models.ScanResultRow, client *http.Client, hostSems *sync.Ma
 	return asset
 }
 
-func doFetchWithFallback(url string, client *http.Client, redirectDepth int) CachedVerdict {
+func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client, redirectDepth int, visited map[string]bool) CachedVerdict {
 	if redirectDepth >= 5 {
-		return CachedVerdict{FinalURL: url, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Too many redirects"}
+		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Quá nhiều bước chuyển hướng (5+)"}
 	}
 
-	req, err := http.NewRequest("HEAD", url, nil)
+	// Loop Detection (GEMINI Rule #11)
+	normalizedURL := normalizeForLoop(urlStr)
+	if visited[normalizedURL] {
+		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Phát hiện vòng lặp chuyển hướng (Redirect Loop)"}
+	}
+	visited[normalizedURL] = true
+
+	req, err := http.NewRequestWithContext(ctx, "HEAD", urlStr, nil)
 	if err != nil {
-		return CachedVerdict{FinalURL: url, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Parse Error"}
+		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Lỗi phân tích URL"}
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) BCTechVibe-Scanner/1.0")
 	req.Header.Set("Accept", "*/*")
@@ -184,29 +193,29 @@ func doFetchWithFallback(url string, client *http.Client, redirectDepth int) Cac
 
 	// EXECUTE FALLBACK FETCH
 	if shouldFallback {
-		reqGet, _ := http.NewRequest("GET", url, nil)
+		reqGet, _ := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 		reqGet.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) BCTechVibe-Scanner/1.0")
 		reqGet.Header.Set("Accept", "*/*")
 		
 		respGet, errGet := client.Do(reqGet)
 		if errGet == nil {
 			defer respGet.Body.Close()
-			return evaluateFinalStatus(respGet, client, redirectDepth, url)
+			return evaluateFinalStatus(ctx, respGet, client, redirectDepth, urlStr, visited)
 		} else {
 			// If GET also completely failed, report it.
-			return parseRequestError(errGet, url, redirectDepth)
+			return parseRequestError(errGet, urlStr, redirectDepth)
 		}
 	}
 
 	if err != nil {
 		// If it failed and wasn't eligible for fallback
-		return parseRequestError(err, url, redirectDepth)
+		return parseRequestError(err, urlStr, redirectDepth)
 	}
 
-	return evaluateFinalStatus(resp, client, redirectDepth, url)
+	return evaluateFinalStatus(ctx, resp, client, redirectDepth, urlStr, visited)
 }
 
-func evaluateFinalStatus(resp *http.Response, client *http.Client, redirectDepth int, initialURL string) CachedVerdict {
+func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.Client, redirectDepth int, initialURL string, visited map[string]bool) CachedVerdict {
 	// Status Evaluation
 	code := resp.StatusCode
 	
@@ -214,21 +223,20 @@ func evaluateFinalStatus(resp *http.Response, client *http.Client, redirectDepth
 	if code >= 300 && code <= 308 && code != 304 {
 		loc, err := resp.Location()
 		if err != nil {
-			return CachedVerdict{FinalURL: initialURL, RedirectCount: redirectDepth, StatusCode: code, StatusClass: "broken", ErrorDetail: "Missing Location Header on 3xx"}
+			return CachedVerdict{FinalURL: initialURL, RedirectCount: redirectDepth, StatusCode: code, StatusClass: "broken", ErrorDetail: "Thiếu header Location khi redirect"}
 		}
 		
 		target := loc.String()
 		// Go recursive!
-		v := doFetchWithFallback(target, client, redirectDepth+1)
+		v := doFetchWithFallback(ctx, target, client, redirectDepth+1, visited)
 		
-		// Logic mới: Nếu trang đích cuối cùng hoạt động tốt (ok), 
+		// Logic: Nếu trang đích cuối cùng hoạt động tốt (ok) hoặc bị chặn (blocked), 
 		// ta hiển thị mã HTTP của bước nhảy ĐẦU TIÊN (301, 302...) 
-		// để người dùng biết loại chuyển hướng.
-		if v.StatusClass == "ok" {
+		// để người dùng biết loại chuyển hướng (GEMINI Issue #3).
+		if v.StatusClass == "ok" || v.StatusClass == "blocked" {
 			v.StatusClass = "redirect"
-			v.StatusCode = code // Trả về mã 301, 302... thay vì 200
+			v.StatusCode = code 
 		}
-		// Nếu đích cuối bị hỏng (broken), ta giữ nguyên mã lỗi (404, 500...) của đích cuối
 		return v
 	}
 
@@ -238,10 +246,12 @@ func evaluateFinalStatus(resp *http.Response, client *http.Client, redirectDepth
 		class = "ok"
 	} else if code == 403 || code == 401 { // Some resources strictly block
 		class = "blocked" 
-	} else if code >= 400 {
-		class = "broken"
+	} else if code >= 400 && code < 500 {
+		class = "broken" // Client error
+	} else if code >= 500 {
+		class = "broken" // Server error
 	} else {
-		class = "broken" // 500s 
+		class = "broken" // Catch-all for 1xx or invalid codes
 	}
 
 	return CachedVerdict{
@@ -250,6 +260,22 @@ func evaluateFinalStatus(resp *http.Response, client *http.Client, redirectDepth
 		FinalURL:      initialURL,
 		RedirectCount: redirectDepth,
 	}
+}
+
+
+func normalizeForLoop(rawURL string) string {
+	p, err := url.Parse(rawURL)
+	if err != nil {
+		return strings.ToLower(rawURL)
+	}
+	p.Fragment = "" // Ignore anchor
+	host := strings.ToLower(p.Host)
+	path := strings.TrimRight(p.Path, "/")
+	result := strings.ToLower(p.Scheme) + "://" + host + path
+	if p.RawQuery != "" {
+		result += "?" + p.RawQuery
+	}
+	return result
 }
 
 // matchTransportFallbackError validates errors.Is / As rules before using substring matching
@@ -286,8 +312,10 @@ func matchTransportFallbackError(err error) bool {
 
 func parseRequestError(err error, urlStr string, redirects int) CachedVerdict {
 	statusClass := "broken"
-	msg := strings.ToLower(err.Error())
-	if strings.Contains(msg, "timeout") || strings.Contains(msg, "deadline exceeded") {
+	
+	// Better timeout check (GEMINI Rule #42)
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
 		statusClass = "timeout"
 	}
 

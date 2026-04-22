@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,13 +10,20 @@ import (
 
 	"golang.org/x/net/html"
 	"tools.bctechvibe.com/server/internal/modules/broken-link-scanner/models"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 // ExtractLinks fetches the page, resolves the final URL, and gathers assets.
-func ExtractLinks(req models.ScanRequest) (models.ScanData, []models.ScanResultRow, error) {
+func ExtractLinks(ctx context.Context, req models.ScanRequest) (models.ScanData, []models.ScanResultRow, error) {
+	// Point #1: SSRF Defense for base URL
+	parsedURL, err := url.Parse(req.URL)
+	if err != nil || !validator.IsSafeHostname(parsedURL.Hostname()) {
+		return models.ScanData{}, nil, fmt.Errorf("địa chỉ website không hợp lệ hoặc thuộc mạng nội bộ")
+	}
+
 	client := SafeBasePageClient(req.IgnoreTlsErrors)
 	
-	httpReq, err := http.NewRequest("GET", req.URL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", req.URL, nil)
 	if err != nil {
 		return models.ScanData{}, nil, err
 	}
@@ -49,17 +57,21 @@ func ExtractLinks(req models.ScanRequest) (models.ScanData, []models.ScanResultR
 		},
 	}
 
-	rawLinks := parseHTML(resp.Body)
+	// Point #1: Limit body size to 10MB to avoid OOM for misconfigured large pages
+	const maxBodySize = 10 * 1024 * 1024 // 10MB
+	rawLinks := parseHTML(io.LimitReader(resp.Body, maxBodySize))
 	
-	validLinks, skippedInvalid := dedupeAndNormalize(rawLinks, finalPageURL, req.Scope)
+	validLinks, skippedInvalid, skippedOutOfScope := dedupeAndNormalize(rawLinks, finalPageURL, req.Scope)
 	data.Summary.SkippedInvalid = skippedInvalid
+	data.Summary.SkippedOutOfScope = skippedOutOfScope
 
-	// Hard limit to 250
+	// Hard limit to 250 (GEMINI Rule #30 - Resource Management)
 	if len(validLinks) > 250 {
+		data.Summary.SkippedOverLimit = len(validLinks) - 250
 		validLinks = validLinks[:250]
 	}
 
-	data.Summary.Total += len(validLinks) // Only valid links count towards total rows checking
+	data.Summary.Total = len(validLinks) // Only valid links count towards total rows checking
 
 	return data, validLinks, nil
 }
@@ -89,11 +101,15 @@ func parseHTML(r io.Reader) []unverifiedLink {
 			switch tName {
 			case "a", "link":
 				attrFields = append(attrFields, "href")
-			case "img", "source":
+			case "img", "source", "video", "audio", "embed", "track":
 				attrFields = append(attrFields, "src")
-				attrFields = append(attrFields, "srcset")
+				if tName == "img" || tName == "source" {
+					attrFields = append(attrFields, "srcset")
+				}
 			case "script", "iframe":
 				attrFields = append(attrFields, "src")
+			case "object":
+				attrFields = append(attrFields, "data")
 			case "form":
 				attrFields = append(attrFields, "action")
 			}
@@ -122,10 +138,11 @@ func parseHTML(r io.Reader) []unverifiedLink {
 	}
 }
 
-func dedupeAndNormalize(links []unverifiedLink, base *url.URL, scope string) ([]models.ScanResultRow, int) {
+func dedupeAndNormalize(links []unverifiedLink, base *url.URL, scope string) ([]models.ScanResultRow, int, int) {
 	seen := make(map[string]bool)
 	var result []models.ScanResultRow
 	invalidCount := 0
+	outOfScopeCount := 0
 
 	for _, l := range links {
 		trimmed := strings.TrimSpace(l.RawURL)
@@ -169,7 +186,7 @@ func dedupeAndNormalize(links []unverifiedLink, base *url.URL, scope string) ([]
 		// Check scope: same-host means strictly equal Host
 		if scope == "same-host" {
 			if !strings.EqualFold(absoluteContext.Host, base.Host) {
-				// Valid URL, but omitted voluntarily. We skip recording it. 
+				outOfScopeCount++
 				continue
 			}
 		}
@@ -183,7 +200,7 @@ func dedupeAndNormalize(links []unverifiedLink, base *url.URL, scope string) ([]
 			StatusClass:   "unknown",
 		})
 	}
-	return result, invalidCount
+	return result, invalidCount, outOfScopeCount
 }
 
 func targetSchemeAllowed(s string) bool {

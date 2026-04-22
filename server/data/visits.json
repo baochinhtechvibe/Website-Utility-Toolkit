@@ -11,9 +11,9 @@
     ]
   },
   "broken-link-scanner": {
-    "total_visits": 6,
+    "total_visits": 10,
     "today_visits": 1,
-    "last_reset_date": "2026-04-07",
+    "last_reset_date": "2026-04-18",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -22,9 +22,9 @@
     ]
   },
   "chmod": {
-    "total_visits": 5,
+    "total_visits": 7,
     "today_visits": 1,
-    "last_reset_date": "2026-04-09",
+    "last_reset_date": "2026-04-17",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -33,9 +33,9 @@
     ]
   },
   "dns": {
-    "total_visits": 9,
+    "total_visits": 16,
     "today_visits": 1,
-    "last_reset_date": "2026-04-13",
+    "last_reset_date": "2026-04-21",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -77,9 +77,9 @@
     ]
   },
   "index": {
-    "total_visits": 7,
+    "total_visits": 14,
     "today_visits": 1,
-    "last_reset_date": "2026-04-14",
+    "last_reset_date": "2026-04-21",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -88,9 +88,9 @@
     ]
   },
   "ip-lookup": {
-    "total_visits": 1,
+    "total_visits": 5,
     "today_visits": 1,
-    "last_reset_date": "2026-04-07",
+    "last_reset_date": "2026-04-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -110,9 +110,9 @@
     ]
   },
   "mixed-content": {
-    "total_visits": 2,
+    "total_visits": 7,
     "today_visits": 1,
-    "last_reset_date": "2026-04-10",
+    "last_reset_date": "2026-04-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -121,9 +121,9 @@
     ]
   },
   "redirect-checker": {
-    "total_visits": 6,
+    "total_visits": 11,
     "today_visits": 1,
-    "last_reset_date": "2026-04-15",
+    "last_reset_date": "2026-04-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -143,9 +143,9 @@
     ]
   },
   "ssl-checker": {
-    "total_visits": 7,
+    "total_visits": 10,
     "today_visits": 1,
-    "last_reset_date": "2026-04-11",
+    "last_reset_date": "2026-04-21",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -154,9 +154,9 @@
     ]
   },
   "web-latency": {
-    "total_visits": 3,
+    "total_visits": 5,
     "today_visits": 1,
-    "last_reset_date": "2026-04-07",
+    "last_reset_date": "2026-04-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -165,9 +165,9 @@
     ]
   },
   "whois": {
-    "total_visits": 9,
+    "total_visits": 16,
     "today_visits": 1,
-    "last_reset_date": "2026-04-14",
+    "last_reset_date": "2026-04-22",
     "daily_ips": {
       "127.0.0.1": {}
     },

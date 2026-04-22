@@ -24,13 +24,15 @@ type ScanResultRow struct {
 
 // ScanSummary represents the aggregations
 type ScanSummary struct {
-	Total          int `json:"total"`
-	Ok             int `json:"ok"`
-	Redirect       int `json:"redirect"`
-	Broken         int `json:"broken"`
-	Blocked        int `json:"blocked"`
-	Timeout        int `json:"timeout"`
-	SkippedInvalid int `json:"skipped_invalid"` // specific to invalid schemes like mailto:, data:, blob:, javascript:
+	Total             int `json:"total"`
+	Ok                int `json:"ok"`
+	Redirect          int `json:"redirect"`
+	Broken            int `json:"broken"`
+	Blocked           int `json:"blocked"`
+	Timeout           int `json:"timeout"`
+	SkippedInvalid    int `json:"skipped_invalid"`    // specific to invalid schemes like mailto:, data:, blob:, javascript:
+	SkippedOverLimit  int `json:"skipped_over_limit"` // if website has > 250 links
+	SkippedOutOfScope int `json:"skipped_out_of_scope"` // if same-host is active
 }
 
 // ScanData is the core output wrapping the summary and the final array sequence.

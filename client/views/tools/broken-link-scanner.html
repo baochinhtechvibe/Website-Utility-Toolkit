@@ -178,8 +178,7 @@
 
                             <!-- CACHE NOTICE -->
                             <div id="cacheNotice" class="cache-card mt-2 d-none">
-                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc
-                                    <b id="cacheTime"></b>.</span>
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b></span>
                                 <button type="button" id="btnBypassCache"
                                     class="btn btn-sm btn-outline cache-card__btn">
                                     <i class="fa-solid fa-arrows-rotate"></i> Làm mới
@@ -187,6 +186,24 @@
                             </div>
 
                             <div class="result-card__body mt-4">
+                                <!-- Warning: Over limit -->
+                                <div id="bls-skipped-warning" class="message-card message-card--warning mb-4 d-none">
+                                    <div class="message-card__header">
+                                        <h4 class="message-card__title">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Giới hạn số lượng liên kết
+                                        </h4>
+                                    </div>
+                                    <div class="message-card__body">
+                                        <p class="message-card__message">
+                                            Website có quá nhiều liên kết hoặc nằm ngoài phạm vi quét. Hệ thống đã tự động giới hạn 250 liên kết đầu tiên để đảm bảo hiệu suất. 
+                                            <ul class="mt-2 ml-4 list-disc text-sm opacity-90">
+                                                <li id="bls-skipped-over-limit-row" class="d-none">Đã giới hạn <strong id="bls-skipped-count">0</strong> liên kết do vượt ngưỡng 250.</li>
+                                                <li id="bls-skipped-out-scope-row" class="d-none">Đã bỏ qua <strong id="bls-skipped-scope-count">0</strong> liên kết nằm ngoài hostname gốc.</li>
+                                            </ul>
+                                        </p>
+                                    </div>
+                                </div>
                                 <!-- Summary Stats -->
                                 <div class="bls-stats mb-6">
                                     <div class="bls-stat bls-stat--total">

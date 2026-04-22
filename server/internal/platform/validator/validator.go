@@ -40,10 +40,35 @@ func IsValidDomain(domain string) bool {
 	}
 
 	// Validate each non-TLD label
+	allNumericLabels := true
+	hasOver255 := false
 	for _, label := range labels[:len(labels)-1] {
 		if !isValidDNSLabel(label) {
 			return false
 		}
+		
+		// Check if label is purely numeric
+		isNumeric := true
+		val := 0
+		for _, ch := range label {
+			if ch < '0' || ch > '9' {
+				isNumeric = false
+				break
+			}
+			val = val*10 + int(ch-'0')
+		}
+
+		if !isNumeric {
+			allNumericLabels = false
+		} else if val > 255 {
+			hasOver255 = true
+		}
+	}
+
+	// Nếu tất cả các phần trước TLD đều là số VÀ có ít nhất một phần > 255
+	// thì đây khả năng cao là một địa chỉ IP gõ sai octet
+	if allNumericLabels && hasOver255 && len(labels) >= 3 {
+		return false
 	}
 
 	return true

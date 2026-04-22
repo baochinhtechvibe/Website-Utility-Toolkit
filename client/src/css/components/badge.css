@@ -99,3 +99,19 @@
     font-size: var(--text-base);
     padding: var(--pad-y-2) var(--pad-x-3);
 }
+
+
+/* =======================================
+   5. SHAPE VARIANTS
+========================================== */
+
+.badge-pill {
+    border-radius: var(--radius-full);
+}
+
+.badge-circle {
+    border-radius: var(--radius-full);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}

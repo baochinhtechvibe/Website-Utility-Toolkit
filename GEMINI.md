@@ -298,4 +298,26 @@
     - Khởi tạo các đối tượng này một lần duy nhất dưới dạng biến cấp package (`var`).
     - Các đối tượng này của Go thường là thread-safe, nên có thể dùng chung giữa các goroutine mà không cần khóa (mutex).
 
+### 49. TIÊU CHUẨN BẢO MẬT BACKEND (HARDENING)
+- **SSRF Protection:** Mọi tool có thực hiện HTTP Request bắt buộc phải sử dụng `DialContext` tùy chỉnh để kiểm tra IP qua `validator.IsSafeIP` và `validator.IsSafeHostname`. Tuyệt đối không cho phép truy cập IP nội bộ.
+- **Cookie Isolation:** Mỗi request phải sử dụng một `http.CookieJar` riêng biệt (khởi tạo bên trong hàm Service). Tuyệt đối không dùng chung Jar cho singleton client để tránh rò rỉ session giữa các người dùng.
+- **Secure Cache Key:** Nếu Cache Key có chứa thông tin từ Header (như User-Agent) hoặc các tham số tùy chọn, bắt buộc phải băm bằng **SHA256** (`crypto/sha256`) trước khi lưu vào bộ nhớ cache để chống Cache Poisoning/Injection.
+- **Resource Limits:** Luôn kiểm tra `Content-Length` từ Header của mục tiêu. Nếu vượt quá giới hạn (ví dụ 1MB cho tool tra cứu text), hãy ngắt kết nối hoặc skip phần đọc Body. Sử dụng `io.LimitReader` khi đọc dữ liệu để tránh tấn công cạn kiệt bộ nhớ.
+
+### 50. QUY TẮC XỬ LÝ CHUỖI VÀ LOGGING (UNICODE SAFE)
+- **Truncation:** Khi cần cắt ngắn chuỗi để ghi log (ví dụ `logURL`), tuyệt đối không dùng byte slicing (`s[:253]`) vì có thể cắt ngang một ký tự đa byte (Tiếng Việt, Emoji). 
+- **Cách làm đúng:** Ép kiểu sang `[]rune`, cắt trên slice rune, rồi mới ép ngược lại string.
+- **Sanitization:** Luôn quét và xóa các ký tự điều khiển (`\r`, `\n`) bằng `strings.Map` TRƯỚC KHI thực hiện cắt chuỗi để đảm bảo format log không bị hỏng.
+
+### 51. DATA INTEGRITY TẠI FRONTEND (IMMUTABILITY)
+- **Không Mutate API Response:** Tuyệt đối không thêm thắt các field tính toán (như `computedScore`, `isLoop`, `dnsMs`) trực tiếp vào object `res` nhận được từ API. Việc này làm "bẩn" dữ liệu gốc và gây sai lệch khi user sử dụng tính năng Export JSON.
+- **Cách làm đúng:** Tạo một bản sao (Shallow Clone) bằng Spread Operator (`{...step}`) hoặc dùng `map` để tạo array mới trước khi bổ sung dữ liệu render.
+
+### 52. PHÒNG CHỐNG XSS TRONG DỮ LIỆU ĐỘNG (PROTOCOL VALIDATION)
+- **Dynamic Image/Link:** Khi render các thẻ `<img>` hoặc `<a>` từ dữ liệu trả về của API (ví dụ OG Image, Canonical URL), việc chỉ sử dụng `escHtml` là CHƯA ĐỦ.
+- **Cách làm đúng:** Phải kiểm tra Protocol của URL đó. Chỉ cho phép các protocol an toàn (`http:`, `https:`) để chặn đứng các cuộc tấn công XSS qua `javascript:` protocol.
+
+### 53. TỐI ƯU HÓA KẾT NỐI (CONNECTION POOLING)
+- **MaxIdleConnsPerHost:** Với các tool có đặc thù truy vấn nhiều lần tới cùng một domain (như Redirect Checker quét chuỗi chuyển hướng), cần tăng `MaxIdleConnsPerHost` trong `http.Transport` lên (khoảng 10-20) thay vì để mặc định là 2 nhằm tăng tốc độ phản hồi.
+
 - **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"

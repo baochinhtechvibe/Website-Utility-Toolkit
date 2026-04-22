@@ -9,5 +9,6 @@ func RegisterRoutes(api *gin.RouterGroup) {
 	ipGroup := api.Group("/ip-lookup")
 	{
 		ipGroup.GET("/my-ip", handlers.HandleMyIP)
+		ipGroup.GET("/my-ip/check", handlers.HandleCheckIP)
 	}
 }

@@ -8,7 +8,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func InitLogger(level string) {
+// InitLogger khởi tạo logger cho toàn bộ ứng dụng.
+//   - level: mức log (debug, info, warn, error)
+//   - env: môi trường (development → ConsoleWriter màu, production → JSON thuần)
+func InitLogger(level string, env string) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	ll := zerolog.InfoLevel
@@ -22,5 +25,11 @@ func InitLogger(level string) {
 	}
 	zerolog.SetGlobalLevel(ll)
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	// Production: JSON thuần (hiệu suất cao, dễ tích hợp log aggregator)
+	// Development: ConsoleWriter có màu sắc, dễ đọc khi debug
+	if strings.ToLower(env) == "development" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	} else {
+		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+	}
 }

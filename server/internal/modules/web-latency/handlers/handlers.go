@@ -11,6 +11,7 @@ import (
 	"tools.bctechvibe.com/server/internal/modules/web-latency/models"
 	"tools.bctechvibe.com/server/internal/modules/web-latency/service"
 	"tools.bctechvibe.com/server/internal/platform/cache"
+	"tools.bctechvibe.com/server/internal/platform/errutil"
 	responseAPI "tools.bctechvibe.com/server/internal/response"
 )
 
@@ -20,19 +21,13 @@ func HandleWebLatency(c *gin.Context) {
 	var req models.WebLatencyRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu yêu cầu không hợp lệ",
-		})
+		responseAPI.Error(c, http.StatusBadRequest, "Dữ liệu yêu cầu không hợp lệ")
 		return
 	}
 
 	req.URL = normalizeURL(req.URL)
 	if req.URL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "URL không hợp lệ",
-		})
+		responseAPI.Error(c, http.StatusBadRequest, "URL không hợp lệ. Vui lòng kiểm tra lại địa chỉ website.")
 		return
 	}
 
@@ -48,10 +43,7 @@ func HandleWebLatency(c *gin.Context) {
 
 	result, err := service.AnalyzeLatency(c.Request.Context(), req.URL, req.DeepTest)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"success": false,
-			"message": "Lỗi khi kiểm tra tốc độ: " + err.Error(),
-		})
+		responseAPI.Error(c, http.StatusBadGateway, errutil.TranslateError(err))
 		return
 	}
 
@@ -82,13 +74,13 @@ func normalizeURL(u string) string {
 	// RFC 3986: Scheme và Host là case-insensitive
 	parsed.Scheme = strings.ToLower(parsed.Scheme)
 	parsed.Host = strings.ToLower(parsed.Host)
-	
+
 	// Normalize Path: Chỉ xóa trailing slash của root domain (/)
 	// VD: https://example.com/ -> https://example.com
 	// Nhưng https://example.com/blog/ -> https://example.com/blog/ (Giữ nguyên slash của path)
 	if parsed.Path == "/" {
 		parsed.Path = ""
 	}
-	
+
 	return parsed.String()
 }

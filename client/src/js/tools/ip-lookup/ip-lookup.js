@@ -1,6 +1,7 @@
 /**
  * FILE: ip-lookup.js
  * Logic cho công cụ tra cứu IP (My IP Lookup)
+ * Bao gồm Smart Watcher tự động phát hiện thay đổi IP (VPN/Mạng)
  */
 
 import { API_BASE_URL } from "../../config.js";
@@ -21,13 +22,89 @@ let ipMap = null;
 let mapMarker = null;
 let isRefreshing = false;
 
+// Smart Watcher state
+let currentIP = null;
+let watcherIntervalId = null;
+const WATCHER_INTERVAL_MS = 30000; // 30 giây
+
 function init() {
     initMyIP();
     setupEventListeners();
     setupRefreshLogic();
+    startSmartWatcher();
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+// ============================================
+//  SMART WATCHER: Tự động phát hiện đổi IP
+// ============================================
+
+/**
+ * Khởi động Smart Watcher:
+ * - setInterval mỗi 30s gọi endpoint /my-ip/check (nhẹ, chỉ trả IP thô)
+ * - visibilitychange: khi user quay lại tab → check ngay lập tức
+ * - Nếu IP khác → tự động load lại toàn bộ details
+ */
+function startSmartWatcher() {
+    // Interval check mỗi 30 giây
+    watcherIntervalId = setInterval(checkIPChange, WATCHER_INTERVAL_MS);
+
+    // Check ngay khi user quay lại tab
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            checkIPChange();
+        }
+    });
+}
+
+/**
+ * Gọi API nhẹ để lấy IP thô, so sánh với IP đang hiển thị.
+ * Nếu khác → reload full details + hiện thông báo
+ */
+async function checkIPChange() {
+    // Không check khi đang refresh hoặc chưa có IP ban đầu
+    if (isRefreshing || !currentIP) return;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/ip-lookup/my-ip/check`);
+        if (!res.ok) return;
+
+        const json = await res.json();
+        const newIP = json.ip;
+
+        if (newIP && newIP !== currentIP) {
+            console.log(`[Smart Watcher] IP đã thay đổi: ${currentIP} → ${newIP}`);
+            currentIP = newIP;
+
+            // Hiện thông báo cho user
+            showIPChangeNotice(newIP);
+
+            // Reset UI về trạng thái loading và load lại toàn bộ
+            resetIPDisplayToLoading();
+            await initMyIP(true);
+        }
+    } catch (err) {
+        // Lỗi mạng khi check → bỏ qua âm thầm
+        console.debug("[Smart Watcher] Check failed:", err.message);
+    }
+}
+
+/**
+ * Hiện thông báo trên giao diện khi phát hiện IP thay đổi
+ */
+function showIPChangeNotice(newIP) {
+    const cacheNotice = $("#cacheNotice");
+    if (!cacheNotice) return;
+
+    const spanEl = cacheNotice.querySelector("span");
+    if (spanEl) {
+        const timeStr = new Date().toLocaleString("vi-VN");
+        spanEl.innerHTML = `<i class="fa-solid fa-rotate"></i> Phát hiện IP thay đổi thành <b>${escapeHTML(newIP)}</b> lúc <b>${timeStr}</b> — Đang cập nhật...`;
+    }
+    cacheNotice.classList.remove("d-none");
+    setDisplay(cacheNotice, "flex");
+}
 
 function setupRefreshLogic() {
     const btnRefreshIP = $("#btnRefreshIP");
@@ -120,6 +197,9 @@ async function initMyIP(forceRefresh = false, retryCount = 0) {
         const result = await response.json();
 
         if (result.success && result.data) {
+            // Cập nhật currentIP cho Smart Watcher
+            currentIP = result.data.ip;
+
             renderIPData(result.data, result.meta);
             initMap(result.data.latitude, result.data.longitude, result.data.ip);
         } else {
@@ -274,15 +354,18 @@ function renderIPData(data, meta = null) {
     const cacheNotice = $("#cacheNotice");
     if (cacheNotice && meta) {
         setDisplay(cacheNotice, "flex");
-        const spanEl = cacheNotice.querySelector(".cache-card__text");
-        const timeStr = meta.fetched_at 
-            ? new Date(meta.fetched_at).toLocaleString('vi-VN') 
-            : new Date().toLocaleString('vi-VN');
+        cacheNotice.classList.remove("d-none");
+        const spanEl = cacheNotice.querySelector("span");
+        if (spanEl) {
+            const timeStr = meta.fetched_at 
+                ? new Date(meta.fetched_at).toLocaleString('vi-VN') 
+                : new Date().toLocaleString('vi-VN');
 
-        if (meta.cached) {
-            spanEl.innerHTML = `Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>.`;
-        } else {
-            spanEl.innerHTML = `Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>.`;
+            if (meta.cached) {
+                spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+            } else {
+                spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+            }
         }
     }
 }
@@ -370,7 +453,7 @@ function initMap(lat, lon, ip, retryCount = 0) {
  * Thiết lập các event listener (Copy, v.v.)
  */
 function setupEventListeners() {
-    // Nút copy
+    // Nút copy — sử dụng classList thay vì ghi đè className (Rule 17 GEMINI.md)
     $$(".btn-copy").forEach(btn => {
         btn.addEventListener("click", async () => {
             const targetId = btn.getAttribute("data-target");
@@ -378,15 +461,30 @@ function setupEventListeners() {
             if (text && text !== "N/A" && text !== "Checking...") {
                 const success = await copyToClipboard(text);
                 if (success) {
-                    const originalHtml = btn.innerHTML;
-                    const originalClass = btn.className;
+                    const icon = btn.querySelector("i");
+                    const span = btn.childNodes;
                     
-                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied`;
+                    // Lưu nội dung gốc
+                    const originalIconClass = icon ? [...icon.classList] : [];
+                    const originalText = btn.textContent.trim();
+                    
+                    // Đổi sang trạng thái "Copied" — chỉ toggle class modifier
+                    if (icon) {
+                        icon.classList.remove("fa-copy");
+                        icon.classList.add("fa-check");
+                    }
                     btn.classList.add("btn-success");
+                    // Cập nhật text node (giữ nguyên icon element)
+                    const textNode = [...btn.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
+                    if (textNode) textNode.textContent = " Copied";
                     
                     setTimeout(() => {
-                        btn.innerHTML = originalHtml;
-                        btn.className = originalClass;
+                        if (icon) {
+                            icon.classList.remove("fa-check");
+                            icon.classList.add("fa-copy");
+                        }
+                        btn.classList.remove("btn-success");
+                        if (textNode) textNode.textContent = " Copy IP";
                     }, 2000);
                 }
             }

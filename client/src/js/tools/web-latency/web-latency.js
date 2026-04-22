@@ -125,17 +125,16 @@ async function handleAnalyze(bypassCache = false) {
         // Handle Cache Banner (Rule 11)
         const cacheNoticeBox = $('#cacheNotice');
         if (cacheNoticeBox && data.meta && data.meta.fetched_at) {
-            const cacheTime = document.getElementById("cacheTime");
-            const cacheText = document.getElementById("cacheText");
-            
             const date = new Date(data.meta.fetched_at);
             const timeStr = date.toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + date.toLocaleDateString('vi-VN');
             
-            if (cacheTime) cacheTime.textContent = timeStr;
-            if (cacheText) {
-                cacheText.textContent = data.meta.cached 
-                    ? "Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc:" 
-                    : "Kết quả tra cứu mới nhất lúc:";
+            const spanEl = cacheNoticeBox.querySelector("span");
+            if (spanEl) {
+                if (data.meta.cached) {
+                    spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+                } else {
+                    spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+                }
             }
 
             cacheNoticeBox.classList.remove('d-none');

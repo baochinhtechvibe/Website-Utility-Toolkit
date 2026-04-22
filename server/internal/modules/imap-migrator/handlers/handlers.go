@@ -78,7 +78,7 @@ func HandleStart(c *gin.Context) {
 		var rateErr *service.RateLimitError
 		var busyErr *service.ServerBusyError
 		if errors.As(err, &rateErr) || errors.As(err, &busyErr) {
-			response.Error(c, http.StatusConflict, err.Error())
+			response.Error(c, http.StatusConflict, service.FriendlyErrorMessage(err))
 			return
 		}
 		response.Error(c, http.StatusInternalServerError, service.FriendlyErrorMessage(err))
@@ -132,13 +132,15 @@ func HandleCancel(c *gin.Context) {
 func HandleStream(c *gin.Context) {
 	jobID := c.Query("jobId")
 	if jobID == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Thiếu tham số jobId"})
+		response.Error(c, http.StatusBadRequest, "Thiếu tham số jobId")
+		c.Abort()
 		return
 	}
 
 	job, ok := service.GetJob(jobID)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy Job"})
+		response.Error(c, http.StatusNotFound, "Không tìm thấy Job")
+		c.Abort()
 		return
 	}
 

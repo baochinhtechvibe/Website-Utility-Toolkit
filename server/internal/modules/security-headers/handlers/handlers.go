@@ -77,7 +77,7 @@ func HandleAnalyze(c *gin.Context) {
 	targetURL, hostname, err := normalizeURL(req.TargetURL)
 	if err != nil {
 		log.Warn().Str("input", req.TargetURL).Err(err).Msg("Security headers: URL normalize failed")
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.Error(c, http.StatusBadRequest, "Địa chỉ website không hợp lệ. Vui lòng kiểm tra lại URL.")
 		return
 	}
 

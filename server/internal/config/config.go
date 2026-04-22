@@ -8,8 +8,10 @@ import (
 )
 
 type Config struct {
-	Port     string
-	LogLevel string
+	Port          string
+	LogLevel      string
+	AppEnv        string // "development" hoặc "production"
+	DomScanAPIKey string
 }
 
 func LoadConfig() Config {
@@ -28,8 +30,17 @@ func LoadConfig() Config {
 		logLevel = "info"
 	}
 
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "" {
+		appEnv = "production"
+	}
+
+	domscanKey := os.Getenv("DOMSCAN_API_KEY")
+
 	return Config{
-		Port:     port,
-		LogLevel: logLevel,
+		Port:           port,
+		LogLevel:       logLevel,
+		AppEnv:         appEnv,
+		DomScanAPIKey:  domscanKey,
 	}
 }
