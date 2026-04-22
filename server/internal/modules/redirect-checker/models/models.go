@@ -51,6 +51,7 @@ type SEOAudit struct {
 	Canonical string `json:"canonical,omitempty"`
 	Title     string `json:"title,omitempty"`
 	OGTitle   string `json:"ogTitle,omitempty"`
+	OGImage   string `json:"ogImage,omitempty"`
 	Robots    string `json:"robots,omitempty"`
 }
 

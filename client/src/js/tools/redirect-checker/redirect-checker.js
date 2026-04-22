@@ -356,22 +356,26 @@ function renderResults(res, url, meta) {
     const urlsInChain = new Set();
     let hasLoop = false;
     
-    chain.forEach(step => {
+    // Point #4: Avoid mutating original data (res.chain) to prevent dirty JSON exports
+    const enrichedChain = chain.map(step => {
+        const s = { ...step }; // Shallow clone
+        
         // Map timings
-        if (step.timings) {
-            step.dnsMs = step.timings.dnsLookup;
-            step.tcpMs = step.timings.tcpConnection;
-            step.tlsMs = step.timings.tlsHandshake;
-            step.ttfbMs = step.timings.ttfb;
-            step.totalMs = step.timings.total;
+        if (s.timings) {
+            s.dnsMs = s.timings.dnsLookup;
+            s.tcpMs = s.timings.tcpConnection;
+            s.tlsMs = s.timings.tlsHandshake;
+            s.ttfbMs = s.timings.ttfb;
+            s.totalMs = s.timings.total;
         }
         
         // Detect loop
-        if (urlsInChain.has(step.url)) {
+        if (urlsInChain.has(s.url)) {
             hasLoop = true;
-            step.isLoop = true;
+            s.isLoop = true;
         }
-        urlsInChain.add(step.url);
+        urlsInChain.add(s.url);
+        return s;
     });
 
     // Score Calculation
@@ -402,29 +406,31 @@ function renderResults(res, url, meta) {
     const totalTime = perf.totalTime || 0;
     if (totalTime > 1500) { score -= 15; issues.push({ type: 'deduct', label: 'Tổng thời gian phản hồi quá chậm (>1.5s)', value: 15 }); }
 
-    res.computedScore = Math.max(0, Math.min(100, score));
-    res.computedIssues = issues;
+    const computed = {
+        score: Math.max(0, Math.min(100, score)),
+        issues: issues
+    };
 
     // Trigger rendering of components
     showResults();
-    renderScore(res);
-    renderChain(chain);
+    renderScore(computed);
+    renderChain(enrichedChain);
     renderSecurity(sec, hasLoop, actualRedirectHops);
-    renderPerformance(chain);
+    renderPerformance(enrichedChain);
     renderSEO(res.seo || {}, lastHop?.statusCode);
-    renderCurl(url, chain);
+    renderCurl(url, enrichedChain);
 }
 
 /**
  * 1. Render Score Section
  */
-function renderScore(res) {
+function renderScore(computed) {
     const badge = $('#scoreBadge');
     const breakdown = $('#scoreBreakdown');
     if (!badge || !breakdown) return;
 
-    const score = res.computedScore;
-    const issues = res.computedIssues;
+    const score = computed.score;
+    const issues = computed.issues;
 
     badge.className = `redirect-score__badge ${getScoreClass(score)}`;
     badge.innerHTML = `<span id="scoreValue">${score}</span><small>/100</small>`;
@@ -620,7 +626,7 @@ function renderSEO(seo, finalStatus) {
         { label: 'Canonical', value: seo.canonical, mono: true },
         { label: 'Robots', value: seo.robots },
         { label: 'Open Graph Title', value: seo.ogTitle },
-        { label: 'OG Image', value: seo.ogImage, mono: true }
+        { label: 'OG Image', value: seo.ogImage, mono: true, image: true }
     ];
 
     container.innerHTML = fields.map(f => {
@@ -635,9 +641,22 @@ function renderSEO(seo, finalStatus) {
                 <div class="${valClass}">
                     ${f.code && !missing ? renderBadge(f.value) : escHtml(display)}
                 </div>
+                ${f.image && !missing && isSafeURL(f.value) ? `
+                    <div class="mt-3">
+                        <img src="${escHtml(f.value)}" alt="OG Image Preview" class="img-fluid rounded border" style="max-height: 150px; object-fit: contain;" onerror="this.parentElement.style.display='none'">
+                    </div>
+                ` : ''}
             </div>
         </div>`;
     }).join('');
+}
+
+function isSafeURL(s) {
+    if (!s) return false;
+    try {
+        const u = new URL(s);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch { return false; }
 }
 
 /**
@@ -683,6 +702,8 @@ function renderCompare(results) {
     if (differs && warn && msg) {
         msg.textContent = 'Phát hiện sự khác biệt về đích đến giữa các trình duyệt. Trang web có thể đang thực hiện Cloaking hoặc redirect theo thiết bị không đồng nhất.';
         warn.classList.remove('d-none');
+    } else if (warn) {
+        warn.classList.add('d-none');
     }
 }
 
