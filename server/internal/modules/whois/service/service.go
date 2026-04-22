@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
+	"unicode"
 
 	cache "github.com/go-pkgz/expirable-cache/v3"
 	"github.com/likexian/whois"
@@ -51,10 +54,11 @@ var (
 
 	// Limiter cho bypass cache: giới hạn bộ nhớ và thời gian (LRU)
 	bypassLimiter  cache.Cache[string, time.Time]
-	bypassCooldown = 1 * time.Minute
+	bypassCooldown = 15 * time.Second
 
 	// Giới hạn số lần bypass theo IP (5 lần / 1 phút)
 	ipLimiter cache.Cache[string, []time.Time]
+	ipLimiterMu sync.Mutex
 )
 
 // init khởi tạo cache ở package level, đảm bảo chỉ chạy 1 lần khi import.
@@ -83,8 +87,10 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 
 	// Bypass rate limiting: giới hạn bypass cache liên tục
 	if bypassCache {
-		// 1. Kiểm tra giới hạn theo IP (5 lần / 1 phút)
 		now := time.Now()
+		
+		ipLimiterMu.Lock()
+		
 		var validTimestamps []time.Time
 		if timestamps, ok := ipLimiter.Get(clientIP); ok {
 			for _, t := range timestamps {
@@ -113,6 +119,8 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 			validTimestamps = append(validTimestamps, now)
 			ipLimiter.Set(clientIP, validTimestamps, time.Minute)
 		}
+		
+		ipLimiterMu.Unlock()
 	}
 
 	// 1. Lấy dữ liệu từ cache trước (để dành fallback nếu query live lỗi)
@@ -149,7 +157,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 		if isVN {
 			resp, err = queryVNDomain(lookupCtx, domain)
 		} else {
-			resp, err = queryGenericDomain(lookupCtx, domain)
+			resp, err = queryGenericDomain(lookupCtx, domain, bypassCache)
 		}
 		whoisChan <- whoisResult{resp, err}
 	}()
@@ -259,6 +267,11 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 	ttl := cacheTTLDefault
 	if isVN {
 		ttl = cacheTTLVN
+	}
+	
+	// Giảm TTL xuống 10 phút nếu tên miền còn trống (Available) để cập nhật nhanh hơn
+	if isAvailable {
+		ttl = 10 * time.Minute
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -384,13 +397,13 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 			}
 
 			log.Warn().Str("domain", domain).Msg("WHOIS VN: Deadline hit with no results. Falling back to Tier 3.")
-			return queryVNTier3Fallback(domain)
+			return queryVNTier3Fallback(ctx, domain)
 
 		case <-ctx.Done():
 			if vnnicResult != nil {
 				return vnnicResult, nil
 			}
-			return queryVNTier3Fallback(domain)
+			return queryVNTier3Fallback(ctx, domain)
 		}
 	}
 
@@ -398,15 +411,15 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 				return vnnicResult, nil
 	}
 
-	return queryVNTier3Fallback(domain)
+	return queryVNTier3Fallback(ctx, domain)
 }
 
 // queryVNTier3Fallback — Tầng cuối: Go-Whois Auto-Discover (Chỉ khi 2 thằng trên đều tạch)
-func queryVNTier3Fallback(domain string) (*models.WhoisResponse, error) {
+func queryVNTier3Fallback(ctx context.Context, domain string) (*models.WhoisResponse, error) {
 	log.Info().Str("domain", domain).Msg("WHOIS VN: Tier 1 & 2 failed — trying Tier 3 (Auto-Discover)")
 	client := whois.NewClient()
 	client.SetTimeout(4 * time.Second)
-	rawText, err := client.Whois(domain, "whois.vnnic.vn")
+	rawText, err := doWhoisWithCtx(ctx, client, domain, "whois.vnnic.vn")
 	if err != nil && rawText == "" {
 		return nil, &WhoisError{
 			Message: "Không thể tra cứu thông tin tên miền này. Tên miền chưa được đăng ký hoặc hệ thống WHOIS đang gián đoạn.",
@@ -548,7 +561,7 @@ func queryVNNIC(ctx context.Context, domain string) (string, error) {
 //  GENERIC DOMAIN (non-.vn)
 // =============================================
 
-func queryGenericDomain(parentCtx context.Context, domain string) (*models.WhoisResponse, error) {
+func queryGenericDomain(parentCtx context.Context, domain string, bypassCache bool) (*models.WhoisResponse, error) {
 	ctx, cancel := context.WithTimeout(parentCtx, 20*time.Second)
 	defer cancel()
 
@@ -588,7 +601,7 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 
 	// Tier 3: DomScan API (Authoritative Availability Signal)
 	go func() {
-		r, e := queryDomScanAPI(ctx, domain)
+		r, e := queryDomScanAPI(ctx, domain, bypassCache)
 		resChan <- result{r, e, 3}
 	}()
 
@@ -599,6 +612,11 @@ func queryGenericDomain(parentCtx context.Context, domain string) (*models.Whois
 	defer timer.Stop()
 
 	var graceTimer *time.Timer
+	defer func() {
+		if graceTimer != nil {
+			graceTimer.Stop()
+		}
+	}()
 
 	for i := 0; i < 3; i++ {
 		// Tạo một channel chỉ hoạt động khi graceTimer đã được thiết lập
@@ -666,7 +684,7 @@ DoneRace:
 }
 
 // queryDomScanAPI sử dụng dịch vụ bên thứ 3 để check availability cực nhanh cho domain quốc tế
-func queryDomScanAPI(ctx context.Context, domain string) (*models.WhoisResponse, error) {
+func queryDomScanAPI(ctx context.Context, domain string, bypassCache bool) (*models.WhoisResponse, error) {
 	apiKey := os.Getenv("DOMSCAN_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("domscan: API key not found")
@@ -680,7 +698,11 @@ func queryDomScanAPI(ctx context.Context, domain string) (*models.WhoisResponse,
 	name := parts[0]
 	tld := strings.Join(parts[1:], ".")
 
-	apiURL := fmt.Sprintf("%s?name=%s&tlds=%s&prefer_cache=1", domscanAPIBase, url.QueryEscape(name), url.QueryEscape(tld))
+	preferCache := "1"
+	if bypassCache {
+		preferCache = "0"
+	}
+	apiURL := fmt.Sprintf("%s?name=%s&tlds=%s&prefer_cache=%s", domscanAPIBase, url.QueryEscape(name), url.QueryEscape(tld), preferCache)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
@@ -1071,8 +1093,10 @@ func mergeWhoisResults(base, extra *models.WhoisResponse) *models.WhoisResponse 
 			}
 		}
 	}
-	// Gộp Status từ cả 2 nguồn
-	allStatus := append(base.Status, extra.Status...)
+	// Gộp Status từ cả 2 nguồn an toàn, tránh aliasing mảng gốc của base.Status (Potential data race/side effect)
+	allStatus := make([]string, 0, len(base.Status)+len(extra.Status))
+	allStatus = append(allStatus, base.Status...)
+	allStatus = append(allStatus, extra.Status...)
 	base.Status = deduplicateStatuses(allStatus)
 
 	// Luôn giữ RawText dài hơn hoặc text từ WHOIS Port 43
@@ -1129,6 +1153,10 @@ func deduplicateStatuses(statuses []string) []string {
 	for _, s := range statusMap {
 		result = append(result, s)
 	}
+	
+	// Sort để đảm bảo thứ tự ổn định (tránh random order của Go map)
+	sort.Strings(result)
+
 	return result
 
 }
@@ -1302,7 +1330,7 @@ func stripHTML(s string) string {
 // Fallback: Root Trace nếu TLD direct query thất bại.
 func discoverNameservers(ctx context.Context, domain string) []string {
 	// Tier 1: TLD Direct Query — hỏi thẳng TLD nameserver lấy delegation
-	ns := discoverNSViaTLDDirect(domain)
+	ns := discoverNSViaTLDDirect(ctx, domain)
 	if len(ns) > 0 {
 		log.Info().Str("domain", domain).Strs("nameservers", ns).Msg("WHOIS: NS discovered via TLD direct (fast path)")
 		return ns
@@ -1326,7 +1354,7 @@ func discoverNameservers(ctx context.Context, domain string) []string {
 // discoverNSViaTLDDirect hỏi trực tiếp TLD nameserver để lấy delegation records.
 // Ví dụ: Với "google.com", hỏi thẳng a.gtld-servers.net (quản lý .com) xem google.com
 // được delegate tới NS nào. Đây chính là NS gốc từ Registry (Parent Zone).
-func discoverNSViaTLDDirect(domain string) []string {
+func discoverNSViaTLDDirect(ctx context.Context, domain string) []string {
 	// Xác định TLD
 	parts := strings.Split(strings.ToLower(domain), ".")
 	if len(parts) < 2 {
@@ -1348,7 +1376,7 @@ func discoverNSViaTLDDirect(domain string) []string {
 	msg.SetQuestion(dnslib.Fqdn(domain), dnslib.TypeNS)
 	msg.RecursionDesired = false // NON-recursive → lấy delegation từ parent zone
 
-	resp, _, err := c.Exchange(msg, tldNS+":53")
+	resp, _, err := c.ExchangeContext(ctx, msg, tldNS+":53")
 	if err != nil || resp == nil {
 		return nil
 	}
@@ -1528,12 +1556,13 @@ func doWhoisWithCtx(ctx context.Context, client *whois.Client, domain, server st
 	}
 }
 
-// capitalizeFirst viết hoa chữ cái đầu tiên của chuỗi (thay thế strings.Title deprecated)
+// capitalizeFirst viết hoa chữ cái đầu tiên của chuỗi (hỗ trợ tốt UTF-8 như Tiếng Việt)
 func capitalizeFirst(s string) string {
 	if s == "" {
 		return s
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	r := []rune(s)
+	return string(unicode.ToUpper(r[0])) + string(r[1:])
 }
 
 // isSafeURL kiểm tra URL để ngăn chặn SSRF
@@ -1543,14 +1572,30 @@ func isSafeURL(rawURL string) bool {
 		return false
 	}
 
-	host := u.Hostname()
-	if host == "localhost" {
+	host := strings.ToLower(u.Hostname())
+	// 1. Chặn localhost và các hostname không hợp lệ
+	if host == "" || host == "localhost" {
 		return false
 	}
 
+	// 2. Chặn hostname không có dấu chấm (thường là internal server name)
+	// trừ trường hợp hostname là IP literal (đã check ở dưới)
+	if !strings.Contains(host, ".") && net.ParseIP(host) == nil {
+		return false
+	}
+
+	// 3. Chặn các suffix nội bộ phổ biến
+	internalSuffixes := []string{".local", ".internal", ".corp", ".home", ".lan"}
+	for _, suffix := range internalSuffixes {
+		if strings.HasSuffix(host, suffix) {
+			return false
+		}
+	}
+
+	// 4. Kiểm tra IP literal
 	ip := net.ParseIP(host)
 	if ip != nil {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
 			return false
 		}
 	}
