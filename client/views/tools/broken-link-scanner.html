@@ -22,20 +22,19 @@
 <body>
     <div class="wrapper page--broken-link">
         <!-- Begin: Header Content -->
-        <header id="header" class="header">
+        <header id="header" class="header header--broken-link py-10 mb-4 text-center">
             <div class="container">
                 <div class="header__wrapper relative d-flex flex-col justify-center items-center">
                     <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
                         <div class="header__icon">
-                            <img src="../../public/assets/images/layout/header/broken-link.png"
-                                alt="tools.bctechvibe.com - Broken Link Scanner">
+                            <img src="../../public/assets/images/layout/header/settings.png" alt="tools.bctechvibe.com">
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">
                                 BROKEN LINK SCANNER
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                Trình quét liên kết hỏng & Asset lỗi
+                                TRÌNH QUÉT LIÊN KẾT HỎNG & ASSET LỖI
                             </p>
                         </div>
                     </div>
@@ -111,7 +110,7 @@
                                     <span id="bls-worker-val" class="form-hint">50</span>
                                 </div>
                                 <input type="range" id="bls-workers-input" name="workers" class="bls-range mt-2" min="5"
-                                    max="50" value="50">
+                                    max="100" value="50">
                             </div>
 
                             <!-- Validation Error -->
@@ -178,7 +177,8 @@
 
                             <!-- CACHE NOTICE -->
                             <div id="cacheNotice" class="cache-card mt-2 d-none">
-                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime"></b></span>
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc
+                                    <b id="cacheTime"></b></span>
                                 <button type="button" id="btnBypassCache"
                                     class="btn btn-sm btn-outline cache-card__btn">
                                     <i class="fa-solid fa-arrows-rotate"></i> Làm mới
@@ -196,12 +196,16 @@
                                     </div>
                                     <div class="message-card__body">
                                         <p class="message-card__message">
-                                            Website có quá nhiều liên kết hoặc nằm ngoài phạm vi quét. Hệ thống đã tự động giới hạn 250 liên kết đầu tiên để đảm bảo hiệu suất. 
-                                            <ul class="mt-2 ml-4 list-disc text-sm opacity-90">
-                                                <li id="bls-skipped-over-limit-row" class="d-none">Đã giới hạn <strong id="bls-skipped-count">0</strong> liên kết do vượt ngưỡng 250.</li>
-                                                <li id="bls-skipped-out-scope-row" class="d-none">Đã bỏ qua <strong id="bls-skipped-scope-count">0</strong> liên kết nằm ngoài hostname gốc.</li>
-                                            </ul>
+                                            Website có quá nhiều liên kết hoặc nằm ngoài phạm vi quét. Hệ thống đã tự
+                                            động giới hạn 500 liên kết đầu tiên để đảm bảo hiệu suất.
                                         </p>
+                                        <ul class="bls-skipped-list mt-2 text-sm">
+                                            <li id="bls-skipped-over-limit-row" class="d-none">Đã giới hạn <strong
+                                                    id="bls-skipped-count">0</strong> liên kết do vượt ngưỡng 500.</li>
+                                            <li id="bls-skipped-out-scope-row" class="d-none">Đã bỏ qua <strong
+                                                    id="bls-skipped-scope-count">0</strong> liên kết nằm ngoài hostname
+                                                gốc.</li>
+                                        </ul>
                                     </div>
                                 </div>
                                 <!-- Summary Stats -->
@@ -239,7 +243,8 @@
                                             cả</button>
                                         <button class="btn btn-sm btn-danger btn-filter" data-filter="broken">Error
                                             4xx/5xx</button>
-                                        <button class="btn btn-sm btn-filter btn-filter--blocked" data-filter="blocked">Bị chặn (403)</button>
+                                        <button class="btn btn-sm btn-filter btn-filter--blocked"
+                                            data-filter="blocked">Bị chặn (403)</button>
                                         <button class="btn btn-sm btn-warning btn-filter"
                                             data-filter="redirect">Redirect 3xx</button>
                                         <button class="btn btn-sm btn-success btn-filter" data-filter="ok">OK
@@ -329,14 +334,12 @@
                         </section>
                     </div>
                 </div>
-
-
             </div>
         </main>
         <!-- End: Main Content -->
 
         <!-- Begin: Footer Content -->
-        <footer id="footer" class="footer mt-4">
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
                     <div class="footer__stat footer__stat--total">

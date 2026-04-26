@@ -46,8 +46,8 @@ func HandleScan(c *gin.Context) {
 		}
 	}
 
-	// Hard timeout execution limit
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 35*time.Second)
+	// Hard timeout execution limit (Nâng lên 60s để quét được nhiều link hơn)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel()
 
 	// 4. Unicode-safe Log Sanitization (Di chuyển xuống sau Cache Check để tối ưu - Issue #4)
@@ -92,8 +92,8 @@ func HandleScan(c *gin.Context) {
 
 	select {
 	case <-ctx.Done():
-		// Chỉ timeout nếu sau 35s vẫn chưa có kết quả trong dataChan/errChan
-		response.Error(c, http.StatusGatewayTimeout, "Pha thực thi vượt quá giới hạn 35 giây do quá nhiều Links hoặc Server tải quá chậm.")
+		// Chỉ timeout nếu sau 60s vẫn chưa có kết quả trong dataChan/errChan
+		response.Error(c, http.StatusGatewayTimeout, "Pha thực thi vượt quá giới hạn 60 giây do quá nhiều Links hoặc Server tải quá chậm.")
 		return
 	case err := <-errChan:
 		log.Error().Err(err).Str("url", logURL).Str("request_id", c.GetString("requestID")).Msg("broken-link scan error")

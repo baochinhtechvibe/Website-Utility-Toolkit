@@ -16,6 +16,7 @@ type ScanResultRow struct {
 	OriginalURL   string `json:"original_url"`   // raw URL in the tag
 	FinalURL      string `json:"final_url"`      // absolute URL requested
 	StatusCode    int    `json:"status_code"`    // Final HTTP status code
+	StatusText    string `json:"status_text"`    // Standard HTTP status text (e.g. NOT FOUND)
 	StatusClass   string `json:"status_class"`   // ok, redirect, broken, blocked, skipped
 	RedirectCount int    `json:"redirect_count"` // Number of redirects
 	ResponseMs    int64  `json:"response_ms"`    // Time it took to get the verdict

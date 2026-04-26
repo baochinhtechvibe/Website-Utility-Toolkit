@@ -70,10 +70,10 @@ func createClient(ignoreTLS bool, followRedirect bool) *http.Client {
 			return dialer.DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
 		},
 		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second, // Tăng thêm chút cho link chậm
+		ResponseHeaderTimeout: 7 * time.Second, // Giảm xuống 7s để loại bỏ sớm các link quá chậm
 		IdleConnTimeout:       90 * time.Second,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
+		MaxIdleConns:          500, // Tăng lên để phục vụ nhiều worker hơn
+		MaxIdleConnsPerHost:   50,  // Tăng lên để quét nhanh hơn trên cùng 1 domain
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: ignoreTLS,
 		},
@@ -81,7 +81,7 @@ func createClient(ignoreTLS bool, followRedirect bool) *http.Client {
 
 	client := &http.Client{
 		Transport: transport,
-		Timeout:   15 * time.Second, // Timeout tổng quát
+		Timeout:   10 * time.Second, // Giảm xuống 10s cho mỗi link đơn lẻ
 	}
 
 	if !followRedirect {

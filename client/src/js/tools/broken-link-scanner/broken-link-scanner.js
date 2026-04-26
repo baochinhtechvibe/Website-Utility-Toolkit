@@ -34,6 +34,13 @@ function init() {
     const resultsSection = $("#bls-results-section");
     const errorCard = $("#bls-error-card");
     const errorMessage = $("#bls-error-message");
+    const validationCard = $("#bls-validation-error");
+
+    function hideErrors() {
+        errorCard?.classList.add("d-none");
+        validationCard?.classList.add("d-none");
+        urlInput.classList.remove("is-invalid");
+    }
     const emptyState = $("#bls-empty-state");
     const shareCard = $("#shareCard");
     const shareLink = $("#shareLink");
@@ -89,6 +96,8 @@ function init() {
     // Bypass Cache
     $("#btnBypassCache")?.addEventListener('click', () => performScan(true));
 
+    // Copy Link & Export Excel: event listeners gắn bên dưới (tránh duplicate — GEMINI Rule #16)
+
     // Main Submit
     form?.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -97,8 +106,28 @@ function init() {
 
     async function performScan(isBypassCache = false) {
         if (state.isScanning) return;
-        const rawUrl = urlInput.value.trim();
+        hideErrors();
+
+        let rawUrl = urlInput.value.trim();
         if (!rawUrl) return;
+
+        // Auto-fix URL: Thêm https:// nếu thiếu (GEMINI Rule #67)
+        if (!/^https?:\/\//i.test(rawUrl)) {
+            rawUrl = 'https://' + rawUrl;
+        }
+
+        // Auto-fix: Thêm dấu "/" ở cuối nếu chỉ có domain (Ví dụ: https://naty.vn -> https://naty.vn/)
+        try {
+            const urlObj = new URL(rawUrl);
+            if (urlObj.pathname === '/' && !rawUrl.endsWith('/')) {
+                rawUrl += '/';
+            }
+            urlInput.value = rawUrl;
+            // Kích hoạt lại validator để xóa lỗi đỏ
+            urlInput.dispatchEvent(new Event('input'));
+        } catch (e) {
+            // kệ nó, nếu URL không hợp lệ thì để validator báo sau
+        }
 
         state.isScanning = true;
         state.scannedUrl = rawUrl;
@@ -285,17 +314,18 @@ function init() {
             else if (kindLower.includes("iframe")) kindIcon = "fa-window-maximize";
 
             const redirectInfo = row.redirect_count > 0
-                ? `<div class="bls-redirect-info text-warning mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-arrow-right-arrow-left"></i> ${row.redirect_count} chuyển hướng</div>`
+                ? `<div class="bls-redirect-info text-warning mt-1"><i class="fa-solid fa-arrow-right-arrow-left"></i> ${row.redirect_count} chuyển hướng</div>`
                 : "";
 
             // Point #52: XSS Prevention for dynamic links
             const safeFinalUrl = isSafeURL(row.final_url) ? row.final_url : "#";
-            const safeOriginalUrl = isSafeURL(row.original_url) ? row.original_url : "#";
+            // Dùng final_url (absolute) cho href, original_url chỉ để hiển thị text
+            const linkHref = safeFinalUrl !== "#" ? safeFinalUrl : (isSafeURL(row.original_url) ? row.original_url : "#");
 
             tr.innerHTML = `
                 <td>
-                    <span class="badge ${badgeClass} uppercase">
-                        <strong>${row.status_code || "???"}</strong> <span class="ml-1 font-normal">${row.status_class}</span>
+                    <span class="badge ${badgeClass}">
+                        <strong>${row.status_code || "???"}</strong> <span class="ml-1 font-normal">${row.status_text || row.status_class}</span>
                     </span>
                 </td>
                 <td>
@@ -306,19 +336,21 @@ function init() {
                 </td>
                 <td class="bls-url-cell">
                     <div class="bls-url-main">
-                        <a href="${escapeHTML(safeFinalUrl)}" target="_blank" rel="noopener noreferrer">
-                            ${row.error ? `<span class="text-error">${escapeHTML(row.final_url)} <br/><small class="text-muted"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHTML(row.error)}</small></span>` : escapeHTML(row.final_url)}
+                        <a href="${escapeHTML(linkHref)}" target="_blank" rel="noopener noreferrer">
+                            ${row.error ? `<span class="text-error">${escapeHTML(row.original_url)} <br/><small class="text-muted"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHTML(row.error)}</small></span>` : escapeHTML(row.original_url)}
                         </a>
                     </div>
+                    ${row.redirect_count > 0 ? `
                     <div class="bls-url-parent text-muted">
-                        <i class="fa-solid fa-arrow-right mr-1"></i> 
-                        <a href="${escapeHTML(safeOriginalUrl)}" target="_blank" rel="noopener noreferrer" class="text-muted">${escapeHTML(row.original_url)}</a>
+                        <i class="fa-solid fa-arrow-right-long mr-1"></i> 
+                        <a href="${escapeHTML(safeFinalUrl)}" target="_blank" rel="noopener noreferrer" class="text-muted">${escapeHTML(row.final_url)}</a>
                     </div>
+                    ` : ''}
                 </td>
                 <td>
                     <div class="bls-latency text-right">
                         ${redirectInfo}
-                        <div class="bls-time font-mono text-muted text-sm"><i class="fa-regular fa-clock opacity-70 mr-1"></i> ${row.response_ms || 0} ms</div>
+                        <div class="bls-time font-mono text-muted text-sm"><i class="fa-regular fa-clock opacity-50 mr-1"></i> ${row.response_ms || 0} ms</div>
                     </div>
                 </td>
             `;
@@ -329,6 +361,8 @@ function init() {
 
     function isSafeURL(s) {
         if (!s) return false;
+        // Cho phép URL tương đối hợp lệ (bắt đầu bằng /)
+        if (s.startsWith('/') && !s.startsWith('//')) return true;
         try {
             const u = new URL(s);
             // Point #7: Chặn URLs có embedded credentials: http://user:pass@evil.com
@@ -494,8 +528,23 @@ function exportXLSX(results, url) {
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
 
+    // Tính toán độ rộng cột tự động cho Sheet Tổng quan
+    const summaryColWidths = [{ wch: 25 }, { wch: 15 }, { wch: 50 }]; // Mặc định cơ bản
+    summaryData.forEach((row, rowIndex) => {
+        // Bỏ qua dòng tiêu đề dài để không làm giãn cột A quá lố
+        if (rowIndex === 0) return;
+        row.forEach((cell, colIdx) => {
+            if (cell !== undefined && cell !== null) {
+                const len = cell.toString().length + 4; // Thêm padding
+                if (summaryColWidths[colIdx] && len > summaryColWidths[colIdx].wch) {
+                    summaryColWidths[colIdx].wch = Math.min(len, 80); // Giới hạn max 80 ký tự
+                }
+            }
+        });
+    });
+    wsSummary["!cols"] = summaryColWidths;
+
     // Styling cho Sheet Tổng quan
-    wsSummary["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 50 }];
     wsSummary["A1"].s = { font: { bold: true, sz: 16, color: { rgb: "2E7D32" } } };
     
     const headerStyle = {
@@ -522,10 +571,19 @@ function exportXLSX(results, url) {
 
     const wsDetails = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
-    // Độ rộng cột
-    wsDetails["!cols"] = [
-        { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 60 }, { wch: 60 }, { wch: 12 }, { wch: 40 }
-    ];
+    // Tính toán độ rộng cột tự động cho Sheet Chi tiết
+    const detailColWidths = headers.map(h => ({ wch: h.length + 5 }));
+    rows.forEach(row => {
+        row.forEach((cell, colIdx) => {
+            if (cell !== undefined && cell !== null) {
+                const len = cell.toString().length + 4; // Thêm padding
+                if (len > detailColWidths[colIdx].wch) {
+                    detailColWidths[colIdx].wch = Math.min(len, 100); // Giới hạn max 100 ký tự để không bị tràn màn hình quá dài
+                }
+            }
+        });
+    });
+    wsDetails["!cols"] = detailColWidths;
 
     // Filter và Freeze
     wsDetails["!autofilter"] = { ref: `A1:H${rows.length + 1}` };
@@ -566,6 +624,22 @@ function exportXLSX(results, url) {
             }
         }
     });
+
+    // Hàm áp dụng font mặc định (Cambria, size 13) cho TẤT CẢ các ô
+    const applyDefaultFont = (ws) => {
+        for (const key in ws) {
+            if (!key.startsWith('!')) { // Bỏ qua các key hệ thống của XLSX
+                if (!ws[key].s) ws[key].s = {};
+                if (!ws[key].s.font) ws[key].s.font = {};
+                
+                ws[key].s.font.name = "Cambria"; // Đặt font Cambria
+                if (!ws[key].s.font.sz) ws[key].s.font.sz = 13; // Đặt size 13 nếu chưa có size riêng (như tiêu đề 16)
+            }
+        }
+    };
+
+    applyDefaultFont(wsSummary);
+    applyDefaultFont(wsDetails);
 
     XLSX.utils.book_append_sheet(wb, wsSummary, "Tổng quan");
     XLSX.utils.book_append_sheet(wb, wsDetails, "Chi tiết liên kết");

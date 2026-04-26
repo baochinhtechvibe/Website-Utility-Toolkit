@@ -1,10 +1,10 @@
 /* ===================================================
    src/css/tools/broken-link-scanner.css
-   Broken Link & Asset Scanner — Tool-scoped Styles
-   Sử dụng color tokens từ semantic.css và palette.css
+   Broken Link & Asset Scanner Ã¢â‚¬â€ Tool-scoped Styles
+   SÃ¡Â»Â­ dÃ¡Â»Â¥ng color tokens tÃ¡Â»Â« semantic.css vÃƒÂ  palette.css
 =================================================== */
 
-/* ─── 1. Page-level Local Variables ─────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 1. Page-level Local Variables Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link {
     --bls-primary: var(--color-brand);
     --bls-text-primary: var(--color-text-inverse);
@@ -34,12 +34,12 @@
     --bls-table-head-text: var(--white);
 }
 
-/* ─── 2. Form variants ───────────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 2. Form variants Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .form--bls {
     --form-focus-color: var(--color-brand);
 }
 
-/* Advanced option checkboxes (dùng native checkbox + label đơn giản) */
+/* Advanced option checkboxes (dÃƒÂ¹ng native checkbox + label Ã„â€˜Ã†Â¡n giÃ¡ÂºÂ£n) */
 .page--broken-link .bls-advanced-options {
     display: flex;
     flex-direction: column;
@@ -84,7 +84,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ─── 3. Live Progress Bar ───────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 3. Live Progress Bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-progress-wrap {
     background-color: var(--bls-stat-bg);
     border: var(--border-width-1) solid var(--bls-stat-border);
@@ -119,7 +119,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ─── 4. Summary Stats Strip ─────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 4. Summary Stats Strip Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-stats {
     display: flex;
     gap: var(--space-3);
@@ -188,7 +188,7 @@
     color: var(--color-text-muted);
 }
 
-/* ─── 5. Filter Bar ──────────────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 5. Filter Bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-filter-bar {
     display: flex;
     flex-wrap: wrap;
@@ -213,21 +213,21 @@
 
 .page--broken-link .btn-filter--blocked {
     background-color: var(--red-700);
-    color: white;
+    color: var(--white);
     border-color: var(--red-700);
 }
 
 .page--broken-link .btn-filter--blocked:hover {
     background-color: var(--red-800);
-    color: white;
+    color: var(--white);
 }
 
 .page--broken-link .bls-stat {
     cursor: pointer;
 }
 
-/* ─── 6. Results Table ───────────────────────────────── */
-/* ─── 6. Results Table (Premium Data Grid) ────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 6. Results Table Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 6. Results Table (Premium Data Grid) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-table-wrapper {
     position: relative;
     width: 100%;
@@ -330,10 +330,6 @@
     text-decoration: underline;
 }
 
-.page--broken-link .bls-url-parent {
-    font-size: 0.75rem;
-    margin-top: var(--space-1);
-}
 
 .page--broken-link .badge {
     padding: 0.35em 0.8em;
@@ -347,7 +343,7 @@
     gap: var(--space-2);
     color: var(--color-text-muted);
     font-weight: var(--font-weight-semibold);
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
 }
 
 .page--broken-link .bls-tag-item i {
@@ -356,8 +352,6 @@
 }
 
 /* URL display */
-
-
 .page--broken-link .bls-url-main {
     word-break: break-all;
     font-weight: var(--font-weight-medium);
@@ -371,7 +365,7 @@
     word-break: break-all;
 }
 
-/* ─── 7. Status Badges (tool-scoped, map qua badge component) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 7. Status Badges (tool-scoped, map qua badge component) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-badge--ok {
     --badge-bg: var(--color-success-bg);
     --badge-border: var(--color-success-border);
@@ -404,20 +398,20 @@
 
 /* Dark mode badge overrides removed as they are handled by semantic tokens */
 
-/* ─── 8. Tag Type Badges (a, img, script, link...) ──── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 8. Tag Type Badges (a, img, script, link...) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-tag-badge {
     font-family: var(--font-family-mono);
     font-size: var(--text-xs);
     background-color: var(--color-surface-muted);
     border: 1px solid var(--color-border-subtle);
     color: var(--color-text-muted);
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     white-space: nowrap;
     text-transform: lowercase;
 }
 
-/* ─── 9. Latency cell ────────────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 9. Latency cell Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-latency {
     font-variant-numeric: tabular-nums;
     font-size: var(--text-sm);
@@ -425,7 +419,19 @@
     white-space: nowrap;
 }
 
-/* ─── 10. Empty / No-Result State ───────────────────── */
+/* Redirect info trong bảng kết quả */
+.page--broken-link .bls-redirect-info {
+    font-size: var(--text-xs);
+}
+
+/* Danh sách cảnh báo liên kết bị bỏ qua */
+.page--broken-link .bls-skipped-list {
+    list-style-type: disc;
+    padding-left: var(--space-6);
+    color: var(--color-text-secondary);
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 10. Empty / No-Result State Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-empty {
     display: flex;
     flex-direction: column;
@@ -446,7 +452,7 @@
     color: var(--color-text-primary);
 }
 
-/* ─── 11. Responsive ─────────────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 11. Responsive Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 @media (max-width: 639px) {
     .page--broken-link .bls-filter-bar {
         flex-direction: column;
@@ -458,7 +464,7 @@
     }
 }
 
-/* ─── 12. Pagination ─────────────────────────────────── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 12. Pagination Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page--broken-link .bls-pagination {
     display: flex;
     flex-wrap: wrap;
@@ -593,10 +599,43 @@
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-@media (max-width: 767px) {
+
+@media screen and (max-width: 767px) {
     .page--broken-link .bls-pagination {
         flex-direction: column;
         align-items: center;
         text-align: center;
+        gap: var(--space-4);
+    }
+
+    /* Bảng cuộn ngang mượt mà cho Mobile - Giữ nguyên độ rộng tự nhiên */
+    .page--broken-link .bls-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -15px;
+        padding: 0 15px;
+        width: calc(100% + 30px);
+    }
+
+    .page--broken-link .bls-table {
+        min-width: 1000px; /* Ép bảng rộng để không bị bóp */
+        table-layout: auto !important; /* Để trình duyệt tự tính độ rộng dựa trên nội dung */
+        width: 100%;
+    }
+
+    .page--broken-link .bls-table th, 
+    .page--broken-link .bls-table td {
+        white-space: nowrap !important; /* Không cho xuống dòng để giữ độ dài cột */
+        padding: var(--space-3) var(--space-5) !important; /* Tăng padding để tách biệt rõ ràng */
+    }
+
+    /* Riêng cột URL thì cho phép xuống dòng nếu nó quá dài, nhưng vẫn giữ min-width */
+    .page--broken-link .bls-table td.bls-url-cell {
+        white-space: normal !important;
+        min-width: 400px;
+    }
+
+    .page--broken-link .bls-url-main {
+        font-size: var(--text-xs);
     }
 }

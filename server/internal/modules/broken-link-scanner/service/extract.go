@@ -65,10 +65,10 @@ func ExtractLinks(ctx context.Context, req models.ScanRequest) (models.ScanData,
 	data.Summary.SkippedInvalid = skippedInvalid
 	data.Summary.SkippedOutOfScope = skippedOutOfScope
 
-	// Hard limit to 250 (GEMINI Rule #30 - Resource Management)
-	if len(validLinks) > 250 {
-		data.Summary.SkippedOverLimit = len(validLinks) - 250
-		validLinks = validLinks[:250]
+	// Hard limit to 500 (GEMINI Rule #30 - Resource Management)
+	if len(validLinks) > 500 {
+		data.Summary.SkippedOverLimit = len(validLinks) - 500
+		validLinks = validLinks[:500]
 	}
 
 	data.Summary.Total = len(validLinks) // Only valid links count towards total rows checking

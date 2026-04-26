@@ -26,8 +26,8 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 	if workerCount < 5 {
 		workerCount = 5
 	}
-	if workerCount > 50 {
-		workerCount = 50
+	if workerCount > 100 {
+		workerCount = 100
 	}
 
 	client := SafeHTTPClient(req.IgnoreTlsErrors)
@@ -89,12 +89,13 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 }
 
 type CachedVerdict struct {
-	StatusCode    int
-	StatusClass   string
-	FinalURL      string
-	RedirectCount int
-	ResponseMs    int64
-	ErrorDetail   string
+	StatusCode    int    `json:"status_code"`
+	StatusText    string `json:"status_text"`
+	StatusClass   string `json:"status_class"`
+	FinalURL      string `json:"final_url"`
+	RedirectCount int    `json:"redirect_count"`
+	ResponseMs    int64  `json:"response_ms"`
+	ErrorDetail   string `json:"error"`
 }
 
 func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Client, hostSems *sync.Map, ignoreTLS bool, bypassCache bool) models.ScanResultRow {
@@ -104,6 +105,7 @@ func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Clie
 		if cachedItem, _, ok := CacheGet(cacheKey); ok {
 			cv := cachedItem.(CachedVerdict)
 			asset.StatusCode = cv.StatusCode
+			asset.StatusText = cv.StatusText
 			asset.StatusClass = cv.StatusClass
 			asset.FinalURL = cv.FinalURL
 			asset.RedirectCount = cv.RedirectCount
@@ -138,6 +140,7 @@ func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Clie
 
 	asset.ResponseMs = time.Since(start).Milliseconds()
 	asset.StatusCode = verdict.StatusCode
+	asset.StatusText = verdict.StatusText
 	asset.StatusClass = verdict.StatusClass
 	asset.FinalURL = verdict.FinalURL
 	asset.RedirectCount = verdict.RedirectCount
@@ -147,6 +150,7 @@ func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Clie
 	if asset.StatusClass != "unknown" {
 		CacheSet(cacheKey, CachedVerdict{
 			StatusCode:    asset.StatusCode,
+			StatusText:    asset.StatusText,
 			StatusClass:   asset.StatusClass,
 			FinalURL:      asset.FinalURL,
 			RedirectCount: asset.RedirectCount,
@@ -160,13 +164,13 @@ func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Clie
 
 func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client, redirectDepth int, visited map[string]bool) CachedVerdict {
 	if redirectDepth >= 5 {
-		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Quá nhiều bước chuyển hướng (5+)"}
+		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusText: "ERROR", StatusClass: "broken", ErrorDetail: "Quá nhiều bước chuyển hướng (5+)"}
 	}
 
 	// Loop Detection (GEMINI Rule #11)
 	normalizedURL := normalizeForLoop(urlStr)
 	if visited[normalizedURL] {
-		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Phát hiện vòng lặp chuyển hướng (Redirect Loop)"}
+		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusText: "Error", StatusClass: "broken", ErrorDetail: "Phát hiện vòng lặp chuyển hướng (Redirect Loop)"}
 	}
 	visited[normalizedURL] = true
 
@@ -174,8 +178,9 @@ func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client
 	if err != nil {
 		return CachedVerdict{FinalURL: urlStr, RedirectCount: redirectDepth, StatusCode: -1, StatusClass: "broken", ErrorDetail: "Lỗi phân tích URL"}
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) BCTechVibe-Scanner/1.0")
-	req.Header.Set("Accept", "*/*")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
 
 	resp, err := client.Do(req)
 	
@@ -186,7 +191,7 @@ func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client
 	} else {
 		defer resp.Body.Close()
 		// If HEAD returned explicitly weird/forbidden codes, fallback because CDN might be strict.
-		if resp.StatusCode == 405 || resp.StatusCode == 403 || resp.StatusCode == 501 {
+		if resp.StatusCode == 405 || resp.StatusCode == 403 || resp.StatusCode == 501 || resp.StatusCode == 406 {
 			shouldFallback = true
 		}
 	}
@@ -194,8 +199,9 @@ func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client
 	// EXECUTE FALLBACK FETCH
 	if shouldFallback {
 		reqGet, _ := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
-		reqGet.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) BCTechVibe-Scanner/1.0")
-		reqGet.Header.Set("Accept", "*/*")
+		reqGet.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		reqGet.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+		reqGet.Header.Set("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
 		
 		respGet, errGet := client.Do(reqGet)
 		if errGet == nil {
@@ -236,6 +242,13 @@ func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.
 		if v.StatusClass == "ok" || v.StatusClass == "blocked" {
 			v.StatusClass = "redirect"
 			v.StatusCode = code 
+			
+			// Custom status text for common redirects to be more user-friendly
+			if code == 302 {
+				v.StatusText = "Moved Temporarily"
+			} else {
+				v.StatusText = http.StatusText(code)
+			}
 		}
 		return v
 	}
@@ -244,7 +257,7 @@ func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.
 	class := "ok"
 	if code >= 200 && code < 300 {
 		class = "ok"
-	} else if code == 403 || code == 401 { // Some resources strictly block
+	} else if code == 403 || code == 401 || code == 405 { // Some resources strictly block or method not allowed
 		class = "blocked" 
 	} else if code >= 400 && code < 500 {
 		class = "broken" // Client error
@@ -254,8 +267,15 @@ func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.
 		class = "broken" // Catch-all for 1xx or invalid codes
 	}
 
+	// Get standard HTTP status text
+	statusText := http.StatusText(code)
+	if statusText == "" {
+		statusText = class
+	}
+
 	return CachedVerdict{
 		StatusCode:    code,
+		StatusText:    statusText,
 		StatusClass:   class,
 		FinalURL:      initialURL,
 		RedirectCount: redirectDepth,
@@ -270,7 +290,9 @@ func normalizeForLoop(rawURL string) string {
 	}
 	p.Fragment = "" // Ignore anchor
 	host := strings.ToLower(p.Host)
-	path := strings.TrimRight(p.Path, "/")
+	// GEMINI Fix: KHÔNG được TrimRight dấu "/" vì /blog và /blog/ là 2 URL khác nhau.
+	// Việc trim làm cho tool hiểu nhầm redirect chuẩn hóa là vòng lặp.
+	path := p.Path 
 	result := strings.ToLower(p.Scheme) + "://" + host + path
 	if p.RawQuery != "" {
 		result += "?" + p.RawQuery
@@ -323,6 +345,7 @@ func parseRequestError(err error, urlStr string, redirects int) CachedVerdict {
 		FinalURL:      urlStr,
 		RedirectCount: redirects,
 		StatusCode:    -1, // Represent failure on transport layer
+		StatusText:    "Error",
 		StatusClass:   statusClass,
 		ErrorDetail:   errutil.TranslateError(err),
 	}
