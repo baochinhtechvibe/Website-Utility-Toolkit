@@ -16,6 +16,14 @@ type MetaParseResult struct {
 	Snippet         string // đoạn mô tả ngắn (meta description hoặc 200 ký tự đầu body)
 }
 
+/*
+  LƯU Ý VỀ REGEX (Rule #Review Fix):
+  Sử dụng Regex để parse HTML là phương pháp heuristic, có thể bị "break" bởi:
+  - HTML Comments: <!-- <meta name="robots" content="noindex"> -->
+  - Multiline attributes hoặc CDATA sections.
+  Tuy nhiên, với mục đích SEO Simulation và yêu cầu về hiệu suất (không dùng full DOM parser),
+  cách tiếp cận này là chấp nhận được.
+*/
 var (
 	reTitle       = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 	reMetaRobots  = regexp.MustCompile(`(?i)<meta[^>]+name=["']?robots["']?[^>]+content=["']?([^"'>]+)["']?`)
@@ -81,8 +89,10 @@ func ParseMeta(body string, xRobotsTag string, targetURL string) MetaParseResult
 		if bm := reBodyText.FindStringSubmatch(body); len(bm) > 1 {
 			raw := reHTMLTags.ReplaceAllString(bm[1], " ")
 			raw = collapseWhitespace(raw)
-			if len(raw) > 200 {
-				raw = raw[:200] + "..."
+			// Cắt an toàn theo rune để không cắt ngang ký tự đa byte (Rule #50)
+			runes := []rune(raw)
+			if len(runes) > 200 {
+				raw = string(runes[:200]) + "..."
 			}
 			snippet = raw
 		}

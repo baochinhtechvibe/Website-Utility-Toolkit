@@ -2,14 +2,11 @@ package service
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // Giới hạn bảo vệ chống fan-out sitemap index
@@ -175,47 +172,28 @@ func scanSitemapURLs(
 
 // fetchSitemapFile tải file sitemap với SSRF protection.
 func fetchSitemapFile(ctx context.Context, sitemapURL string, ua string, ignoreTLS bool) ([]byte, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 3 {
-				return fmt.Errorf("sitemap redirect vượt giới hạn")
-			}
-			return nil
-		},
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
-			TLSClientConfig:   &tls.Config{InsecureSkipVerify: ignoreTLS}, //nolint:gosec
-			DialContext:       SafeDialContext,
-		},
+	opts := FetchOptions{
+		UserAgent:       ua,
+		IgnoreTLSErrors: ignoreTLS,
+		FollowRedirects: true,
 	}
 
-	req, err := http.NewRequest("GET", sitemapURL, nil)
+	res, err := FetchPage(ctx, sitemapURL, opts)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", sanitizeHeaderValue(ua))
-	req.Header.Set("Accept", "application/xml, text/xml, */*;q=0.8")
 
-	resp, err := client.Do(req.WithContext(ctx))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", res.StatusCode)
 	}
 
 	// Kiểm tra content-type
-	ct := strings.ToLower(resp.Header.Get("Content-Type"))
+	ct := strings.ToLower(res.ContentType)
 	if ct != "" && !strings.Contains(ct, "xml") && !strings.Contains(ct, "text") {
 		return nil, fmt.Errorf("content-type không phải XML: %s", ct)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxSitemapXMLBytes))
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
+	// FetchPage đã giới hạn body bằng MaxBodyBytes (10MB), sitemap limit là 5MB.
+	// Trả về byte slice từ Body string.
+	return []byte(res.Body), nil
 }

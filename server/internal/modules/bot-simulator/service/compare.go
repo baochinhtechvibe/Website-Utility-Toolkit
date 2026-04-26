@@ -113,7 +113,7 @@ func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string,
 	}
 
 	// Fetch trang với context
-	httpResult, err := fetchWithContext(ctx, targetURL, fetchOpts)
+	httpResult, err := FetchPage(ctx, targetURL, fetchOpts)
 	if err != nil {
 		result.Error = err.Error()
 		result.CrawlStatus = CrawlError
@@ -156,10 +156,6 @@ func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string,
 	return result
 }
 
-// fetchWithContext wrap FetchPage để trả về sớm khi context bị cancel.
-func fetchWithContext(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResult, error) {
-	return FetchPage(ctx, rawURL, opts)
-}
 
 // diffResults so sánh 2 kết quả bot và trả về danh sách điểm khác biệt.
 func diffResults(ref *models.BotCompareResult, curr *models.BotCompareResult) []string {

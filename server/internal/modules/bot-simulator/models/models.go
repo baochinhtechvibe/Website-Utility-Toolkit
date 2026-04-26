@@ -4,19 +4,19 @@ package models
 type AnalyzeRequest struct {
 	URL             string   `json:"url" binding:"required"`
 	Bot             string   `json:"bot" binding:"required"`
-	IgnoreTLSErrors bool     `json:"ignoreTlsErrors"`
-	CheckSitemap    bool     `json:"checkSitemap"`
-	CompareMode     bool     `json:"compareMode"`
-	CompareBots     []string `json:"compareBots"`
-	BypassCache     bool     `json:"bypassCache"`
+	IgnoreTLSErrors bool     `json:"ignore_tls_errors"`
+	CheckSitemap    bool     `json:"check_sitemap"`
+	CompareMode     bool     `json:"compare_mode"`
+	CompareBots     []string `json:"compare_bots"`
+	BypassCache     bool     `json:"bypass_cache"`
 }
 
 // RedirectHopSummary mô tả một bước trong chuỗi redirect.
 type RedirectHopSummary struct {
 	Step       int    `json:"step"`
 	URL        string `json:"url"`
-	StatusCode int    `json:"statusCode"`
-	StatusText string `json:"statusText"`
+	StatusCode int    `json:"status_code"`
+	StatusText string `json:"status_text"`
 }
 
 // CrawlAccess mô tả mức độ bot có thể tiếp cận trang web.

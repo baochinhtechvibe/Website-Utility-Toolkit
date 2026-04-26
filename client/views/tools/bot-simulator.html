@@ -8,7 +8,6 @@
         content="Kiểm tra khả năng crawl và index của Googlebot, AI bots, và social preview bots. Phân tích robots.txt, meta robots, X-Robots-Tag, canonical và đưa ra phán quyết Indexable / Blocked / Risky.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../src/css/tools/bot-simulator.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
@@ -139,26 +138,28 @@
                                 </div>
                             </div>
                         </form>
-                    </div>
-                </div>
 
-                <!-- ========== ERROR CARD ========== -->
-                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
-                    <div class="message-card__header">
-                        <h4 class="message-card__title font-bold">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            Phân tích thất bại
-                        </h4>
-                    </div>
-                    <div class="message-card__body">
-                        <p id="errorMessage" class="message-card__message">Không thể kết nối tới URL. Vui lòng kiểm tra
-                            và
-                            thử lại.</p>
-                    </div>
-                </div>
+                        <!-- ========== ERROR CARD ========== -->
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Phân tích thất bại
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message">Không thể kết nối tới URL. Vui lòng kiểm tra và thử lại.</p>
+                            </div>
+                        </div>
 
-                <!-- ========== RESULT SECTION ========== -->
-                <div id="resultSection" class="d-none mt-6">
+                        <!-- ========== RESULT CARD ========== -->
+                        <div id="resultSection" class="result-card mt-6 d-none">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 class="result-card__title font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    Kết quả phân tích Bot Simulator
+                                </h3>
+                            </div>
 
                     <!-- CACHE BANNER -->
                     <div id="cacheNotice" class="cache-card mb-4 d-none">
@@ -334,7 +335,7 @@
                         </div>
                         <div class="card__body">
                             <div id="reasonCodes" class="bs-reason-codes d-flex flex-row gap-2 flex-wrap mb-3"></div>
-                            <ul id="suggestionList" class="bs-suggestion-list"></ul>
+                            <div id="suggestionList"></div>
                         </div>
                     </div>
 
@@ -378,25 +379,27 @@
                         </div>
                     </div>
 
-                    <!-- Share Card -->
-                    <div id="shareCard" class="share-card mt-4">
-                        <div class="share-card__header">
-                            <h4 class="share-card__title font-bold">
-                                <i class="fa-solid fa-share-nodes"></i>
-                                Chia sẻ kết quả:
-                            </h4>
                         </div>
-                        <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                            <input type="text" id="shareLink" readonly class="share-card__input" value="">
-                            <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                <i class="fas fa-copy"></i>
-                                <span>Copy</span>
-                            </button>
+                        <!-- End: Result Card -->
+
+                        <!-- Share Card -->
+                        <div id="shareCard" class="share-card mt-6 d-none">
+                            <div class="share-card__header">
+                                <h4 class="share-card__title font-bold">
+                                    <i class="fa-solid fa-share-nodes"></i>
+                                    Chia sẻ kết quả:
+                                </h4>
+                            </div>
+                            <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                <input type="text" id="shareLink" readonly class="share-card__input" value="">
+                                <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                    <i class="fas fa-copy"></i>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-
                 </div>
-                <!-- End: Result Section -->
 
             </div>
         </main>

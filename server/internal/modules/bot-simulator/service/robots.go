@@ -3,7 +3,6 @@ package service
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -71,18 +70,7 @@ func FetchAndParseRobots(ctx context.Context, targetURL string, botUA string, ig
 		FetchedAt:   time.Now(),
 	}
 
-	// Build client riêng cho robots.txt — không follow redirect để đọc status chính xác
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
-			TLSClientConfig:   &tls.Config{InsecureSkipVerify: ignoreTLS}, //nolint:gosec
-			DialContext:       SafeDialContext,
-		},
-		Timeout: RequestTimeout,
-	}
+	client := getClient(ignoreTLS)
 
 	req, err := http.NewRequest("GET", robotsURL, nil)
 	if err != nil {
@@ -167,14 +155,19 @@ func fetchRobotsWithRedirects(ctx context.Context, targetURL string, ua string, 
 		return result, fmt.Errorf("robots.txt redirect vượt giới hạn (5)")
 	}
 
-	resp, body, err := FetchRaw(ctx, targetURL, ua, ignoreTLS)
-	if err != nil || resp == nil {
+	opts := FetchOptions{
+		UserAgent:       ua,
+		IgnoreTLSErrors: ignoreTLS,
+		FollowRedirects: false,
+	}
+
+	res, err := FetchPage(ctx, targetURL, opts)
+	if err != nil {
 		return result, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		content := string(body)
+	if res.StatusCode >= 200 && res.StatusCode < 300 {
+		content := res.Body
 		if len(content) > 10*1024 {
 			result.RawContent = content[:10*1024] + "\n... (truncated)"
 		} else {
@@ -183,8 +176,8 @@ func fetchRobotsWithRedirects(ctx context.Context, targetURL string, ua string, 
 		parsed := ParseRobotsContent(content)
 		result.Groups = parsed.Groups
 		result.SitemapURLs = parsed.SitemapURLs
-	} else if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		loc := resp.Header.Get("Location")
+	} else if res.StatusCode >= 300 && res.StatusCode < 400 {
+		loc := res.Headers["Location"]
 		if loc != "" {
 			parsedBase, _ := url.Parse(targetURL)
 			parsedLoc, err := url.Parse(loc)
@@ -206,6 +199,9 @@ func ParseRobotsContent(content string) *RobotsParseResult {
 		SitemapURLs: []string{},
 	}
 	scanner := bufio.NewScanner(strings.NewReader(content))
+	// Giới hạn buffer để tránh panic với line quá dài (Rule #Review Fix)
+	// Max line 64KB, tổng body đã bị limit 512KB ở tầng fetch.
+	scanner.Buffer(make([]byte, 64*1024), 512*1024)
 
 	var currentAgents []string
 	var currentRules []RobotsRule

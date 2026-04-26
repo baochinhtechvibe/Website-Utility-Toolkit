@@ -20,13 +20,53 @@ const (
 	RequestTimeout = 15 * time.Second
 	// Số redirect tối đa theo sau
 	MaxRedirects = 10
-	// Kích thước body tối đa đọc về (1MB)
-	MaxBodyBytes = 1 * 1024 * 1024
+	// Kích thước body tối đa đọc về (10MB - Rule #57)
+	MaxBodyBytes = 10 * 1024 * 1024
 	// Kích thước snippet hiển thị (4KB)
 	MaxSnippetBytes = 4 * 1024
 	// Timeout cho mỗi dial TCP
 	DialTimeout = 5 * time.Second
 )
+
+var (
+	// Singleton clients (Rule #55)
+	defaultClient  *http.Client
+	insecureClient *http.Client
+)
+
+func init() {
+	// Transport dùng chung với pooling (Rule #53)
+	baseTransport := &http.Transport{
+		Proxy:             http.ProxyFromEnvironment,
+		DialContext:       SafeDialContext,
+		ForceAttemptHTTP2: true,
+		MaxIdleConns:      100,
+		IdleConnTimeout:   90 * time.Second,
+		// Tắt Keep-Alive nếu cần cực kỳ khắt khe, nhưng ở đây ta bật để tối ưu pooling
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	// Client chuẩn (Không follow redirect tự động)
+	defaultClient = &http.Client{
+		Transport: baseTransport,
+		Timeout:   RequestTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Client bỏ qua lỗi TLS
+	insecureTransport := baseTransport.Clone()
+	insecureTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+	insecureClient = &http.Client{
+		Transport: insecureTransport,
+		Timeout:   RequestTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+}
 
 // HTTPResult chứa kết quả raw của một request HTTP.
 type HTTPResult struct {
@@ -58,34 +98,16 @@ type FetchOptions struct {
 	FollowRedirects bool // nếu false sẽ dừng ở redirect đầu tiên
 }
 
-// buildClient tạo HTTP client với timeout, SSRF protection và giới hạn redirect.
-func buildClient(opts FetchOptions) *http.Client {
-	transport := &http.Transport{
-		DisableKeepAlives: true,
-		TLSClientConfig:   &tls.Config{InsecureSkipVerify: opts.IgnoreTLSErrors}, //nolint:gosec
-		DialContext: SafeDialContext,
+// getClient trả về singleton client phù hợp.
+func getClient(ignoreTLS bool) *http.Client {
+	if ignoreTLS {
+		return insecureClient
 	}
-
-	checkRedirect := func(req *http.Request, via []*http.Request) error {
-		if !opts.FollowRedirects {
-			return http.ErrUseLastResponse
-		}
-		if len(via) >= MaxRedirects {
-			return fmt.Errorf("đã vượt quá số lượng redirect tối đa (%d)", MaxRedirects)
-		}
-		return nil
-	}
-
-	return &http.Client{
-		Transport:     transport,
-		CheckRedirect: checkRedirect,
-		Timeout:       RequestTimeout,
-	}
+	return defaultClient
 }
 
-// buildRequest tạo HTTP request kèm header sanitization và SSRF check.
+// buildRequest tạo HTTP request kèm header sanitization.
 func buildRequest(rawURL string, opts FetchOptions) (*http.Request, error) {
-
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("URL không hợp lệ: %w", err)
@@ -131,7 +153,6 @@ func sanitizeHeaderValue(s string) string {
 }
 
 // FetchPage thực hiện request HTTP hoàn chỉnh với capture redirect chain.
-// Dùng custom DialContext để SSRF check mọi hop.
 func FetchPage(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResult, error) {
 	result := &HTTPResult{}
 	chain := []HopSummary{}
@@ -141,12 +162,7 @@ func FetchPage(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResu
 		currentURL = "https://" + currentURL
 	}
 
-	// Client không tự theo redirect — tao tự quản lý để capture chain
-	client := buildClient(opts)
-	// Override CheckRedirect để tự quản lý chain trong vòng lặp bên dưới
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
+	client := getClient(opts.IgnoreTLSErrors)
 
 	for step := 1; step <= MaxRedirects+1; step++ {
 		req, err := buildRequest(currentURL, opts)
@@ -180,19 +196,20 @@ func FetchPage(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResu
 			result.FinalURL = currentURL
 			result.ContentType = resp.Header.Get("Content-Type")
 
-			// Lọc headers trả về client (bỏ header nhạy cảm)
+			// Lọc headers trả về client
 			result.Headers = filteredHeaders(resp.Header)
 
-			// Đọc body với giới hạn
+			// Đọc body với giới hạn (Rule #57)
 			bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, MaxBodyBytes))
 			resp.Body.Close()
 			result.PayloadBytes = int64(len(bodyBytes))
 
-			if strings.Contains(strings.ToLower(result.ContentType), "text/html") ||
-				strings.Contains(strings.ToLower(result.ContentType), "text/plain") {
+			ct := strings.ToLower(result.ContentType)
+			if strings.Contains(ct, "text/html") || strings.Contains(ct, "text/plain") || strings.Contains(ct, "xml") {
 				result.Body = string(bodyBytes)
+				// Cắt snippet an toàn theo rune để không cắt ngang ký tự đa byte (Rule #50)
 				if len(bodyBytes) > MaxSnippetBytes {
-					result.BodySnippet = string(bodyBytes[:MaxSnippetBytes])
+					result.BodySnippet = truncateRuneSafe(result.Body, MaxSnippetBytes)
 				} else {
 					result.BodySnippet = result.Body
 				}
@@ -245,34 +262,35 @@ func filteredHeaders(h http.Header) map[string]string {
 	return out
 }
 
-// FetchRaw thực hiện request đơn (không theo redirect) trả về full response.
-// Dùng để fetch robots.txt với đầy đủ xử lý status code theo RFC 9309.
-func FetchRaw(ctx context.Context, rawURL string, ua string, ignoreTLS bool) (*http.Response, []byte, error) {
+// FetchRaw thực hiện request đơn (không theo redirect) trả về status code và body.
+// Design này tránh lỗi Double Close body (Rule #Gemini - Review fix).
+func FetchRaw(ctx context.Context, rawURL string, ua string, ignoreTLS bool) (int, []byte, error) {
 	opts := FetchOptions{
 		UserAgent:       ua,
 		IgnoreTLSErrors: ignoreTLS,
 		FollowRedirects: false,
 	}
-	client := buildClient(opts)
+	client := getClient(ignoreTLS)
 
 	req, err := buildRequest(rawURL, opts)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	req = req.WithContext(ctx)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, MaxBodyBytes))
-	return resp, body, nil
+	return resp.StatusCode, body, nil
 }
 
 // NormalizeURL thêm scheme nếu URL thiếu.
 func NormalizeURL(rawURL string) (string, error) {
+	rawURL = strings.TrimSpace(rawURL)
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		rawURL = "https://" + rawURL
 	}
@@ -305,6 +323,24 @@ func SameDomain(a, b string) bool {
 	return strings.EqualFold(ua.Host, ub.Host)
 }
 
+// truncateRuneSafe cắt chuỗi an toàn theo byte budget mà không cắt ngang ký tự đa byte (Rule #50).
+// Nó chuyển sang []rune để đảm bảo không làm hỏng ký tự Tiếng Việt hay Emoji.
+func truncateRuneSafe(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	runes := []rune(s)
+	result := ""
+	for _, r := range runes {
+		candidate := result + string(r)
+		if len(candidate) > maxBytes {
+			break
+		}
+		result = candidate
+	}
+	return result
+}
+
 // TimeoutError kiểm tra xem error có phải do timeout không.
 func TimeoutError(err error) bool {
 	if err == nil {
@@ -330,10 +366,13 @@ func SafeDialContext(ctx context.Context, network, addr string) (net.Conn, error
 	if err != nil {
 		return nil, err
 	}
-	ips, err := net.LookupIP(host)
+
+	// Dùng DefaultResolver kèm context để tránh Goroutine leak (Rule #Review Fix)
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
 	if err != nil {
 		return nil, err
 	}
+
 	var safeIP net.IP
 	for _, ip := range ips {
 		if validator.IsSafeIP(ip) {

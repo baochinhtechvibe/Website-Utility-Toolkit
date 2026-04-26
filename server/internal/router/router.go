@@ -65,9 +65,9 @@ func SetupRouter() *gin.Engine {
 	// IMAP Migrator handles its own rate limits internally
 	imapmigrator.RegisterRoutes(api)
 
-	// Broken Link Scanner is purely heavy, distinct limiting: 2/min + 1 InFlight + 8 Semaphore
+	// Broken Link Scanner is purely heavy, distinct limiting: 10/min + 1 InFlight + 8 Semaphore
 	heavyApi := api.Group("")
-	heavyApi.Use(middleware.RateLimitMiddlewareWithBurst(2.0/60.0, 2)) // 2 per minute
+	heavyApi.Use(middleware.RateLimitMiddlewareWithBurst(10.0/60.0, 5)) // 10 per minute, burst of 5
 	heavyApi.Use(middleware.InFlightLimiter(1))
 	heavyApi.Use(middleware.GlobalSemaphore(8))
 	{

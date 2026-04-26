@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"tools.bctechvibe.com/server/internal/modules/bot-simulator/models"
 	"tools.bctechvibe.com/server/internal/modules/bot-simulator/service"
 	"tools.bctechvibe.com/server/internal/platform/errutil"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 	"tools.bctechvibe.com/server/internal/response"
 )
 
@@ -37,16 +39,26 @@ func HandleAnalyze(c *gin.Context) {
 		return
 	}
 
+	// Validate hostname an toàn (SSRF Protection - Rule #36 & #49)
+	parsedU, parseErr := url.Parse(normalizedURL)
+	if parseErr != nil || !validator.IsSafeHostname(parsedU.Hostname()) {
+		response.Error(c, http.StatusBadRequest, "URL không an toàn hoặc không được phép truy cập")
+		return
+	}
+
 	// Build cache key
 	cacheKey := service.BuildCacheKey(normalizedURL, req.Bot, req.CheckSitemap, req.CompareMode, req.CompareBots)
+
+	// Lấy Request ID để log (Rule #58)
+	requestID := c.GetString("request_id")
+	l := log.With().Str("request_id", requestID).Str("url", normalizedURL).Str("bot", req.Bot).Logger()
 
 	// Kiểm tra cache (trừ khi bypassCache=true)
 	if !req.BypassCache {
 		if cached, fetchedAt, ok := service.CacheGet(cacheKey); ok {
-			if data, ok := cached.(*models.AnalyzeData); ok {
-				response.Success(c, data, true, fetchedAt)
-				return
-			}
+			l.Info().Msg("cache hit")
+			response.Success(c, cached, true, fetchedAt)
+			return
 		}
 	} else {
 		service.CacheInvalidate(cacheKey)
@@ -56,19 +68,34 @@ func HandleAnalyze(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
-	// Thực hiện phân tích
-	data, analyzeErr := runAnalysis(ctx, req, normalizedURL, profile)
-	if analyzeErr != nil {
-		log.Error().Err(analyzeErr).Str("url", normalizedURL).Str("bot", req.Bot).Msg("analyze failed")
-		response.Error(c, http.StatusInternalServerError, "Không thể phân tích. Vui lòng thử lại sau.")
-		return
+	// Thực hiện phân tích với Double-select pattern (Rule #54 & #Review Fix)
+	type analyzeResult struct {
+		data *models.AnalyzeData
+		err  error
 	}
+	resChan := make(chan analyzeResult, 1)
 
-	// Lưu cache
-	fetchedAt := time.Now()
-	service.CacheSet(cacheKey, data)
+	go func() {
+		data, err := runAnalysis(ctx, req, normalizedURL, profile)
+		resChan <- analyzeResult{data, err}
+	}()
 
-	response.Success(c, data, false, fetchedAt)
+	select {
+	case <-ctx.Done():
+		l.Warn().Msg("analyze timeout or cancelled")
+		response.Error(c, http.StatusGatewayTimeout, "Yêu cầu xử lý quá lâu hoặc đã bị hủy")
+		return
+	case res := <-resChan:
+		if res.err != nil {
+			l.Error().Err(res.err).Msg("analyze failed")
+			response.Error(c, http.StatusInternalServerError, "Không thể phân tích. Vui lòng thử lại sau.")
+			return
+		}
+		// Lưu cache
+		service.CacheSet(cacheKey, res.data)
+		l.Info().Msg("analyze success")
+		response.Success(c, res.data, false, time.Now())
+	}
 }
 
 // runAnalysis điều phối toàn bộ luồng phân tích.

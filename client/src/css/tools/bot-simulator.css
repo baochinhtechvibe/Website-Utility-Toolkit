@@ -11,8 +11,26 @@
     gap: var(--gap-3);
     padding: var(--space-5) var(--space-6);
     border-radius: var(--radius-lg);
-    border: 2px solid transparent;
+    border: var(--border-width-2) solid transparent;
     transition: border-color var(--transition-base), background-color var(--transition-base);
+}
+
+@media (max-width: 576px) {
+    .bs-verdict-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--gap-2);
+        padding: var(--space-4) var(--space-3);
+    }
+}
+
+/* ─── Page Wrapper: Chống tràn ngang ─────────────────────────── */
+.page--bot-simulator {
+    overflow-x: hidden;
+}
+
+.page--bot-simulator .result-card {
+    overflow: hidden;
 }
 
 .bs-verdict-banner.bs-verdict--indexable {
@@ -130,7 +148,13 @@
     gap: var(--gap-3);
 }
 
-@media (max-width: 768px) {
+/* Grid children: chống tràn nội dung */
+.bs-evidence-grid > .card {
+    min-width: 0;
+    overflow: hidden;
+}
+
+@media (max-width: 1024px) {
     .bs-evidence-grid {
         grid-template-columns: 1fr;
     }
@@ -176,8 +200,44 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 220px;
+    max-width: 13.75rem; /* Tương đương 220px */
     display: inline-block;
+}
+
+/* ─── Evidence Row: Mobile (Rule #68) ────────────────────────── */
+@media (max-width: 576px) {
+    .bs-evidence-row {
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .bs-evidence-label {
+        min-width: unset;
+    }
+
+    .bs-evidence-value {
+        text-align: left;
+        max-width: 100%;
+    }
+
+    .bs-evidence-code {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .text-truncate-url {
+        max-width: 100%;
+    }
+
+    /* Giảm padding card con bên trong evidence-grid để tránh padding lồng tràn viewport */
+    .bs-evidence-grid .card__body {
+        padding: var(--space-3);
+    }
+
+    .bs-evidence-grid .card {
+        min-width: 0;
+        max-width: 100%;
+    }
 }
 
 /* ─── Redirect Chain ─────────────────────────────────────────── */
@@ -196,6 +256,18 @@
     padding: var(--pad-y-1) var(--pad-x-2);
     border-radius: var(--radius-xs, 0.25rem);
     background-color: var(--color-surface-muted);
+}
+
+@media (max-width: 576px) {
+    .bs-redirect-hop {
+        flex-wrap: wrap;
+        padding: var(--space-2);
+    }
+    .bs-redirect-hop__url {
+        width: 100%;
+        margin-top: var(--space-1);
+        font-size: var(--text-sm);
+    }
 }
 
 .bs-redirect-hop__step {
@@ -225,34 +297,7 @@
     margin-bottom: var(--space-3);
 }
 
-/* ─── Suggestion List ────────────────────────────────────────── */
-.bs-suggestion-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-1);
-}
-
-.bs-suggestion-list li {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: var(--gap-1);
-    color: var(--color-text-secondary);
-    padding: var(--pad-y-1) var(--pad-x-2);
-    background-color: var(--color-surface-muted);
-    border-radius: var(--radius-xs, 0.25rem);
-    border-left: 3px solid var(--color-info);
-}
-
-.bs-suggestion-list li::before {
-    content: "→";
-    color: var(--color-info);
-    flex-shrink: 0;
-    font-weight: var(--font-weight-bold);
-}
+/* ─── Suggestion List: Dùng message-card--info thay cho custom CSS (Rule #14) ─── */
 
 /* ─── Limitations List ───────────────────────────────────────── */
 .bs-limitation-list {
@@ -265,15 +310,47 @@
 }
 
 .bs-limitation-list li {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--gap-2);
     align-items: flex-start;
-    gap: var(--gap-1);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.bs-limitation-list li:last-child {
+    border-bottom: none;
 }
 
 .bs-limitation-list li::before {
     content: "❖";
-    flex-shrink: 0;
+    color: var(--color-warning-text);
+    font-weight: bold;
+    margin-top: 2px;
+}
+
+.bs-limitation-content {
+    min-width: 0;
+}
+
+.bs-limitation-content strong {
+    color: var(--color-warning-text);
+}
+
+@media (max-width: 576px) {
+    .bs-limitation-list li {
+        display: block; /* Chuyển sang block để tự do xuống dòng */
+    }
+    .bs-limitation-list li::before {
+        margin-right: var(--space-2);
+        display: inline-block;
+    }
+    .bs-limitation-content {
+        display: inline;
+    }
+    .bs-limitation-content strong {
+        display: inline;
+    }
 }
 
 /* ─── Compare Table ──────────────────────────────────────────── */
@@ -291,10 +368,10 @@
     display: inline-block;
     font-weight: var(--font-weight-bold);
     padding: var(--space-half) var(--space-1);
-    border-radius: 0.25rem;
-    background-color: var(--yellow-100);
-    color: var(--yellow-800);
-    border: var(--border-width-1) solid var(--yellow-300);
+    border-radius: var(--radius-xs);
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    border: var(--border-width-1) solid var(--color-warning-border);
     margin-inline: var(--space-half);
 }
 
