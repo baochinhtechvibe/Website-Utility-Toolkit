@@ -335,7 +335,6 @@
 
 .page--dns .results-table {
     width: 100%;
-    min-width: 800px;
     border-collapse: collapse;
     box-shadow: var(--shadow-sm);
     table-layout: auto;
@@ -360,10 +359,8 @@
 /* DOMAIN — min-width để thoáng, không wrap */
 .page--dns .results-table td:nth-child(1),
 .page--dns .results-table th:nth-child(1) {
-    width: 28%;
-    white-space: normal;
-    word-break: normal;
-    overflow-wrap: anywhere;
+    width: 25%;
+    white-space: nowrap;
     text-align: left;
 }
 
@@ -385,8 +382,18 @@
 /* ANSWER — chiếm hết phần còn lại */
 .page--dns .results-table td:nth-child(4),
 .page--dns .results-table th:nth-child(4) {
-    width: 100%;
+    width: auto;
+    padding-right: var(--space-6); /* Đẩy ISP ra xa một chút để không bị dính sát */
+    white-space: nowrap;
     text-align: left;
+}
+
+/* Class đặc biệt để bẻ chữ cho các bản ghi siêu dài như TXT */
+.page--dns .results-table .wrap-text,
+.page--dns .results-table .wrap-text .results-table__value--answer {
+    white-space: normal !important;
+    word-break: normal;
+    overflow-wrap: anywhere;
 }
 
 /* ISP / ORG — fit-content, không wrap */
@@ -397,13 +404,7 @@
     text-align: left;
 }
 
-.page--dns .results-table td:nth-child(4) {
-    white-space: normal;
-    overflow: hidden;
-    word-break: normal;
-    overflow-wrap: anywhere;
-    padding: var(--space-4) var(--space-3);
-}
+
 
 .page--dns .results-table__row--head .results-table__cell,
 .page--dns .results-table th {
@@ -737,18 +738,19 @@
 
 /* Blacklist Table - Column Layout */
 .page--dns .results-table--blacklist {
-    min-width: 800px;
+    width: 100%;
 }
 
 .page--dns .results-table--blacklist th:nth-child(1),
 .page--dns .results-table--blacklist td:nth-child(1) {
-    width: 40%;
+    width: 35%;
     text-align: left;
+    overflow-wrap: break-word; /* Đổi thành break-word để tránh cột bị bóp méo thành 1 ký tự */
 }
 
 .page--dns .results-table--blacklist th:nth-child(2),
 .page--dns .results-table--blacklist td:nth-child(2) {
-    width: 15%;
+    width: 20%;
     text-align: center;
 }
 
@@ -760,7 +762,14 @@
 
 .page--dns .results-table--blacklist th:nth-child(4),
 .page--dns .results-table--blacklist td:nth-child(4) {
-    width: 30%;
+    width: 15%;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.page--dns .results-table--blacklist th:nth-child(5),
+.page--dns .results-table--blacklist td:nth-child(5) {
+    width: 15%;
     text-align: center;
     white-space: nowrap;
 }
@@ -811,5 +820,101 @@
     .page--dns .results-table__row--head .results-table__cell,
     .page--dns .results-table__body .results-table__cell {
         padding: var(--space-4);
+    }
+}
+
+/* ========================================================
+   Mobile Responsive (Table-to-Card)
+   ======================================================== */
+
+
+/* Mobile Card View (<= 640px) */
+@media (max-width: 640px) {
+    /* Ghi đè min-width của table để không bị cuộn ngang */
+    .page--dns .results-table {
+        min-width: 0 !important;
+        display: block;
+    }
+
+    .page--dns .results-table tbody {
+        display: block;
+    }
+
+    /* Ẩn dòng tiêu đề (thead) */
+    .page--dns .results-table thead {
+        display: none;
+    }
+
+    /* Bỏ giới hạn chiều cao và thanh cuộn dọc cho bảng Card view */
+    .page--dns .table-wrapper {
+        max-height: none;
+        overflow-y: visible;
+        overflow-x: hidden;
+    }
+
+    /* Biến mỗi dòng (tr) thành một Card riêng biệt */
+    .page--dns .results-table tbody tr {
+        display: block;
+        margin-bottom: var(--space-4);
+        border: var(--border-width-1) solid var(--color-border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-1);
+        overflow: hidden;
+    }
+
+    .page--dns .results-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Biến mỗi ô (td) thành một Flex container ngang (chứa Label và Value) */
+    .page--dns .results-table tbody td {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center; /* Đổi sang center để icon và badge thẳng hàng theo chiều dọc */
+        padding: var(--space-3) !important; /* Dùng !important để ghi đè desktop padding */
+        text-align: left !important; /* Ghi đè desktop text-align */
+        border-bottom: var(--border-width-1) solid var(--color-border) !important; /* Đảm bảo không bị mất border */
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
+        white-space: normal !important;
+    }
+
+    .page--dns .results-table tbody td:last-child {
+        border-bottom: none !important;
+    }
+
+    /* Nhãn (Label) chiếm 38% và không co lại */
+    .page--dns .results-table tbody td::before {
+        content: attr(data-label);
+        font-weight: var(--font-weight-bold);
+        color: var(--color-text-secondary); /* Đổi sang màu tối (Secondary Text) theo yêu cầu */
+        flex-shrink: 0;
+        width: 38%;
+        margin-right: var(--space-2);
+        text-align: left;
+    }
+
+    /* Các thành phần con còn lại (value, badge, icon) sẽ chiếm không gian còn lại */
+    .page--dns .results-table tbody td > * {
+        word-break: normal;
+        overflow-wrap: anywhere;
+    }
+
+    /* Tối ưu chiều dọc cho các ô chứa chuỗi cực dài (như Public Key / Digest / Signature) */
+    .page--dns .results-table td[data-label="PUBLIC KEY"],
+    .page--dns .results-table td[data-label="DIGEST"],
+    .page--dns .results-table td[data-label="SIGNATURE"] {
+        flex-direction: column;
+        align-items: flex-start; /* Phải set flex-start để text không bị căn giữa theo chiều ngang */
+    }
+    
+    .page--dns .results-table td[data-label="PUBLIC KEY"]::before,
+    .page--dns .results-table td[data-label="DIGEST"]::before,
+    .page--dns .results-table td[data-label="SIGNATURE"]::before {
+        width: 100%;
+        margin-bottom: var(--space-2);
+        margin-right: 0;
     }
 }

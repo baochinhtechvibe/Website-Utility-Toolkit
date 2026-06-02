@@ -5,38 +5,8 @@
 .container {
     width: 100%;
     margin-inline: auto;
-    padding-inline: var(--pad-x-3);
-}
-
-
-@media (min-width: 640px) {
-    .container {
-        max-width: 600px;
-        padding-inline: var(--pad-x-4);
-    }
-}
-
-@media (min-width: 768px) {
-    .container {
-        max-width: 720px;
-    }
-}
-
-@media (min-width: 1024px) {
-    .container {
-        max-width: 960px;
-    }
-}
-
-@media (min-width: 1280px) {
-    .container {
-        max-width: 1200px;
-        padding-inline: var(--pad-x-5);
-    }
-}
-
-@media (min-width: 1536px) {
-    .container {
-        max-width: 1320px;
-    }
+    /* Padding co giãn mượt mà: tối thiểu 1rem trên mobile, tối đa 2rem trên desktop */
+    padding-inline: clamp(1rem, 3vw, 2rem);
+    /* Giới hạn độ rộng tối đa để giao diện không bị nát trên màn hình siêu lớn */
+    max-width: 1320px;
 }
