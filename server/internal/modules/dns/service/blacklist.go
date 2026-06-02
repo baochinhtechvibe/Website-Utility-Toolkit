@@ -2,9 +2,10 @@ package dns
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -14,6 +15,7 @@ import (
 const (
 	rblMaxConcurrency = 10
 	rblTimeout        = 3500 * time.Millisecond
+	rblResolver       = "1.1.1.1:53"
 )
 
 // =======================
@@ -52,62 +54,56 @@ func newDNSClient() *dns.Client {
 	}
 }
 
-func lookupNS(zone string) ([]string, error) {
+func queryRBL(ctx context.Context, qname string) ([]dns.RR, error) {
 	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(zone), dns.TypeNS)
+	m.SetQuestion(dns.Fqdn(qname), dns.TypeA)
+	m.RecursionDesired = true
 
 	c := newDNSClient()
-	r, _, err := c.Exchange(m, "1.1.1.1:53")
+	r, _, err := c.ExchangeContext(ctx, m, rblResolver)
 	if err != nil {
 		return nil, err
 	}
-
-	var out []string
-	for _, ans := range r.Answer {
-		if ns, ok := ans.(*dns.NS); ok {
-			out = append(out, ns.Ns)
-		}
+	if r == nil {
+		return nil, fmt.Errorf("recursive resolver không trả về phản hồi")
 	}
-	return out, nil
+	switch r.Rcode {
+	case dns.RcodeSuccess:
+		return r.Answer, nil
+	case dns.RcodeNameError:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("recursive resolver trả về mã lỗi %s", dns.RcodeToString[r.Rcode])
+	}
 }
 
-// Task 3: Cache RBL provider nameservers to avoid redundant lookups.
-var rblNSCache sync.Map // map[string][]string
-
-func queryRBL(qname, provider string) ([]dns.RR, error) {
-	var nsList []string
-	if cached, ok := rblNSCache.Load(provider); ok {
-		nsList = cached.([]string)
-	} else {
-		var err error
-		nsList, err = lookupNS(provider)
-		if err != nil || len(nsList) == 0 {
-			return nil, err
+func classifyRBLRecords(records []dns.RR) string {
+	listed := false
+	for _, record := range records {
+		a, ok := record.(*dns.A)
+		if !ok {
+			continue
 		}
-		rblNSCache.Store(provider, nsList)
-	}
-
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(qname), dns.TypeA)
-
-	c := newDNSClient()
-
-	// Thử tối đa 2 NS Server để tránh treo quá lâu nếu RBL provider chặn kết nối
-	maxAttempts := len(nsList)
-	if maxAttempts > 2 {
-		maxAttempts = 2
-	}
-
-	for i := 0; i < maxAttempts; i++ {
-		ns := nsList[i]
-		c.Timeout = 2500 * time.Millisecond // Ép Timeout thấp xuống 2.5s mỗi retry
-		r, _, err := c.Exchange(m, ns+":53")
-		if err == nil && r != nil {
-			return r.Answer, nil
+		if strings.HasPrefix(a.A.String(), "127.255.255.") {
+			return "ERROR"
 		}
+		if a.A.IsLoopback() {
+			listed = true
+			continue
+		}
+		return "ERROR"
 	}
+	if listed {
+		return "LISTED"
+	}
+	return "OK"
+}
 
-	return nil, fmt.Errorf("all attempted NS failed or timed out")
+func rblQueryHost(provider models.RBLProvider) string {
+	if provider.QueryHost != "" {
+		return provider.QueryHost
+	}
+	return provider.Host
 }
 
 // =======================
@@ -138,33 +134,46 @@ func StreamBlacklist(ctx context.Context, ip string, cb func(models.BlacklistStr
 	}
 
 	type result struct {
-		host   string
-		level  string
-		status string
+		host           string
+		level          string
+		category       string
+		status         string
+		responseTimeMs int64
 	}
 
 	results := make(chan result, total)
 	sem := make(chan struct{}, rblMaxConcurrency)
 
 	for _, rbl := range RBLProviders {
-		sem <- struct{}{}
 		go func(rbl models.RBLProvider) {
-			defer func() { <-sem }()
-
-			query := fmt.Sprintf("%s.%s", reversed, rbl.Host)
-			recs, err := queryRBL(query, rbl.Host)
-
-			status := "OK"
-			if err != nil {
-				status = "TIMEOUT"
-			} else if len(recs) > 0 {
-				status = "LISTED"
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				return
 			}
 
-			results <- result{
-				host:   rbl.Host,
-				level:  rbl.Level,
-				status: status,
+			query := fmt.Sprintf("%s.%s", reversed, rblQueryHost(rbl))
+			startedAt := time.Now()
+			recs, err := queryRBL(ctx, query)
+			responseTimeMs := time.Since(startedAt).Milliseconds()
+
+			status := classifyRBLRecords(recs)
+			if isTimeoutError(err) {
+				status = "TIMEOUT"
+			} else if err != nil {
+				status = "ERROR"
+			}
+
+			select {
+			case results <- result{
+				host:           rbl.Host,
+				level:          rbl.Level,
+				category:       rbl.Category,
+				status:         status,
+				responseTimeMs: responseTimeMs,
+			}:
+			case <-ctx.Done():
 			}
 		}(rbl)
 	}
@@ -187,10 +196,12 @@ func StreamBlacklist(ctx context.Context, ip string, cb func(models.BlacklistStr
 			}
 
 			cb(models.BlacklistStreamEvent{
-				Type:     "BLACKLIST",
-				Provider: r.host,
-				Status:   r.status,
-				Level:    r.level,
+				Type:           "BLACKLIST",
+				Provider:       r.host,
+				Status:         r.status,
+				Level:          r.level,
+				Category:       r.category,
+				ResponseTimeMs: r.responseTimeMs,
 			})
 		case <-heartbeat.C:
 			// Gửi SSE comment (: heartbeat) để giữ kết nối sống
@@ -210,4 +221,15 @@ func StreamBlacklist(ctx context.Context, ip string, cb func(models.BlacklistStr
 		Listed:   listed,
 		Total:    total,
 	})
+}
+
+func isTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }

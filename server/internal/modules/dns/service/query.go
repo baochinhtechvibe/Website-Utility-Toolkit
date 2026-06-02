@@ -9,13 +9,13 @@
 package dns
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
-	"net/http"
-	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -28,34 +28,82 @@ import (
 // ErrNXDOMAIN is returned when DNS server confirms domain does not exist.
 // Used to short-circuit fallback chains — no point querying other servers.
 var ErrNXDOMAIN = errors.New("NXDOMAIN")
+var ErrSERVFAIL = errors.New("SERVFAIL")
+var ErrREFUSED = errors.New("REFUSED")
+var ErrFORMERR = errors.New("FORMERR")
 
 var GeoIPDB *geoip2.Reader
 var GeoASNDB *geoip2.Reader
+
+func init() {
+	GeoIPDB = openGeoIPDB("GeoLite2-City.mmdb")
+	if GeoIPDB == nil {
+		log.Println("Không tìm thấy GeoLite2-City.mmdb, thông tin vị trí IP sẽ không khả dụng")
+	} else {
+		log.Println("Đã load thành công GeoLite2-City.mmdb")
+	}
+
+	GeoASNDB = openGeoIPDB("GeoLite2-ASN.mmdb")
+	if GeoASNDB == nil {
+		log.Println("Không tìm thấy GeoLite2-ASN.mmdb, thông tin ASN sẽ không khả dụng")
+	} else {
+		log.Println("Đã load thành công GeoLite2-ASN.mmdb")
+	}
+}
+
+func openGeoIPDB(filename string) *geoip2.Reader {
+	for _, path := range geoIPCandidatePaths(filename) {
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+		reader, err := geoip2.Open(path)
+		if err == nil {
+			return reader
+		}
+		log.Printf("Không thể mở GeoIP DB %s: %v", path, err)
+	}
+	return nil
+}
+
+func geoIPCandidatePaths(filename string) []string {
+	paths := []string{
+		filepath.Join("geoip", filename),
+		filepath.Join("server", "geoip", filename),
+	}
+
+	if _, currentFile, _, ok := runtime.Caller(0); ok {
+		serverDir := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", "..", ".."))
+		paths = append(paths, filepath.Join(serverDir, "geoip", filename))
+	}
+
+	return paths
+}
 
 // ============================================
 // PUBLIC FACADE (USED BY HANDLERS)
 // ============================================
 
 // QueryDNSDirect is used for specific lookups like PTR where we explicitly want to target a DoH server.
-func QueryDNSDirect(server string, domain string, qtype uint16) []interface{} {
-	_, result := queryDNSDirectWithStatus(server, domain, qtype)
-	return result
+func QueryDNSDirect(server string, domain string, qtype uint16) ([]interface{}, error) {
+	return QueryDNSDirectContext(context.Background(), server, domain, qtype)
 }
 
-// queryDNSDirectWithStatus returns (isNXDOMAIN, records).
-// isNXDOMAIN=true means the server authoritatively confirmed the domain does not exist.
-func queryDNSDirectWithStatus(server string, domain string, qtype uint16) (bool, []interface{}) {
+func QueryDNSDirectContext(ctx context.Context, server string, domain string, qtype uint16) ([]interface{}, error) {
+	err, result := queryDNSDirectWithStatus(ctx, server, domain, qtype)
+	return result, err
+}
+
+// queryDNSDirectWithStatus returns (error, records).
+// If error is nil, the query was successful.
+func queryDNSDirectWithStatus(ctx context.Context, server string, domain string, qtype uint16) (error, []interface{}) {
 	doh, ok := DoHServers[server]
 	if !ok {
 		doh = DoHServers["cloudflare"]
 	}
 	rm := NewResolverManager(doh, &UDPResolver{Server: "8.8.8.8:53", Timeout: 5 * time.Second})
-	records, err := rm.Resolve(domain, qtype, "doh")
+	records, err := rm.ResolveContext(ctx, domain, qtype, "doh")
 	if err != nil {
-		if errors.Is(err, ErrNXDOMAIN) {
-			return true, []interface{}{}
-		}
-		return false, []interface{}{}
+		return err, []interface{}{}
 	}
 	result := make([]interface{}, 0, len(records))
 	for i := range records {
@@ -71,7 +119,7 @@ func queryDNSDirectWithStatus(server string, domain string, qtype uint16) (bool,
 		}
 		result = append(result, rec)
 	}
-	return false, result
+	return nil, result
 }
 
 // isSuspendedOrNotFound checks if an error from the resolver indicates a potential domain suspension or NXDOMAIN
@@ -86,31 +134,47 @@ func isSuspendedOrNotFound(err error, records []models.DNSRecord) bool {
 // Since this is a utility tool, we can perform a basic implementation or fallback to google.
 // Note: true Root DNS tracing is complex. To keep it robust, we use Google and OpenDNS as immediate fallbacks.
 // If all fail, it returns an empty slice.
-func QueryDNS(domain string, qtype uint16) ([]interface{}, string) {
-	// 1. Thử Cloudflare trước (Nhanh, đầy đủ nhất)
-	isNX, recordsCloudflare := queryDNSDirectWithStatus("cloudflare", domain, qtype)
-	if len(recordsCloudflare) > 0 {
-		return recordsCloudflare, "cloudflare"
-	}
-	// NXDOMAIN = domain chắc chắn không tồn tại → không cần hỏi server khác
-	if isNX {
-		return []interface{}{}, "cloudflare"
+func QueryDNS(domain string, qtype uint16) ([]interface{}, string, error) {
+	return QueryDNSContext(context.Background(), domain, qtype)
+}
+
+func QueryDNSContext(ctx context.Context, domain string, qtype uint16) ([]interface{}, string, error) {
+	if err := ctx.Err(); err != nil {
+		return []interface{}{}, "none", err
 	}
 
-	// 2. Chuỗi Fallback dự phòng (Quad9 -> Google -> OpenDNS)
-	fallbacks := []string{"quad9", "google", "opendns"}
+	// 1. Thử Google trước (Google trả về đầy đủ các bản ghi A round-robin hơn Cloudflare)
+	errGoogle, recordsGoogle := queryDNSDirectWithStatus(ctx, "google", domain, qtype)
+	if len(recordsGoogle) > 0 {
+		return recordsGoogle, "google", nil
+	}
+	// NXDOMAIN = domain chắc chắn không tồn tại → không cần hỏi server khác
+	if errors.Is(errGoogle, ErrNXDOMAIN) {
+		return []interface{}{}, "google", errGoogle
+	}
+
+	// 2. Chuỗi Fallback dự phòng (Cloudflare -> Quad9 -> OpenDNS)
+	fallbacks := []string{"cloudflare", "quad9", "opendns"}
+	var lastErr error = errGoogle
+
 	for _, fb := range fallbacks {
-		isNX, recordsFB := queryDNSDirectWithStatus(fb, domain, qtype)
-		if len(recordsFB) > 0 {
-			return recordsFB, fb
+		if err := ctx.Err(); err != nil {
+			return []interface{}{}, "none", err
 		}
-		if isNX {
-			return []interface{}{}, fb
+		errFB, recordsFB := queryDNSDirectWithStatus(ctx, fb, domain, qtype)
+		if len(recordsFB) > 0 {
+			return recordsFB, fb, nil
+		}
+		if errors.Is(errFB, ErrNXDOMAIN) {
+			return []interface{}{}, fb, errFB
+		}
+		if errFB != nil {
+			lastErr = errFB
 		}
 	}
 
 	// 3. Tất cả server đều fail hoặc không có record
-	return []interface{}{}, "none"
+	return []interface{}{}, "none", lastErr
 }
 
 // ============================================
@@ -236,19 +300,8 @@ func enrichIPInfo(record *models.DNSRecord, ip net.IP) {
 		}
 	}
 
-	// Task 1: Skip external API if local DB is available, even if it failed for this specific IP.
-	// This avoids 3s latency per record in the trace path.
-	if GeoIPDB != nil || GeoASNDB != nil {
-		return
-	}
-
-	geoInfo := getGeoIPInfo(ip.String())
-	if geoInfo != nil {
-		record.Country = geoInfo.Country
-		record.CountryCode = strings.ToLower(geoInfo.CountryCode)
-		record.ISP = geoInfo.ISP
-		record.Org = geoInfo.Org
-	}
+	// GeoIP enrichment is intentionally local-only. DNS lookups must not leak
+	// queried addresses to a third-party HTTP service when MMDB files are absent.
 }
 
 func EnrichIPInfoByString(record *models.DNSRecord, ipStr string) {
@@ -256,32 +309,4 @@ func EnrichIPInfoByString(record *models.DNSRecord, ipStr string) {
 	if ip != nil {
 		enrichIPInfo(record, ip)
 	}
-}
-
-type GeoIPInfo struct {
-	Country     string `json:"country"`
-	CountryCode string `json:"countryCode"`
-	ISP         string `json:"isp"`
-	Org         string `json:"org"`
-}
-
-func getGeoIPInfo(ip string) *GeoIPInfo {
-	client := &http.Client{Timeout: 3 * time.Second}
-	// Note: ip-api.com Free Tier ONLY supports HTTP. HTTPS will return 403.
-	urlStr := fmt.Sprintf("http://ip-api.com/json/%s?fields=country,countryCode,isp,org", url.PathEscape(ip))
-	resp, err := client.Get(urlStr)
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil
-	}
-
-	var info GeoIPInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil
-	}
-	return &info
 }

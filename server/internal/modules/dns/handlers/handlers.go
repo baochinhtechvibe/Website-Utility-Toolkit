@@ -5,7 +5,11 @@
 package handlers
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -34,12 +38,45 @@ type cachedDNS struct {
 
 var dnsCache = cache.New[string, cachedDNS](5000, 30*time.Minute)
 
+const dnsLookupTimeout = 25 * time.Second
+
+func generateCacheKey(req *models.DNSLookupRequest) string {
+	rawKey := fmt.Sprintf("%s|%s|trace=%v", req.Hostname, req.Type, req.TraceRoot)
+	hash := sha256.Sum256([]byte(rawKey))
+	return hex.EncodeToString(hash[:])
+}
+
+func isSafeHostnameForRequest(hostname string) bool {
+	hostname = strings.TrimSpace(strings.TrimSuffix(hostname, "."))
+
+	// Nếu input là IP trực tiếp, vẫn chặn IP private/local.
+	if ip := net.ParseIP(hostname); ip != nil {
+		return validator.IsSafeIP(ip)
+	}
+
+	// DNS Lookup chỉ hỏi bản ghi qua resolver công khai, không kết nối tới IP đích.
+	// Vì vậy không resolve domain tại đây, tránh làm hỏng chức năng kiểm tra domain lỗi DNS.
+	lowerHost := strings.ToLower(hostname)
+	switch {
+	case lowerHost == "localhost":
+		return false
+	case strings.HasSuffix(lowerHost, ".localhost"),
+		strings.HasSuffix(lowerHost, ".local"),
+		strings.HasSuffix(lowerHost, ".internal"),
+		strings.HasSuffix(lowerHost, ".lan"):
+		return false
+	}
+
+	return true
+}
+
 func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSLookupResponse) {
 	if res.Success {
-		cacheKey := req.Hostname + ":" + req.Type
+		cacheKey := generateCacheKey(req)
 
 		// 🚨 KHÔNG cache nếu kết quả trả về là trắng thông tin (tự động bypass lần tới)
-		hasRecords := len(res.Data.Records) > 0 || len(res.Data.Nameservers) > 0 || (res.Data.DNSSEC != nil && res.Data.DNSSEC.Status != "")
+		hasCacheableDNSSEC := res.Data.DNSSEC != nil && res.Data.DNSSEC.Status != "" && res.Data.DNSSEC.Status != "ERROR"
+		hasRecords := len(res.Data.Records) > 0 || len(res.Data.Nameservers) > 0 || hasCacheableDNSSEC
 		if !req.TraceRoot && hasRecords {
 			dnsCache.Set(cacheKey, cachedDNS{
 				Data:      res.Data,
@@ -59,7 +96,7 @@ func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSL
 			if res.Message == "" {
 				res.Message = "Không tìm thấy bản ghi DNS!"
 			}
-			c.JSON(http.StatusOK, res)
+			responseAPI.FailWithData(c, res.Data, res.Message)
 			return
 		}
 
@@ -102,6 +139,20 @@ func getIPVersion(ip string) string {
 		return "IPv6"
 	}
 	return "Unknown"
+}
+
+func firstLookupError(errs ...error) error {
+	for _, err := range errs {
+		if err != nil && !errors.Is(err, dns.ErrNXDOMAIN) {
+			return err
+		}
+	}
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Check if hostname is subdomain using Mozilla PSL
@@ -150,6 +201,10 @@ func normalizeHostname(input string) string {
 // ========================================
 
 func HandleDNSLookup(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), dnsLookupTimeout)
+	defer cancel()
+	c.Request = c.Request.WithContext(ctx)
+
 	var req models.DNSLookupRequest
 
 	// Bind JSON FIRST
@@ -160,6 +215,7 @@ func HandleDNSLookup(c *gin.Context) {
 
 	// Normalize hostname AFTER bind
 	req.Hostname = normalizeHostname(req.Hostname)
+	req.Type = strings.ToUpper(strings.TrimSpace(req.Type))
 
 	// Validate input syntax
 	valRes := validator.ValidateSyntax(req.Hostname)
@@ -169,13 +225,13 @@ func HandleDNSLookup(c *gin.Context) {
 	}
 
 	// Chặn các IP Private/Local để đảm bảo an toàn hệ thống (SSRF protection)
-	if !validator.IsSafeHostname(req.Hostname) {
-		responseAPI.Error(c, http.StatusBadRequest, "Địa chỉ IP hoặc Tên miền thuộc mạng nội bộ, không được phép tra cứu!")
+	if !isSafeHostnameForRequest(req.Hostname) {
+		responseAPI.Error(c, http.StatusBadRequest, "Địa chỉ IP hoặc tên miền nội bộ không được phép tra cứu!")
 		return
 	}
 
 	// ✅ Caching interception
-	cacheKey := req.Hostname + ":" + req.Type
+	cacheKey := generateCacheKey(&req)
 	if !req.BypassCache && !req.TraceRoot {
 		if item, found := dnsCache.Get(cacheKey); found {
 			responseAPI.Success(c, item.Data, true, item.FetchedAt)
@@ -208,7 +264,7 @@ func HandleDNSLookup(c *gin.Context) {
 	case "DNSSEC":
 		handleDNSSECLookup(c, serverKey, &req, &response)
 	case "BLACKLIST":
-		responseAPI.Error(c, http.StatusBadRequest, "Use /dns/blacklist-stream instead")
+		responseAPI.Error(c, http.StatusBadRequest, "Vui lòng sử dụng endpoint /dns/blacklist-stream để kiểm tra Blacklist.")
 	case "ALL":
 		handleAllRecordsV2(c, serverKey, &req, &response)
 	default:
@@ -217,6 +273,13 @@ func HandleDNSLookup(c *gin.Context) {
 }
 
 func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, response *models.DNSLookupResponse) {
+	if isIPAddress(req.Hostname) {
+		response.Success = false
+		response.Message = "Không hỗ trợ Trace Root DNS cho địa chỉ IP."
+		responseAPI.Error(c, http.StatusBadRequest, response.Message)
+		return
+	}
+
 	fqdn := dnslib.Fqdn(req.Hostname)
 	originalDomain := strings.TrimSuffix(fqdn, ".")
 
@@ -228,7 +291,7 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	}
 
 	// Chặn các tên miền nội bộ khi chạy Root Trace
-	if !validator.IsSafeHostname(originalDomain) {
+	if !isSafeHostnameForRequest(originalDomain) {
 		response.Success = false
 		response.Message = "Tên miền thuộc mạng nội bộ, không được phép tra cứu!"
 		responseAPI.Error(c, http.StatusBadRequest, response.Message)
@@ -263,7 +326,7 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 			}
 		} else {
 			// Fallback to public DNS if trace fails
-			nsRecordsPub, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+			nsRecordsPub, _, _ := dns.QueryDNSContext(c.Request.Context(), apexFQDN, dnslib.TypeNS)
 			for _, record := range nsRecordsPub {
 				if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
 					response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
@@ -412,14 +475,16 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 		var cleanedLogs []models.TraceStep
 		for _, step := range finalLogs {
 			// Strip the individual trace completion metrics
-			if !strings.Contains(step.Message, "Trace complete:") && !strings.Contains(step.Message, "record(s) found") {
+			isCompletionLog := strings.Contains(step.Message, "Trace hoàn tất:")
+			isRecordFoundLog := strings.Contains(step.Message, "Tìm thấy bản ghi")
+			if !isCompletionLog && !isRecordFoundLog {
 				cleanedLogs = append(cleanedLogs, step)
 			}
 		}
 		finalLogs = cleanedLogs
 		// Append a single consolidated master message at the very end
 		finalLogs = append(finalLogs, models.TraceStep{
-			Message: fmt.Sprintf("\n%d record(s) found across all types.", len(apiRecords)),
+			Message: fmt.Sprintf("\nTìm thấy %d bản ghi trên tất cả loại bản ghi.", len(apiRecords)),
 		})
 	}
 	response.Data.TraceLogs = finalLogs
@@ -430,19 +495,17 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 			lastIdx := len(finalLogs) - 1
 			lastMsg := finalLogs[lastIdx].Message
 
-			// NEW: Custom formatting for "No records" trace
-			// Pattern: "Nameserver [ns] reports: [msg]"
+			// Giữ nhánh này để xử lý an toàn nếu còn log trace định dạng cũ trong quá trình phát triển.
 			if strings.Contains(lastMsg, "reports:") {
 				// Remove the report line from TraceLogs to keep it technical
 				response.Data.TraceLogs = finalLogs[:lastIdx]
 
 				// Translate the message for the Error Card
-				// Example: "Nameserver ns1.matbao.vn reports: No A records for meowtopia.com.vn"
 				msg := strings.TrimSpace(lastMsg)
 				msg = strings.Replace(msg, " reports: ", " báo cáo: ", 1)
-				msg = strings.Replace(msg, "No such host ", "Không tồn tại hostname ", 1)
+				msg = strings.Replace(msg, "No such host ", "Không tồn tại tên miền ", 1)
 				msg = strings.Replace(msg, "No ", "Không tìm thấy bản ghi ", 1)
-				msg = strings.Replace(msg, " records for ", " cho hostname ", 1)
+				msg = strings.Replace(msg, " records for ", " cho tên miền ", 1)
 				msg = strings.Replace(msg, " records found", "", 1)
 
 				response.Message = msg
@@ -489,7 +552,7 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 		return
 	}
 
-	ptrRecords := dns.QueryDNSDirect(serverKey, arpa, dnslib.TypePTR)
+	ptrRecords, lookupErr := dns.QueryDNSDirectContext(c.Request.Context(), serverKey, arpa, dnslib.TypePTR)
 
 	// Enrich PTR records with GeoIP info
 	for i := range ptrRecords {
@@ -503,7 +566,11 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 
 	if len(ptrRecords) == 0 {
 		response.Success = false
-		response.Message = "Không tìm thấy bản ghi PTR cho IP này."
+		if lookupErr != nil && !errors.Is(lookupErr, dns.ErrNXDOMAIN) {
+			response.Message = fmt.Sprintf("Lỗi từ máy chủ DNS: %s", errutil.TranslateError(lookupErr))
+		} else {
+			response.Message = "Không tìm thấy bản ghi PTR cho IP này."
+		}
 		sendResponse(c, req, response)
 		return
 	}
@@ -562,7 +629,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 		}
 	} else {
 		// Fallback to public DNS
-		nsRecordsPub, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+		nsRecordsPub, _, _ := dns.QueryDNSContext(c.Request.Context(), apexFQDN, dnslib.TypeNS)
 		for _, record := range nsRecordsPub {
 			if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
 				response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
@@ -576,7 +643,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 
 	// 2. Query CNAME records FIRST (chỉ lấy record đầu tiên)
 	canonicalName := fqdn
-	cnameRecords, _ := dns.QueryDNS(fqdn, dnslib.TypeCNAME)
+	cnameRecords, _, _ := dns.QueryDNSContext(c.Request.Context(), fqdn, dnslib.TypeCNAME)
 
 	if len(cnameRecords) > 0 {
 		// Chỉ lấy CNAME record đầu tiên
@@ -599,6 +666,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	type parallelResult struct {
 		records []interface{}
 		server  string
+		err     error
 	}
 
 	var (
@@ -614,9 +682,9 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	wgAll.Add(1)
 	go func() {
 		defer wgAll.Done()
-		recs, srv := dns.QueryDNS(canonicalName, dnslib.TypeA)
+		recs, srv, err := dns.QueryDNSContext(c.Request.Context(), canonicalName, dnslib.TypeA)
 		muAll.Lock()
-		aResult = parallelResult{records: recs, server: srv}
+		aResult = parallelResult{records: recs, server: srv, err: err}
 		muAll.Unlock()
 	}()
 
@@ -624,9 +692,9 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	wgAll.Add(1)
 	go func() {
 		defer wgAll.Done()
-		recs, srv := dns.QueryDNS(canonicalName, dnslib.TypeAAAA)
+		recs, srv, err := dns.QueryDNSContext(c.Request.Context(), canonicalName, dnslib.TypeAAAA)
 		muAll.Lock()
-		aaaaResult = parallelResult{records: recs, server: srv}
+		aaaaResult = parallelResult{records: recs, server: srv, err: err}
 		muAll.Unlock()
 	}()
 
@@ -634,9 +702,9 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	wgAll.Add(1)
 	go func() {
 		defer wgAll.Done()
-		recs, _ := dns.QueryDNS(fqdn, dnslib.TypeMX)
+		recs, _, err := dns.QueryDNSContext(c.Request.Context(), fqdn, dnslib.TypeMX)
 		muAll.Lock()
-		mxResult = parallelResult{records: recs}
+		mxResult = parallelResult{records: recs, err: err}
 		muAll.Unlock()
 	}()
 
@@ -644,9 +712,9 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	wgAll.Add(1)
 	go func() {
 		defer wgAll.Done()
-		recs, _ := dns.QueryDNS(fqdn, dnslib.TypeTXT)
+		recs, _, err := dns.QueryDNSContext(c.Request.Context(), fqdn, dnslib.TypeTXT)
 		muAll.Lock()
-		txtResult = parallelResult{records: recs}
+		txtResult = parallelResult{records: recs, err: err}
 		muAll.Unlock()
 	}()
 
@@ -655,7 +723,7 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	wgAll.Add(1)
 	go func() {
 		defer wgAll.Done()
-		info := dns.ValidateDNSSEC(serverKey, fqdn)
+		info := dns.ValidateDNSSECContext(c.Request.Context(), serverKey, fqdn)
 		muAll.Lock()
 		dnssecInfo = info
 		muAll.Unlock()
@@ -710,8 +778,9 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	for _, record := range txtResult.records {
 		if txtRec, ok := record.(models.DNSRecord); ok && txtRec.Type == "TXT" {
 			keyValue := txtRec.Value
-			if len(keyValue) > 100 {
-				keyValue = keyValue[:100]
+			runes := []rune(keyValue)
+			if len(runes) > 100 {
+				keyValue = string(runes[:100])
 			}
 			key := fmt.Sprintf("TXT:%s", keyValue)
 			if !seenRecords[key] {
@@ -726,8 +795,12 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 	response.Data.DNSSEC = &dnssecInfo
 
 	if len(allRecords) == 0 {
-		response.Success = true
-		response.Message = fmt.Sprintf("Không tìm thấy bản ghi nào cho hostname %s!", domain)
+		response.Success = false
+		if lookupErr := firstLookupError(aResult.err, aaaaResult.err, mxResult.err, txtResult.err); lookupErr != nil && !errors.Is(lookupErr, dns.ErrNXDOMAIN) {
+			response.Message = fmt.Sprintf("Lỗi từ máy chủ DNS: %s", errutil.TranslateError(lookupErr))
+		} else {
+			response.Message = fmt.Sprintf("Không tìm thấy bản ghi nào cho tên miền %s!", domain)
+		}
 		sendResponse(c, req, response)
 		return
 	}
@@ -751,7 +824,7 @@ func handlePTRLookup(c *gin.Context, serverKey string, req *models.DNSLookupRequ
 	}
 
 	// Dùng tham số serverKey thay vì hardcode "cloudflare"
-	records := dns.QueryDNSDirect(serverKey, arpa, dnslib.TypePTR)
+	records, lookupErr := dns.QueryDNSDirectContext(c.Request.Context(), serverKey, arpa, dnslib.TypePTR)
 	// Enrich PTR records nếu có
 	for i := range records {
 		if record, ok := records[i].(models.DNSRecord); ok && record.Type == "PTR" {
@@ -763,7 +836,11 @@ func handlePTRLookup(c *gin.Context, serverKey string, req *models.DNSLookupRequ
 	if len(records) == 0 {
 		// Không tìm thấy PTR → success:false để FE hiện message-card--error
 		response.Success = false
-		response.Message = "Không tồn tại bản ghi PTR cho IP này."
+		if lookupErr != nil && !errors.Is(lookupErr, dns.ErrNXDOMAIN) {
+			response.Message = fmt.Sprintf("Lỗi từ máy chủ DNS: %s", errutil.TranslateError(lookupErr))
+		} else {
+			response.Message = "Không tồn tại bản ghi PTR cho IP này."
+		}
 		sendResponse(c, req, response)
 		return
 	}
@@ -790,7 +867,7 @@ func handleDNSSECLookup(c *gin.Context, serverKey string, req *models.DNSLookupR
 
 	fqdn := dnslib.Fqdn(input)
 
-	dnssecInfo := dns.ValidateDNSSEC(serverKey, fqdn)
+	dnssecInfo := dns.ValidateDNSSECContext(c.Request.Context(), serverKey, fqdn)
 
 	response.Success = true
 	response.Data.Query.IsSubdomain = isSubdomain(input)
@@ -835,7 +912,7 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 			}
 		} else {
 			// Fallback to public DNS
-			nsRecordsPub, _ := dns.QueryDNS(apexFQDN, dnslib.TypeNS)
+			nsRecordsPub, _, _ := dns.QueryDNSContext(c.Request.Context(), apexFQDN, dnslib.TypeNS)
 			for _, record := range nsRecordsPub {
 				if nsRec, ok := record.(models.DNSRecord); ok && nsRec.Type == "NS" {
 					response.Data.Nameservers = append(response.Data.Nameservers, models.NameserverInfo{
@@ -851,7 +928,7 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 	// 2. Resolve CNAME first (nếu record type không phải CNAME)
 	canonicalName := fqdn
 	if req.Type != "CNAME" && req.Type != "NS" && req.Type != "MX" {
-		cnameRecords, _ := dns.QueryDNS(fqdn, dnslib.TypeCNAME)
+		cnameRecords, _, _ := dns.QueryDNSContext(c.Request.Context(), fqdn, dnslib.TypeCNAME)
 		if len(cnameRecords) > 0 {
 			if cnameRec, ok := cnameRecords[0].(models.DNSRecord); ok && cnameRec.Type == "CNAME" {
 				// Add CNAME record với domain gốc
@@ -893,7 +970,7 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 		queryTarget = apexFQDN // NS luôn query trên apex domain
 	}
 
-	queriedRecords, srv := dns.QueryDNS(queryTarget, dnsType)
+	queriedRecords, srv, err := dns.QueryDNSContext(c.Request.Context(), queryTarget, dnsType)
 	if srv != "none" && srv != "" {
 		response.Data.Query.Server = srv
 	}
@@ -930,7 +1007,11 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 	if len(records) == 0 {
 		// Không có bản ghi → success:false để FE hiện message-card--error
 		response.Success = false
-		response.Message = fmt.Sprintf("Không tìm thấy bản ghi %s cho hostname %s!", req.Type, originalDomain)
+		if err != nil {
+			response.Message = fmt.Sprintf("Lỗi từ máy chủ DNS: %v", errutil.TranslateError(err))
+		} else {
+			response.Message = fmt.Sprintf("Không tìm thấy bản ghi %s cho tên miền %s!", req.Type, originalDomain)
+		}
 		sendResponse(c, req, response)
 		return
 	}
@@ -954,12 +1035,12 @@ func HandleBlacklistStream(c *gin.Context) {
 
 	parsedIP := net.ParseIP(ip)
 	if parsedIP == nil || parsedIP.To4() == nil {
-		responseAPI.Error(c, http.StatusBadRequest, "Định dạng địa chỉ IP không hợp lệ. Vui lòng nhập IPv4 hoặc IPv6 hợp lệ.")
+		responseAPI.Error(c, http.StatusBadRequest, "Định dạng địa chỉ IP không hợp lệ. Vui lòng nhập địa chỉ IPv4 hợp lệ.")
 		return
 	}
 
 	if !validator.IsSafeIP(parsedIP) {
-		responseAPI.Error(c, http.StatusBadRequest, "Định dạng địa chỉ IP không hợp lệ. Vui lòng nhập IPv4 hoặc IPv6 hợp lệ.")
+		responseAPI.Error(c, http.StatusBadRequest, "Định dạng địa chỉ IP không hợp lệ. Vui lòng nhập địa chỉ IPv4 hợp lệ.")
 		return
 	}
 

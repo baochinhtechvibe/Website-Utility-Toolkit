@@ -362,7 +362,8 @@
 .page--dns .results-table th:nth-child(1) {
     width: 28%;
     white-space: normal;
-    word-break: break-all;
+    word-break: normal;
+    overflow-wrap: anywhere;
     text-align: left;
 }
 
@@ -399,7 +400,7 @@
 .page--dns .results-table td:nth-child(4) {
     white-space: normal;
     overflow: hidden;
-    word-break: break-all;
+    word-break: normal;
     overflow-wrap: anywhere;
     padding: var(--space-4) var(--space-3);
 }
@@ -515,7 +516,8 @@
 .page--dns .results-table.results-table--dnssec-dnskey td:nth-child(5) {
     width: 45%;
     white-space: normal;
-    word-break: break-all;
+    word-break: normal;
+    overflow-wrap: anywhere;
     min-width: 300px;
     text-align: left;
 }
@@ -573,7 +575,8 @@
     min-width: 250px;
     text-align: left;
     white-space: normal;
-    word-break: break-all;
+    word-break: normal;
+    overflow-wrap: anywhere;
 }
 
 .page--dns #dnssecDetailTitleDS {

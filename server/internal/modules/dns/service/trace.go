@@ -123,7 +123,7 @@ func queryParallel(ctx context.Context, nsList []models.NameserverInfo, msg *dns
 
 			// Resolve IP trong goroutine nếu chưa có (glueless hoặc in-bailiwick)
 			if ns.IP == "" {
-				ns.IP = resolveNSIP(ns.Nameserver)
+				ns.IP = resolveNSIP(cancelCtx, ns.Nameserver)
 			}
 			if ns.IP == "" {
 				return
@@ -156,8 +156,9 @@ func queryParallel(ctx context.Context, nsList []models.NameserverInfo, msg *dns
 	if result, ok := <-resultCh; ok {
 		return result, nil
 	}
-	return nil, fmt.Errorf("no response from any nameserver")
+	return nil, fmt.Errorf("không nhận được phản hồi từ bất kỳ nameserver nào")
 }
+
 // =======================================================================
 // FIX 4: resolveNSIP — Phân giải IP cho Nameserver "Glueless" (không có Glue Record)
 // FIX 2: Hỗ trợ cả AAAA glue records
@@ -168,27 +169,29 @@ func buildNSMap(extra []dns.RR) map[string]string {
 		name := strings.ToLower(strings.TrimSuffix(rr.Header().Name, "."))
 		if a, ok := rr.(*dns.A); ok {
 			nsMap[name] = a.A.String()
+		} else if aaaa, ok := rr.(*dns.AAAA); ok {
+			if _, exists := nsMap[name]; !exists {
+				nsMap[name] = aaaa.AAAA.String()
+			}
 		}
 	}
 	return nsMap
 }
 
-
-
-func resolveNSIP(nsName string) string {
-	// Bước 1: Thử OS resolver nhanh
-	ips, err := net.LookupHost(nsName)
+func resolveNSIP(ctx context.Context, nsName string) string {
+	// Bước 1: Thử OS resolver với Context Timeout
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, nsName)
 	if err == nil && len(ips) > 0 {
-		return ips[0]
+		return ips[0].IP.String()
 	}
 
-	// Bước 2: Fallback — query trực tiếp tới public DNS (8.8.8.8) cho in-bailiwick NS
+	// Bước 2: Fallback — query trực tiếp tới public DNS (8.8.8.8) với ExchangeContext
 	client := &dns.Client{Net: "udp", Timeout: 2 * time.Second}
 	msg := new(dns.Msg)
 	msg.SetQuestion(dns.Fqdn(nsName), dns.TypeA)
 	msg.RecursionDesired = true // recursive để get answer nhanh
 
-	resp, _, err := client.Exchange(msg, "8.8.8.8:53")
+	resp, _, err := client.ExchangeContext(ctx, msg, "8.8.8.8:53")
 	if err != nil || resp == nil {
 		return ""
 	}
@@ -215,11 +218,11 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 
 	for cnameHops := 0; cnameHops < 5; cnameHops++ {
 		if ctx.Err() != nil {
-			return nil, logs, fmt.Errorf("trace timeout exceeded")
+			return nil, logs, fmt.Errorf("quá thời gian chờ khi thực hiện DNS Trace")
 		}
 
 		if cnameVisited[currentQName] {
-			return allRecords, logs, fmt.Errorf("CNAME loop detected at %s", currentQName)
+			return allRecords, logs, fmt.Errorf("phát hiện vòng lặp CNAME tại %s", currentQName)
 		}
 		cnameVisited[currentQName] = true
 
@@ -250,7 +253,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			startingZone = "."
 		} else if cnameHops == 0 {
 			logs = append(logs, models.TraceStep{
-				Message: fmt.Sprintf("Using cached delegation for zone %s", startingZone),
+				Message: fmt.Sprintf("Sử dụng delegation đã cache cho zone %s", startingZone),
 			})
 		}
 
@@ -260,11 +263,11 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 		// Inner loop: theo đường delegation xuống dần
 		for {
 			if ctx.Err() != nil {
-				return nil, logs, fmt.Errorf("trace timeout exceeded")
+				return nil, logs, fmt.Errorf("quá thời gian chờ khi thực hiện DNS Trace")
 			}
 
 			if len(currentNS) == 0 {
-				logs = append(logs, models.TraceStep{Message: "No more nameservers to query. Trace aborted."})
+				logs = append(logs, models.TraceStep{Message: "Không còn nameserver để truy vấn. Trace đã dừng."})
 				break
 			}
 
@@ -272,7 +275,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			var resolvedNS []models.NameserverInfo
 			for _, ns := range currentNS {
 				if ns.IP == "" {
-					ns.IP = resolveNSIP(ns.Nameserver)
+					ns.IP = resolveNSIP(ctx, ns.Nameserver)
 				}
 				if ns.IP != "" && !visitedIPs[ns.IP] {
 					resolvedNS = append(resolvedNS, ns)
@@ -283,12 +286,11 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			if len(resolvedNS) == 0 {
 				var debugErr string
 				for _, ns := range currentNS {
-					debugErr += fmt.Sprintf("[%s:%s(visited:%v)] ", ns.Nameserver, ns.IP, visitedIPs[ns.IP])
+					debugErr += fmt.Sprintf("[%s:%s(đã thử:%v)] ", ns.Nameserver, ns.IP, visitedIPs[ns.IP])
 				}
-				logs = append(logs, models.TraceStep{Message: "Could not resolve IP for any nameserver: " + debugErr + ". Trace aborted."})
+				logs = append(logs, models.TraceStep{Message: "Không thể phân giải IP cho bất kỳ nameserver nào: " + debugErr + ". Trace đã dừng."})
 				break
 			}
-
 
 			// Build query message
 			msg := new(dns.Msg)
@@ -309,12 +311,12 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 					rootMsg := msg.Copy()
 					qrRoot, errRoot := queryParallel(ctx, []models.NameserverInfo{{Nameserver: rootName, IP: rootIP}}, rootMsg, 3*time.Second)
 					if errRoot != nil {
-						return nil, logs, fmt.Errorf("failed to get response from any authoritative nameservers")
+						return nil, logs, fmt.Errorf("không nhận được phản hồi từ bất kỳ nameserver authoritative nào")
 					}
 					qr = qrRoot
 					startingZone = "." // Reset để inner loop tiếp tục trace từ root response
 				} else {
-					return nil, logs, fmt.Errorf("failed to get response from any authoritative nameservers")
+					return nil, logs, fmt.Errorf("không nhận được phản hồi từ bất kỳ nameserver authoritative nào")
 				}
 			}
 
@@ -325,7 +327,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			// Log thành công
 			targetTypeStr := dns.TypeToString[qtype]
 			domainNoDot := strings.TrimSuffix(currentQName, ".")
-			logMsg := fmt.Sprintf("Searching for %s. %s record at %s. [%s] ...took %d ms",
+			logMsg := fmt.Sprintf("Đang tìm %s. Bản ghi %s tại %s. [%s] mất %d ms",
 				domainNoDot, targetTypeStr, lastNS.Nameserver, lastNS.IP, duration)
 			newStep := models.TraceStep{
 				ServerName: lastNS.Nameserver,
@@ -366,7 +368,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 						rec.Type = "MX"
 						rec.Priority = rr.Preference
 						rec.Exchange = strings.TrimSuffix(rr.Mx, ".")
-						valStr = fmt.Sprintf("%s (Priority: %d)", rec.Exchange, rec.Priority)
+						valStr = fmt.Sprintf("%s (ưu tiên: %d)", rec.Exchange, rec.Priority)
 					case *dns.NS:
 						rec.Type = "NS"
 						rec.Nameserver = strings.TrimSuffix(rr.Ns, ".")
@@ -384,10 +386,8 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 					}
 
 					currentHopsRecords = append(currentHopsRecords, rec)
-					logs = append(logs, models.TraceStep{Message: fmt.Sprintf("%s record found: %s", rec.Type, valStr)})
+					logs = append(logs, models.TraceStep{Message: fmt.Sprintf("Tìm thấy bản ghi %s: %s", rec.Type, valStr)})
 				}
-
-
 
 				allRecords = append(allRecords, currentHopsRecords...)
 
@@ -403,13 +403,13 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 
 				if !hasTargetType && cnameTarget != "" && (qtype == dns.TypeA || qtype == dns.TypeAAAA) {
 					logs = append(logs, models.TraceStep{
-						Message: fmt.Sprintf("\nTarget record not found, following CNAME redirect to %s...", strings.TrimSuffix(cnameTarget, ".")),
+						Message: fmt.Sprintf("\nChưa tìm thấy bản ghi đích, tiếp tục theo CNAME tới %s...", strings.TrimSuffix(cnameTarget, ".")),
 					})
 					currentQName = cnameTarget
 					break // Restart trace với target mới
 				}
 
-				logs = append(logs, models.TraceStep{Message: fmt.Sprintf("\nTrace complete: %d record(s) found.", len(allRecords))})
+				logs = append(logs, models.TraceStep{Message: fmt.Sprintf("\nTrace hoàn tất: tìm thấy %d bản ghi.", len(allRecords))})
 				return allRecords, logs, nil
 			}
 
@@ -417,7 +417,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 			if resp.Rcode != dns.RcodeSuccess {
 				statusMsg := dns.RcodeToString[resp.Rcode]
 				if resp.Rcode == dns.RcodeNameError {
-					statusMsg = "Không tồn tại hostname " + domainNoDot
+					statusMsg = "Không tồn tại tên miền " + domainNoDot
 				}
 				logs = append(logs, models.TraceStep{Message: fmt.Sprintf("Nameserver %s báo cáo: %s", lastNS.Nameserver, statusMsg)})
 				return allRecords, logs, nil
@@ -440,7 +440,6 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 					}
 				}
 
-
 				if len(nextCandidates) == 0 {
 					isSOA := false
 					for _, rr := range resp.Ns {
@@ -451,10 +450,10 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 					}
 					if isSOA {
 						logs = append(logs, models.TraceStep{
-							Message: fmt.Sprintf("Nameserver %s reports: No %s records for %s", lastNS.Nameserver, targetTypeStr, domainNoDot),
+							Message: fmt.Sprintf("Nameserver %s báo cáo: Không tìm thấy bản ghi %s cho %s", lastNS.Nameserver, targetTypeStr, domainNoDot),
 						})
 					} else {
-						logs = append(logs, models.TraceStep{Message: "Authority section returned but no delegation found. Trace stopped."})
+						logs = append(logs, models.TraceStep{Message: "Phần authority trả về dữ liệu nhưng không tìm thấy delegation. Trace đã dừng."})
 					}
 					return allRecords, logs, nil
 				}
@@ -480,7 +479,7 @@ func (tr *TraceResolver) DoTrace(domain string, qtype uint16) ([]models.DNSRecor
 
 			// Không có Answer, NXDOMAIN, cũng không có delegation → dead end
 			logs = append(logs, models.TraceStep{
-				Message: fmt.Sprintf("Nameserver %s reports: No %s records found (Incomplete delegation).", lastNS.Nameserver, targetTypeStr),
+				Message: fmt.Sprintf("Nameserver %s báo cáo: Không tìm thấy bản ghi %s (delegation không đầy đủ).", lastNS.Nameserver, targetTypeStr),
 			})
 			return allRecords, logs, nil
 		}
@@ -542,7 +541,7 @@ func (tr *TraceResolver) DiscoverAuthorities(domain string) ([]models.Nameserver
 		var resolvedNS []models.NameserverInfo
 		for _, ns := range currentNS {
 			if ns.IP == "" {
-				ns.IP = resolveNSIP(ns.Nameserver)
+				ns.IP = resolveNSIP(ctx, ns.Nameserver)
 			}
 			if ns.IP != "" && !visited[ns.IP] {
 				resolvedNS = append(resolvedNS, ns)
@@ -565,7 +564,7 @@ func (tr *TraceResolver) DiscoverAuthorities(domain string) ([]models.Nameserver
 			if len(lastDelegation) > 0 {
 				return lastDelegation, nil
 			}
-			return nil, fmt.Errorf("failed to discover authorities for %s", domain)
+			return nil, fmt.Errorf("không thể tìm authoritative nameserver cho %s", domain)
 		}
 
 		resp := qr.resp
@@ -601,9 +600,10 @@ func (tr *TraceResolver) DiscoverAuthorities(domain string) ([]models.Nameserver
 				if ns, ok := rr.(*dns.NS); ok {
 					nsNameFound := strings.TrimSuffix(ns.Ns, ".")
 					hdrZone := strings.TrimSuffix(ns.Hdr.Name, ".")
+					lookupKey := strings.ToLower(nsNameFound)
 					nextCandidates = append(nextCandidates, models.NameserverInfo{
 						Nameserver: nsNameFound,
-						IP:         nsMap[nsNameFound],
+						IP:         nsMap[lookupKey],
 						TTL:        ns.Header().Ttl,
 						Domain:     hdrZone,
 					})
@@ -640,5 +640,5 @@ func (tr *TraceResolver) DiscoverAuthorities(domain string) ([]models.Nameserver
 	if len(lastDelegation) > 0 {
 		return lastDelegation, nil
 	}
-	return nil, fmt.Errorf("no authoritative nameservers found for %s", domain)
+	return nil, fmt.Errorf("không tìm thấy authoritative nameserver cho %s", domain)
 }

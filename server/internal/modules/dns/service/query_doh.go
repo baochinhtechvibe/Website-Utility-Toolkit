@@ -1,6 +1,8 @@
 package dns
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +14,8 @@ import (
 	"github.com/miekg/dns"
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
 )
+
+const maxDoHResponseBody = 1024 * 1024
 
 // ✅ FIX: Add Authority section to struct
 type dohResponse struct {
@@ -28,16 +32,20 @@ type dohRecord struct {
 }
 
 func (r *DoHResolver) Query(domain string, qtype uint16) ([]models.DNSRecord, error) {
-	if r.SupportsJSON {
-		return r.queryJSON(domain, qtype)
-	}
-	return r.queryRFC8484(domain, qtype)
+	return r.QueryContext(context.Background(), domain, qtype)
 }
 
-func (r *DoHResolver) queryJSON(domain string, qtype uint16) ([]models.DNSRecord, error) {
+func (r *DoHResolver) QueryContext(ctx context.Context, domain string, qtype uint16) ([]models.DNSRecord, error) {
+	if r.SupportsJSON {
+		return r.queryJSON(ctx, domain, qtype)
+	}
+	return r.queryRFC8484(ctx, domain, qtype)
+}
+
+func (r *DoHResolver) queryJSON(ctx context.Context, domain string, qtype uint16) ([]models.DNSRecord, error) {
 	var records []models.DNSRecord
 
-	req, err := http.NewRequest("GET", r.Endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", r.Endpoint, nil)
 	if err != nil {
 		return records, err
 	}
@@ -60,17 +68,33 @@ func (r *DoHResolver) queryJSON(domain string, qtype uint16) ([]models.DNSRecord
 	}
 	defer resp.Body.Close()
 
-	var result dohResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return records, fmt.Errorf("máy chủ DoH trả về HTTP %d", resp.StatusCode)
+	}
+
+	body, err := readLimitedDoHBody(resp.Body)
+	if err != nil {
 		return records, err
 	}
 
-	// NXDOMAIN (Status=3) = domain chắc chắn không tồn tại
-	if result.Status == 3 {
+	var result dohResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return records, err
+	}
+
+	// Standard Rcode mapping
+	switch result.Status {
+	case 1:
+		return records, ErrFORMERR
+	case 2:
+		return records, ErrSERVFAIL
+	case 3:
 		return records, ErrNXDOMAIN
+	case 5:
+		return records, ErrREFUSED
 	}
 	if result.Status != 0 {
-		return records, nil
+		return records, fmt.Errorf("DNS error code %d", result.Status)
 	}
 
 	// ✅ Parse Answer section first
@@ -151,7 +175,7 @@ func parseDohRecord(ans dohRecord, domain string) *models.DNSRecord {
 	}
 }
 
-func (r *DoHResolver) queryRFC8484(domain string, qtype uint16) ([]models.DNSRecord, error) {
+func (r *DoHResolver) queryRFC8484(ctx context.Context, domain string, qtype uint16) ([]models.DNSRecord, error) {
 	var records []models.DNSRecord
 
 	m := new(dns.Msg)
@@ -162,7 +186,7 @@ func (r *DoHResolver) queryRFC8484(domain string, qtype uint16) ([]models.DNSRec
 		return records, err
 	}
 
-	req, err := http.NewRequest("POST", r.Endpoint, strings.NewReader(string(payload)))
+	req, err := http.NewRequestWithContext(ctx, "POST", r.Endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return records, err
 	}
@@ -177,7 +201,11 @@ func (r *DoHResolver) queryRFC8484(domain string, qtype uint16) ([]models.DNSRec
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return records, fmt.Errorf("máy chủ DoH trả về HTTP %d", resp.StatusCode)
+	}
+
+	body, err := readLimitedDoHBody(resp.Body)
 	if err != nil {
 		return records, err
 	}
@@ -187,9 +215,19 @@ func (r *DoHResolver) queryRFC8484(domain string, qtype uint16) ([]models.DNSRec
 		return records, err
 	}
 
-	// NXDOMAIN = domain chắc chắn không tồn tại
-	if msg.Rcode == dns.RcodeNameError {
+	// Standard Rcode mapping
+	switch msg.Rcode {
+	case dns.RcodeFormatError:
+		return records, ErrFORMERR
+	case dns.RcodeServerFailure:
+		return records, ErrSERVFAIL
+	case dns.RcodeNameError:
 		return records, ErrNXDOMAIN
+	case dns.RcodeRefused:
+		return records, ErrREFUSED
+	}
+	if msg.Rcode != dns.RcodeSuccess {
+		return records, fmt.Errorf("DNS error code %d", msg.Rcode)
 	}
 
 	// ✅ Parse Answer section
@@ -214,6 +252,17 @@ func (r *DoHResolver) queryRFC8484(domain string, qtype uint16) ([]models.DNSRec
 	}
 
 	return records, nil
+}
+
+func readLimitedDoHBody(reader io.Reader) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(reader, maxDoHResponseBody+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxDoHResponseBody {
+		return nil, fmt.Errorf("phản hồi DoH vượt quá giới hạn dung lượng")
+	}
+	return body, nil
 }
 
 // ✅ Helper function to parse RFC8484 records

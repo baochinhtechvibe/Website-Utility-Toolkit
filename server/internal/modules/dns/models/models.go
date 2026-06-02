@@ -78,19 +78,25 @@ type NameserverInfo struct {
 // =======================
 
 type BlacklistStreamEvent struct {
-	Type      string        `json:"type"`      // BLACKLIST | BLACKLIST_SUMMARY | BLACKLIST_INIT
-	Provider  string        `json:"provider"`  // rbl host
-	Status    string        `json:"status"`    // OK | LISTED | TIMEOUT
-	Level     string        `json:"level,omitempty"`
-	IP        string        `json:"ip,omitempty"`
-	Listed    int           `json:"listed"`
-	Total     int           `json:"total"`
-	Providers []RBLProvider `json:"providers,omitempty"` // Task 1: Dùng cho skeleton render ở FE
+	Type           string        `json:"type"`     // BLACKLIST | BLACKLIST_SUMMARY | BLACKLIST_INIT
+	Provider       string        `json:"provider"` // rbl host
+	Status         string        `json:"status"`   // OK | LISTED | TIMEOUT | ERROR
+	Level          string        `json:"level,omitempty"`
+	Category       string        `json:"category,omitempty"`
+	ResponseTimeMs int64         `json:"responseTimeMs"`
+	IP             string        `json:"ip,omitempty"`
+	Listed         int           `json:"listed"`
+	Total          int           `json:"total"`
+	Providers      []RBLProvider `json:"providers,omitempty"` // Task 1: Dùng cho skeleton render ở FE
 }
 
 type RBLProvider struct {
-	Host  string `json:"host"`
-	Level string `json:"level"`
+	Host      string `json:"host"`
+	Name      string `json:"name"`
+	Level     string `json:"level"`
+	Category  string `json:"category"`
+	PolicyURL string `json:"policyUrl,omitempty"`
+	QueryHost string `json:"-"`
 }
 
 // =======================

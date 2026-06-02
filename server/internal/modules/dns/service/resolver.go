@@ -11,6 +11,7 @@
 package dns
 
 import (
+	"context"
 	"errors"
 
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
@@ -33,6 +34,10 @@ type Resolver interface {
 	// domain MUST be a fully-qualified domain name (FQDN).
 	// qtype follows miekg/dns Type constants (TypeA, TypeAAAA, ...).
 	Query(domain string, qtype uint16) ([]models.DNSRecord, error)
+}
+
+type contextResolver interface {
+	QueryContext(ctx context.Context, domain string, qtype uint16) ([]models.DNSRecord, error)
 }
 
 // ============================================
@@ -79,17 +84,32 @@ func (rm *ResolverManager) Resolve(
 	qtype uint16,
 	resolverType string,
 ) ([]models.DNSRecord, error) {
+	return rm.ResolveContext(context.Background(), domain, qtype, resolverType)
+}
+
+func (rm *ResolverManager) ResolveContext(
+	ctx context.Context,
+	domain string,
+	qtype uint16,
+	resolverType string,
+) ([]models.DNSRecord, error) {
+	resolve := func(resolver Resolver) ([]models.DNSRecord, error) {
+		if resolver, ok := resolver.(contextResolver); ok {
+			return resolver.QueryContext(ctx, domain, qtype)
+		}
+		return resolver.Query(domain, qtype)
+	}
 
 	// Explicit UDP selection
 	if resolverType == "udp" {
 		if rm.UDP == nil {
-			return nil, errors.New("UDP resolver not configured")
+			return nil, errors.New("chưa cấu hình UDP resolver")
 		}
-		return rm.UDP.Query(domain, qtype)
+		return resolve(rm.UDP)
 	}
 
 	// Default: DoH
-	return rm.Default.Query(domain, qtype)
+	return resolve(rm.Default)
 }
 
 // ============================================
@@ -114,6 +134,6 @@ func ToQType(t string) (uint16, error) {
 	case "PTR":
 		return dnslib.TypePTR, nil
 	default:
-		return 0, errors.New("unsupported DNS record type")
+		return 0, errors.New("loại bản ghi DNS không được hỗ trợ")
 	}
 }

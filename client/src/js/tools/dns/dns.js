@@ -41,6 +41,7 @@ import {
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
 
+function init() {
 // =================================//
 //  CONFIG & GLOBAL STATE
 //==================================//
@@ -136,8 +137,9 @@ function getISPDisplay(record) {
  * Get type badge HTML
  */
 function getTypeBadge(type) {
-    const typeClass = `type-${type.toLowerCase()}`;
-    return `<span class="type-badge ${typeClass}">${type}</span>`;
+    const safeType = escapeHTML(type);
+    const safeTypeClass = String(type).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    return `<span class="type-badge type-${safeTypeClass || "unknown"}">${safeType}</span>`;
 }
 
 /**
@@ -196,15 +198,21 @@ function getDNSSECStatusClass(status) {
     }
 }
 
+function getDNSSECStatusLabel(status) {
+    return status === "SECURE" ? "SECURE CHAIN" : (status || "UNKNOWN");
+}
+
 // ======== URL / Share helpers ========
 /**
  * Generate share link
  */
 function generateShareLink(hostname, type) {
     const baseUrl = window.location.origin + window.location.pathname;
-    return `${baseUrl}?host=${encodeURIComponent(
-        hostname
-    )}&type=${type}`;
+    let url = `${baseUrl}?host=${encodeURIComponent(hostname)}&type=${type}`;
+    if (traceRootCheckbox && traceRootCheckbox.checked) {
+        url += '&traceroot=true';
+    }
+    return url;
 }
 
 /**
@@ -216,11 +224,14 @@ function updateURL(host, type) {
         host,
         type
     });
+    if (traceRootCheckbox && traceRootCheckbox.checked) {
+        params.append('traceroot', 'true');
+    }
 
     const newSearch = `?${params.toString()}`;
     const newURL = `${window.location.pathname}${newSearch}`;
     if (window.location.search !== newSearch) {
-        window.history.pushState({}, '', newURL);
+        window.history.replaceState({}, '', newURL);
     }
 }
 
@@ -292,9 +303,10 @@ function performBlacklistStream(ip) {
     resultsTableHead.innerHTML = `
         <tr>
             <th class= "results-table__cell results-table__cell--rbl-provider">RBL PROVIDER</th>
-            <th class= "results-table__cell results-table__cell--rbl-type">TYPE</th>
+            <th class= "results-table__cell results-table__cell--rbl-type">CATEGORY</th>
             <th class= "results-table__cell results-table__cell--rbl-level">LEVEL</th>
             <th class= "results-table__cell results-table__cell--rbl-status">STATUS</th>
+            <th class= "results-table__cell results-table__cell--rbl-response-time">RESPONSE TIME</th>
         </tr>
     `;
 
@@ -328,13 +340,14 @@ function performBlacklistStream(ip) {
                 const tr = document.createElement("tr");
                 tr.dataset.provider = rbl.host;
                 tr.innerHTML = `
-                    <td class= "results-table__cell results-table__cell--rbl-provider">${escapeHTML(rbl.host)}</td>
-                    <td class= "results-table__cell results-table__cell--rbl-type"><span class="type-badge type-blacklist">RBL</span></td>
-                    <td class= "results-table__cell results-table__cell--rbl-level"><span class="level-badge level-${rbl.level.toLowerCase()}">${rbl.level}</span></td>
+                    <td class= "results-table__cell results-table__cell--rbl-provider" title="${escapeHTML(rbl.name || rbl.host)}">${escapeHTML(rbl.host)}</td>
+                    <td class= "results-table__cell results-table__cell--rbl-type"><span class="type-badge type-blacklist">${escapeHTML(rbl.category || "RBL")}</span></td>
+                    <td class= "results-table__cell results-table__cell--rbl-level"><span class="level-badge level-${escapeHTML(rbl.level.toLowerCase())}">${escapeHTML(rbl.level)}</span></td>
                     <td class="results-table__cell results-table__cell--rbl-status status-cell">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <span>Checking...</span>
+                        <span>Đang kiểm tra...</span>
                     </td>
+                    <td class="results-table__cell results-table__cell--rbl-response-time response-time-cell">-</td>
                 `;
                 rowMap[rbl.host] = tr;
                 resultsTableBody.appendChild(tr);
@@ -398,6 +411,7 @@ function performBlacklistStream(ip) {
 
             const statusCell = row.querySelector(".status-cell");
             statusCell.innerHTML = renderBlacklistStatus(data.status);
+            row.querySelector(".response-time-cell").textContent = formatResponseTime(data.responseTimeMs);
         }
     };
 
@@ -419,7 +433,7 @@ function performBlacklistStream(ip) {
             // Đã có data trên bảng → giữ nguyên, chỉ đánh dấu các mục chưa xong là TIMEOUT
             const pendingCells = resultsTableBody.querySelectorAll(".status-cell");
             pendingCells.forEach(cell => {
-                if (cell.textContent.includes("Checking")) {
+                if (cell.textContent.includes("Đang kiểm tra")) {
                     cell.innerHTML = renderBlacklistStatus("TIMEOUT");
                 }
             });
@@ -450,6 +464,10 @@ function performBlacklistStream(ip) {
     };
 }
 
+function formatResponseTime(responseTimeMs) {
+    return Number.isFinite(responseTimeMs) ? `${responseTimeMs} ms` : "-";
+}
+
 function renderBlacklistStatus(status) {
     switch (status) {
         case "OK":
@@ -464,7 +482,7 @@ function renderBlacklistStatus(status) {
             return `
                 <i class="fa-solid fa-circle-xmark icon-listed"></i>
                 <span class="status status--listed">
-                    Listed
+                    BỊ LIỆT KÊ
                 </span>
             `;
 
@@ -476,10 +494,18 @@ function renderBlacklistStatus(status) {
                 </span>
             `;
 
+        case "ERROR":
+            return `
+                <i class="fa-solid fa-circle-exclamation icon-timeout"></i>
+                <span class="status status--timeout">
+                    LỖI
+                </span>
+            `;
+
         case "CHECKING":
             return `
               <span class="status status--checking">
-                <i class="fa-solid fa-spinner fa-spin"></i> Checking...
+                <i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...
               </span>
             `;
 
@@ -572,14 +598,14 @@ function createTableRow(record, domain) {
 
             answer = `
                 <div class="answer-cell d-flex flex-row items-center gap-1">
-                    <span>${record.address}</span>
+                    <span>${escapeHTML(record.address)}</span>
                     ${flagA}
                 </div>
             `;
 
             // ISP/ORG có link
             if (record.isp || record.org) {
-                const displayText = getISPDisplay(record);
+                const displayText = escapeHTML(getISPDisplay(record));
                 ispOrg = `
                     <a href="${getIPInfoLink(record.address)}"
                        target="_blank"
@@ -598,13 +624,13 @@ function createTableRow(record, domain) {
 
             answer = `
                 <div class="answer-cell d-flex flex-row items-center gap-1">
-                    <span>${record.address}</span>
+                    <span>${escapeHTML(record.address)}</span>
                     ${flagAAAA}
                 </div>
             `;
 
             if (record.isp || record.org) {
-                const displayText = getISPDisplay(record);
+                const displayText = escapeHTML(getISPDisplay(record));
                 ispOrg = `
                     <a href="${getIPInfoLink(record.address)}"
                         target="_blank"
@@ -617,19 +643,19 @@ function createTableRow(record, domain) {
             break;
 
         case "NS":
-            answer = record.nameserver;
+            answer = escapeHTML(record.nameserver);
             break;
 
         case "MX":
-            answer = `${record.exchange} (Priority: ${record.priority})`;
+            answer = `${escapeHTML(record.exchange)} (Priority: ${escapeHTML(record.priority)})`;
             break;
 
         case "CNAME":
-            answer = record.value;
+            answer = escapeHTML(record.value);
             break;
 
         case "TXT":
-            answer = record.value;
+            answer = escapeHTML(record.value);
             break;
 
         case "PTR":
@@ -639,13 +665,13 @@ function createTableRow(record, domain) {
 
             answer = `
                 <div class="answer-cell d-inline-flex items-center gap-1">
-                    <span>${record.value}</span>
+                    <span>${escapeHTML(record.value)}</span>
                     ${flagPTR}
                 </div>
             `;
 
             if ((record.isp || record.org) && domain) {
-                const displayText = getISPDisplay(record);
+                const displayText = escapeHTML(getISPDisplay(record));
                 ispOrg = `
                     <a href="${getIPInfoLink(domain)}"
                         target="_blank"
@@ -658,11 +684,11 @@ function createTableRow(record, domain) {
             break;
 
         case "DNSSEC":
-            answer = `<span class="status-badge ${record.enabled ? "status-active" : "status-inactive"}">${record.status}</span>`;
+            answer = `<span class="status-badge ${record.enabled ? "status-active" : "status-inactive"}">${escapeHTML(record.status)}</span>`;
             break;
 
         default:
-            answer = JSON.stringify(record);
+            answer = escapeHTML(JSON.stringify(record));
     }
 
     const isIPInput = isIP(domain) || isIPv6(domain);
@@ -677,7 +703,7 @@ function createTableRow(record, domain) {
 
     row.innerHTML = `
         <td class="results-table__cell results-table__cell--domain">
-            <span class="results-table__value results-table__value--domain">${domainDisplay}</span>
+            <span class="results-table__value results-table__value--domain">${escapeHTML(domainDisplay)}</span>
         </td>
         <td class="results-table__cell results-table__cell--type">
             ${getTypeBadge(record.type)}
@@ -871,7 +897,7 @@ function displayResults(data) {
                 <td class = "results-table__cell results-table__cell--type-dnssec">${getTypeBadge("DNSSEC")}</td>
                 <td class = "results-table__cell results-table__cell--status-dnssec">
                     <span class="status-badge ${getDNSSECStatusClass(data.data.dnssec.status)}">
-                        ${data.data.dnssec.status || "UNKNOWN"}
+                        ${getDNSSECStatusLabel(data.data.dnssec.status)}
                     </span>
                 </td>
                 <td class = "results-table__cell results-table__cell--details">${escapeHTML(data.data.dnssec.message || "-")}</td>
@@ -1016,6 +1042,7 @@ function displayDNSSECResults(data) {
     const hostname = query.hostname;
     const isIPInput = isIP(hostname) || isIPv6(hostname);
     const isSubdomainFlag = query.isSubdomain || false;
+    const dnssecRecords = Array.isArray(dnssec?.records) ? dnssec.records : [];
 
     const recordsByType = {
         DNSKEY: [],
@@ -1023,7 +1050,7 @@ function displayDNSSECResults(data) {
         RRSIG: []
     };
 
-    dnssec.records.forEach(record => {
+    dnssecRecords.forEach(record => {
         if (recordsByType[record.type]) {
             recordsByType[record.type].push(record);
         }
@@ -1052,15 +1079,14 @@ function displayDNSSECResults(data) {
     resultsTableBodyDS.innerHTML = "";
     resultsTableBodyRRSIG.innerHTML = "";
 
-    if (!dnssec || !Array.isArray(dnssec.records) || dnssec.records.length === 0) {
-        showError(errorSection, errorMessage, "Không tìm thấy bản ghi DNS cho truy vấn này!", [shareLinkSection, resultsSection]);
+    if (dnssecRecords.length === 0) {
         return;
     }
 
     // ===== Group records =====
-    const dnskeyRecords = dnssec.records.filter(r => r.type === "DNSKEY");
-    const dsRecords = dnssec.records.filter(r => r.type === "DS");
-    const rrsigRecords = dnssec.records.filter(r => r.type === "RRSIG");
+    const dnskeyRecords = dnssecRecords.filter(r => r.type === "DNSKEY");
+    const dsRecords = dnssecRecords.filter(r => r.type === "DS");
+    const rrsigRecords = dnssecRecords.filter(r => r.type === "RRSIG");
 
     // =========================
     // DNSKEY TABLE
@@ -1215,6 +1241,7 @@ function handleURLParams() {
     const urlParams = new URLSearchParams(window.location.search);
     const host = urlParams.get("host");
     const type = urlParams.get("type");
+    const traceroot = urlParams.get("traceroot");
 
     if (host) {
         hostnameInput.value = host;
@@ -1228,6 +1255,11 @@ function handleURLParams() {
     // Cập nhật lại hiển thị của Trace Root checkbox dựa trên Type vừa set từ URL
     updateTraceVisibility();
 
+    if (traceroot === "true" && traceRootCheckbox) {
+        traceRootCheckbox.checked = true;
+    }
+    updateTraceVisibility();
+
     // Auto submit if all params present
     if (host && type) {
         setTimeout(() => {
@@ -1239,7 +1271,6 @@ function handleURLParams() {
 // =================================//
 //  APP LIFECYCLE
 //==================================//
-function initApp() {
     // Hook realtime domain validator (dùng chung từ utils/validation.js)
     createRealtimeDomainValidator(
         hostnameInput,
@@ -1255,11 +1286,18 @@ function initApp() {
         const urlParams = new URLSearchParams(window.location.search);
         const host = urlParams.get("host");
         const type = urlParams.get("type");
+        const traceroot = urlParams.get("traceroot");
 
         if (host) {
             hostnameInput.value = host;
             if (type && recordTypeSelect.querySelector(`option[value="${type}"]`)) {
                 recordTypeSelect.value = type;
+            }
+            updateTraceVisibility();
+            if (traceroot === "true" && traceRootCheckbox) {
+                traceRootCheckbox.checked = true;
+            } else if (traceRootCheckbox) {
+                traceRootCheckbox.checked = false;
             }
             updateTraceVisibility();
             form.dispatchEvent(new Event("submit"));
@@ -1268,7 +1306,6 @@ function initApp() {
             resetUI();
         }
     });
-}
 
 
 
@@ -1354,6 +1391,7 @@ hostnameInput.addEventListener("input", () => {
     setDisplay(errorSection, "none");
     setDisplay(resultsSection, "none");
     setDisplay(shareLinkSection, "none");
+    updateTraceVisibility();
 });
 
 recordTypeSelect.addEventListener("change", () => {
@@ -1372,8 +1410,10 @@ function updateTraceVisibility() {
 
     const type = recordTypeSelect.value;
     const hideTraceTypes = ["PTR", "DNSSEC", "BLACKLIST"];
+    const normalizedHost = normalizeHostnameInput(hostnameInput?.value || "");
+    const isIPInput = normalizedHost && (isIP(normalizedHost) || isIPv6(normalizedHost));
 
-    if (hideTraceTypes.includes(type)) {
+    if (hideTraceTypes.includes(type) || isIPInput) {
         setDisplay(traceRootContainer, "none");
         traceRootCheckbox.checked = false;
     } else {
@@ -1426,4 +1466,6 @@ document.addEventListener("click", function (e) {
     });
 });
 
-document.addEventListener("DOMContentLoaded", initApp);
+} // end init()
+
+document.addEventListener("DOMContentLoaded", init);

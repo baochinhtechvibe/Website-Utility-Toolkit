@@ -27,6 +27,10 @@ type UDPResolver struct {
 
 // Query performs a single UDP DNS query.
 func (r *UDPResolver) Query(domain string, qtype uint16) ([]models.DNSRecord, error) {
+	return r.QueryContext(context.Background(), domain, qtype)
+}
+
+func (r *UDPResolver) QueryContext(ctx context.Context, domain string, qtype uint16) ([]models.DNSRecord, error) {
 	var records []models.DNSRecord
 
 	// Default timeout
@@ -52,7 +56,7 @@ func (r *UDPResolver) Query(domain string, qtype uint16) ([]models.DNSRecord, er
 	}
 
 	// Hard timeout using context (CRITICAL for RBL)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// Execute query

@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,8 +10,12 @@ import (
 )
 
 func TestDoTrace(t *testing.T) {
+	if os.Getenv("RUN_DNS_INTEGRATION_TESTS") != "1" {
+		t.Skip("bỏ qua integration test DNS trace; đặt RUN_DNS_INTEGRATION_TESTS=1 để chạy")
+	}
+
 	tr := NewTraceResolver(20 * time.Second)
-	
+
 	// Test with a domain that has CNAME chain
 	domain := "www.github.com"
 	records, logs, err := tr.DoTrace(domain, dns.TypeA)
@@ -34,9 +39,13 @@ func TestDoTrace(t *testing.T) {
 }
 
 func TestDoTraceParallel(t *testing.T) {
+	if os.Getenv("RUN_DNS_INTEGRATION_TESTS") != "1" {
+		t.Skip("bỏ qua integration test DNS trace; đặt RUN_DNS_INTEGRATION_TESTS=1 để chạy")
+	}
+
 	tr := NewTraceResolver(30 * time.Second)
 	domain := "google.com"
-	
+
 	// Test parallel execution mock
 	go func() {
 		tr.DoTrace(domain, dns.TypeA)
@@ -44,6 +53,6 @@ func TestDoTraceParallel(t *testing.T) {
 	go func() {
 		tr.DoTrace(domain, dns.TypeAAAA)
 	}()
-	
+
 	time.Sleep(2 * time.Second)
 }
