@@ -470,8 +470,7 @@ export function init() {
                 body: JSON.stringify({ domain: hostname, bypass_cache: isBypassCache }),
             });
             const rawData = await resp.json();
-            const res = rawData?.data || rawData;
-            if (rawData?.meta) res.meta = rawData.meta;
+            const res = { ...(rawData?.data || rawData), meta: rawData?.meta };
             displayResults(res);
 
             const url = new URL(window.location.href);

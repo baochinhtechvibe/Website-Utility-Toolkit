@@ -79,7 +79,7 @@ func (s *generatorService) GenerateCSR(ctx context.Context, req *models.Generate
 		return nil, errors.New("loại thuật toán khóa không hỗ trợ")
 	}
 
-	// 3. Kiểm tra Context Timeout sau quá trình sinh Key rất tốn phần cứng Server 
+	// 3. Kiểm tra Context Timeout sau quá trình sinh Key rất tốn phần cứng Server
 	// (đặc biệt là đối với RSA 4096-bit mất tới vài giây)
 	select {
 	case <-ctx.Done():
@@ -144,12 +144,12 @@ func (s *generatorService) GenerateCSR(ctx context.Context, req *models.Generate
 		}
 	}
 
-	// 6. Khởi tạo CSR Request Template 
+	// 6. Khởi tạo CSR Request Template
 	template := x509.CertificateRequest{
-		Subject:            subject,
+		Subject: subject,
 		// Không set SignatureAlgorithm ở đây, Golang sẽ tự chọn thuật toán phù hợp nhất dựa vào cấu trúc PKI Key tương ứng.
-		DNSNames:           dnsNames,
-		IPAddresses:        ipAddresses,
+		DNSNames:    dnsNames,
+		IPAddresses: ipAddresses,
 	}
 
 	// Create CSR bằng hàm nội bộ của Go sử dụng Cấp phát Random Data Block
@@ -164,7 +164,7 @@ func (s *generatorService) GenerateCSR(ctx context.Context, req *models.Generate
 		Bytes: csrBytes,
 	})
 
-	// SECURITY NOTE: Private key is generated in-memory and returned to client over HTTPS. 
+	// SECURITY NOTE: Private key is generated in-memory and returned to client over HTTPS.
 	// It is never persisted to disk or logged. Client is responsible for securing the key after download.
 	return &models.GenerateCSRResponse{
 		CSR:        string(csrPEM),

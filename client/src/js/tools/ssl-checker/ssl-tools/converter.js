@@ -36,7 +36,7 @@ export function init() {
     const mainSuccessCard = document.getElementById("toolSuccessConverter");
 
     // --- Configuration ---
-    const MAX_FILE_SIZE = 1024 * 1024; // Increases to 1MB
+    const MAX_FILE_SIZE = 512 * 1024; // 512KB limit matching backend
     const TARGET_OPTIONS = {
         "pem": ["der", "p7b", "pfx"],
         "der": ["pem"],
@@ -184,9 +184,24 @@ export function init() {
         const downloadArea = document.getElementById("converterDownloadArea");
         if (downloadArea) setDisplay(downloadArea, "none");
 
+        // Validate File Sizes
+        const filesToCheck = [
+            { file: inputCert.files[0], name: "Chứng chỉ (Certificate)" },
+            { file: inputKey.files[0], name: "Private Key" },
+            { file: inputChain1.files[0], name: "Chain 1" },
+            { file: inputChain2.files[0], name: "Chain 2" }
+        ];
+
+        for (const item of filesToCheck) {
+            if (item.file && item.file.size > MAX_FILE_SIZE) {
+                showError(mainErrorCard, mainErrorCard.querySelector(".message-card__message"), `Tệp ${item.name} quá lớn (tối đa 512KB). Vui lòng kiểm tra lại.`);
+                return;
+            }
+        }
+
         try {
             toggleLoading(btnSubmit, iconNormal, iconLoading, true);
-            setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputPfxPw], false);
+            setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputKey, inputChain1, inputChain2, inputPfxPw], false);
 
             const response = await fetch(`${API_BASE_URL}/ssl/converter/convert`, {
                 method: "POST",
@@ -194,7 +209,7 @@ export function init() {
             });
 
             const result = await response.json();
-            console.log("Converter API Response:", result);
+
 
             // Logic check: ưu tiên response.ok và bọc dữ liệu trong .data
             if (!response.ok || (result.success === false)) {
@@ -224,7 +239,7 @@ export function init() {
             if (mainSuccessCard) setDisplay(mainSuccessCard, "none");
         } finally {
             toggleLoading(btnSubmit, iconNormal, iconLoading, false);
-            setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputPfxPw], true);
+            setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputKey, inputChain1, inputChain2, inputPfxPw], true);
         }
     });
 

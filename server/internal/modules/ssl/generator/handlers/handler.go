@@ -47,6 +47,9 @@ func NewGeneratorHandler(svc service.GeneratorService) *GeneratorHandler {
 
 // GenerateCSR xử lý luồng yêu cầu JSON khởi lặp từ Client
 func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
+	// Giới hạn body trước khi bind — tránh memory pressure từ request lớn
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64*1024) // 64KB
+
 	var req models.GenerateCSRRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, "Dữ liệu yêu cầu không hợp lệ")

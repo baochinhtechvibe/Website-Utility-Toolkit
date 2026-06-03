@@ -14,8 +14,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	response "tools.bctechvibe.com/server/internal/response"
 	"tools.bctechvibe.com/server/internal/platform/errutil"
+	response "tools.bctechvibe.com/server/internal/response"
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/csr-decoder/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/csr-decoder/service"
@@ -33,6 +33,9 @@ func NewCSRHandler(svc *service.Service) *CSRHandler {
 
 // HandleCSRDecode xử lý POST /api/ssl/csr/decode
 func (h *CSRHandler) HandleCSRDecode(c *gin.Context) {
+	// Giới hạn body trước khi bind — tránh memory pressure từ request lớn
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 256*1024) // 256KB
+
 	// 1. Bind JSON
 	var req models.DecodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,7 +61,7 @@ func (h *CSRHandler) HandleCSRDecode(c *gin.Context) {
 			response.Error(c, http.StatusBadRequest, "Dữ liệu PEM không hợp lệ hoặc sai định dạng")
 			return
 		}
-		
+
 		if errors.Is(err, service.ErrInvalidCSR) {
 			response.Error(c, http.StatusBadRequest, "CSR không thể giải mã")
 			return

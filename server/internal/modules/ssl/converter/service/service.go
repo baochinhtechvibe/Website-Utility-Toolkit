@@ -26,6 +26,12 @@ func New() ConverterService {
 	return &serviceImpl{}
 }
 
+func init() {
+	if path := findOpenSSLPath(); path == "openssl" {
+		log.Warn().Msg("WARNING: 'openssl' executable not found in PATH or fallbacks. SSL Converter module will fail at runtime if triggered.")
+	}
+}
+
 const maxOutputSize = 5 * 1024 * 1024 // 5MB limit for output files
 
 func (s *serviceImpl) Convert(ctx context.Context, req *models.ConvertRequest) (*models.ConvertResponse, error) {
@@ -228,7 +234,7 @@ func findOpenSSLPath() string {
 func (s *serviceImpl) runOpenSSL(ctx context.Context, args []string, hasPassword bool) error {
 	exePath := findOpenSSLPath()
 	cmd := exec.CommandContext(ctx, exePath, args...)
-	
+
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -251,7 +257,7 @@ func (s *serviceImpl) runOpenSSL(ctx context.Context, args []string, hasPassword
 		if hasPassword {
 			return errors.New("Không thể xử lý tệp tin - Vui lòng kiểm tra lại tính hợp lệ của tệp chứng chỉ hoặc mật khẩu PFX.")
 		}
-		
+
 		return errors.New("Không thể xử lý tệp tin - Vui lòng kiểm tra lại định dạng tệp chứng chỉ đầu vào (X.509 PEM/DER/P7B).")
 	}
 	return nil

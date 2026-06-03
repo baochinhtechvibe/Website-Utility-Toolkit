@@ -40,7 +40,7 @@
     gap: var(--space-2);
     white-space: nowrap;
     padding: var(--space-2) var(--space-4);
-    border: none;
+    border: 1px solid var(--color-brand);
     border-radius: var(--radius-md);
     background-color: transparent;
     color: var(--color-text-secondary);
@@ -50,13 +50,14 @@
 }
 
 .ssl-tools__list .ssl-tools__item:hover {
-    color: var(--color-brand);
+    color: var(--color-text-primary);
     background-color: var(--color-brand-subtle);
 }
 
 .ssl-tools__list .ssl-tools__item.active {
-    background-color: var(--color-brand);
-    color: var(--white);
+    background-color: var(--color-text-primary);
+    color: var(--color-text-inverse);
+    border-color: var(--color-text-primary);
     box-shadow: var(--shadow-sm);
 }
 
@@ -152,7 +153,7 @@
 /* Buttons */
 .ssl-checker__btn-renew {
     --btn-bg: var(--color-success);
-    --btn-text: var(--white);
+    --btn-text: var(--color-text-inverse);
     --btn-hover-bg: var(--color-success-hover);
     
     padding: var(--space-1) var(--space-3);
@@ -306,6 +307,11 @@
 }
 
 .ssl-checker__cert-content {
+    /* Cert chain level colors — palette tokens wrapped qua local vars */
+    --_cert-domain-color: var(--color-info);
+    --_cert-intermediate-color: var(--color-warning);
+    --_cert-root-color: var(--color-success);
+
     width: 100%;
     padding: var(--space-4);
     border: 2px solid var(--color-border);
@@ -315,9 +321,9 @@
     box-shadow: var(--shadow-sm);
 }
 
-.ssl-checker__cert-content.domain { border-color: var(--blue-600); }
-.ssl-checker__cert-content.intermediate { border-color: var(--orange-500); }
-.ssl-checker__cert-content.root { border-color: var(--green-600); }
+.ssl-checker__cert-content.domain { border-color: var(--_cert-domain-color); }
+.ssl-checker__cert-content.intermediate { border-color: var(--_cert-intermediate-color); }
+.ssl-checker__cert-content.root { border-color: var(--_cert-root-color); }
 
 .ssl-checker__cert-level {
     padding-bottom: var(--space-2);
@@ -332,9 +338,9 @@
     margin: 0;
 }
 
-.ssl-checker__cert-level-domain { color: var(--blue-600); }
-.ssl-checker__cert-level-intermediate { color: var(--orange-500); }
-.ssl-checker__cert-level-root { color: var(--green-600); }
+.ssl-checker__cert-level-domain { color: var(--_cert-domain-color); }
+.ssl-checker__cert-level-intermediate { color: var(--_cert-intermediate-color); }
+.ssl-checker__cert-level-root { color: var(--_cert-root-color); }
 
 .ssl-checker__cert-info {
     display: flex;
@@ -684,3 +690,15 @@
     min-height: 300px;
 }
 
+/* --- CSR Generator Custom Layout --- */
+.csr-result-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+}
+
+@media (min-width: 510px) {
+    .csr-result-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

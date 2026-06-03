@@ -21,7 +21,7 @@ type CSRDecodeResponse struct {
 
 	Sans    []string `json:"sans,omitempty"`
 	HasSANs bool     `json:"has_sans"`
-	
+
 	KeySize   int    `json:"key_size"`
 	Algorithm string `json:"algorithm"`
 }

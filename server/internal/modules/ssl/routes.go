@@ -13,9 +13,9 @@ package ssl
 
 import (
 	"github.com/gin-gonic/gin"
-	checkerHandlers "tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/handlers"
 	csrHandlers "tools.bctechvibe.com/server/internal/modules/ssl/csr-decoder/handlers"
 	csrService "tools.bctechvibe.com/server/internal/modules/ssl/csr-decoder/service"
+	checkerHandlers "tools.bctechvibe.com/server/internal/modules/ssl/ssl-checker/handlers"
 
 	cerHandlers "tools.bctechvibe.com/server/internal/modules/ssl/cer-decoder/handlers"
 	cerService "tools.bctechvibe.com/server/internal/modules/ssl/cer-decoder/service"

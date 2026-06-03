@@ -16,11 +16,14 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/ocsp"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 const OCSPCheckTimeout = 2 * time.Second
@@ -60,6 +63,12 @@ func CheckOCSP(ctx context.Context, leaf, issuer *x509.Certificate, stapledResp 
 
 	ocspURL := leaf.OCSPServer[0]
 
+	// --- SSRF Protection: validate scheme + host trước khi fetch ---
+	parsedURL, err := url.Parse(ocspURL)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return OCSPStatusUnknown, fmt.Errorf("ocsp: invalid or unsupported URL scheme: %s", ocspURL)
+	}
+
 	// Tạo OCSP request
 	reqBytes, err := ocsp.CreateRequest(leaf, issuer, &ocsp.RequestOptions{
 		Hash: crypto.SHA1, //nolint:gosec // SHA1 required by OCSP spec
@@ -68,7 +77,7 @@ func CheckOCSP(ctx context.Context, leaf, issuer *x509.Certificate, stapledResp 
 		return OCSPStatusUnknown, fmt.Errorf("ocsp: failed to create request: %w", err)
 	}
 
-	// Gửi HTTP request với timeout chặt chẽ
+	// Gửi HTTP request với timeout chặt chẽ + SSRF-safe transport
 	ocspCtx, cancel := context.WithTimeout(ctx, OCSPCheckTimeout)
 	defer cancel()
 
@@ -78,7 +87,33 @@ func CheckOCSP(ctx context.Context, leaf, issuer *x509.Certificate, stapledResp 
 	}
 	httpReq.Header.Set("Content-Type", "application/ocsp-request")
 
-	httpClient := &http.Client{Timeout: OCSPCheckTimeout}
+	httpClient := &http.Client{
+		Timeout: OCSPCheckTimeout,
+		Transport: &http.Transport{
+			Proxy: nil,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				host, port, err := net.SplitHostPort(addr)
+				if err != nil {
+					return nil, err
+				}
+				ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+				if err != nil {
+					return nil, err
+				}
+				var safeIP net.IP
+				for _, ipAddr := range ips {
+					if validator.IsSafeIP(ipAddr.IP) {
+						safeIP = ipAddr.IP
+						break
+					}
+				}
+				if safeIP == nil {
+					return nil, fmt.Errorf("SSRF Protection: chặn OCSP request đến IP nội bộ %s", host)
+				}
+				return (&net.Dialer{Timeout: OCSPCheckTimeout}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
+			},
+		},
+	}
 	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		return OCSPStatusUnknown, fmt.Errorf("ocsp: http request failed: %w", err)

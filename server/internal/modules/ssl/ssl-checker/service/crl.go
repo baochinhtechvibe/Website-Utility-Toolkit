@@ -14,11 +14,14 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 const CRLDownloadTimeout = 5 * time.Second
@@ -57,10 +60,10 @@ func CheckCRL(ctx context.Context, cert *x509.Certificate) (revoked bool, err er
 	return false, nil
 }
 
-func getCRLList(ctx context.Context, url string) (*x509.RevocationList, error) {
+func getCRLList(ctx context.Context, crlURL string) (*x509.RevocationList, error) {
 	// 1. Kiểm tra Cache
 	crlMu.RLock()
-	entry, ok := crlCache[url]
+	entry, ok := crlCache[crlURL]
 	crlMu.RUnlock()
 
 	if ok && time.Now().Before(entry.expiresAt) {
@@ -68,16 +71,49 @@ func getCRLList(ctx context.Context, url string) (*x509.RevocationList, error) {
 	}
 
 	// 2. Tải mới
-	log.Debug().Str("url", url).Msg("CRL: downloading list")
+	log.Debug().Str("url", crlURL).Msg("CRL: downloading list")
+
+	// --- SSRF Protection: validate scheme + host ---
+	parsedURL, err := url.Parse(crlURL)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return nil, fmt.Errorf("CRL URL không hợp lệ hoặc scheme không được hỗ trợ: %s", crlURL)
+	}
+
 	reqCtx, cancel := context.WithTimeout(ctx, CRLDownloadTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, crlURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: CRLDownloadTimeout}
+	client := &http.Client{
+		Timeout: CRLDownloadTimeout,
+		Transport: &http.Transport{
+			Proxy: nil,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				host, port, err := net.SplitHostPort(addr)
+				if err != nil {
+					return nil, err
+				}
+				ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+				if err != nil {
+					return nil, err
+				}
+				var safeIP net.IP
+				for _, ipAddr := range ips {
+					if validator.IsSafeIP(ipAddr.IP) {
+						safeIP = ipAddr.IP
+						break
+					}
+				}
+				if safeIP == nil {
+					return nil, fmt.Errorf("SSRF Protection: chặn CRL request đến IP nội bộ %s", host)
+				}
+				return (&net.Dialer{Timeout: CRLDownloadTimeout}).DialContext(ctx, network, net.JoinHostPort(safeIP.String(), port))
+			},
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -101,7 +137,7 @@ func getCRLList(ctx context.Context, url string) (*x509.RevocationList, error) {
 
 	// 3. Cập nhật Cache
 	crlMu.Lock()
-	crlCache[url] = &crlEntry{
+	crlCache[crlURL] = &crlEntry{
 		list:      list,
 		expiresAt: list.NextUpdate,
 	}

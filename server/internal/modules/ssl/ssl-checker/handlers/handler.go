@@ -71,6 +71,9 @@ func normalizeHostname(input string) string {
 // HandleSSLCheck xử lý POST /api/ssl/check
 func HandleSSLCheck(c *gin.Context) {
 
+	// Giới hạn body trước khi bind — tránh memory pressure từ request lớn
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024) // 32KB
+
 	// 1. Bind JSON
 	var req models.CheckRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -161,7 +164,7 @@ func handleScanError(c *gin.Context, err error, domain string) {
 	// TLS handshake failed
 	if errors.Is(err, service.ErrTLSFailed) {
 		log.Error().Err(err).Str("domain", domain).Msg("TLS handshake failed")
-		
+
 		msg := fmt.Sprintf("Không tìm thấy chứng chỉ SSL hoặc không thể thiết lập kết nối an toàn tới %s. Vui lòng đảm bảo tên miền đã trỏ đúng IP máy chủ và cổng SSL (mặc định là 443) đang mở.", domain)
 		response.Error(c, http.StatusBadGateway, msg)
 		return

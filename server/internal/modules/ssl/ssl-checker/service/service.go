@@ -16,7 +16,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"crypto/sha1"  //nolint:gosec
+	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -636,7 +636,7 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			
+
 			// 1. Thử OCSP (Ưu tiên vì nhanh hơn)
 			if issuer != nil && (len(leaf.OCSPServer) > 0 || len(state.OCSPResponse) > 0) {
 				st, err := CheckOCSP(ctx, leaf, issuer, state.OCSPResponse)

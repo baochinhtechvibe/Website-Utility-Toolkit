@@ -204,7 +204,7 @@ func DetectServerType(ctx context.Context, domain string, ip string) string {
 		}
 	}
 
-	// Pick winner: 
+	// Pick winner:
 	// 1. Cao nhất về count (số lần xuất hiện qua các probe)
 	// 2. Tie-break theo priority (CDN > PaaS > Proxy...)
 	// 3. Tie-break cuối cùng theo Alphabet để đảm bảo tính deterministic

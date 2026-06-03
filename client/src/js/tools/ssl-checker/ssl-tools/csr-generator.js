@@ -1,8 +1,8 @@
 import { isValidHostname } from "../../../utils/validation.js";
 import { API_BASE_URL } from "../../../config.js";
-import { 
-    copyToClipboard, 
-    toggleLoading, 
+import {
+    copyToClipboard,
+    toggleLoading,
     setElementsEnabled,
     hide
 } from "../../../utils/dom.js";
@@ -72,7 +72,7 @@ function init() {
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        
+
         setTimeout(() => {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
@@ -105,7 +105,7 @@ function init() {
     function validateSANsRealtime() {
         if (!sansInput) return true;
         const sansVal = sansInput.value.trim();
-        
+
         if (!sansVal) {
             sansInput.classList.remove("is-invalid");
             if (sansErrorCard) hide(sansErrorCard);
@@ -145,8 +145,8 @@ function init() {
         if (!resultBody) return;
 
         resultBody.innerHTML = `
-            <div class="csr-generator__result-wrapper mt-4 px-6">
-                <div class="grid grid-cols-1 md-grid-cols-2 gap-4">
+            <div class="csr-generator__result-wrapper mt-4">
+                <div class="grid grid-cols-1 sm-grid-cols-2 gap-4">
                     <!-- CSR Block -->
                     <div class="code-block">
                         <div class="code-block__header">
@@ -187,7 +187,7 @@ function init() {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="message-card message-card--warning mt-4">
                     <div class="message-card__header">
                         <h4 class="message-card__title">
@@ -285,9 +285,9 @@ function init() {
 
             if (groupRsa) groupRsa.classList.toggle("d-none", !isRsa);
             if (groupEcdsa) groupEcdsa.classList.toggle("d-none", isRsa);
-            
+
             if (hintEcdsaRsa) {
-                hintEcdsaRsa.textContent = isRsa 
+                hintEcdsaRsa.textContent = isRsa
                     ? "RSA 2048-bit: phổ biến nhất, tương thích cao. 4096-bit: bảo mật hơn nhưng chậm hơn."
                     : "ECDSA nhanh hơn, tốn ít tài nguyên hơn và cực kỳ bảo mật.";
             }
@@ -327,7 +327,7 @@ function init() {
 
         // Start Loading
         toggleLoading(btnGenerate, iconGenerateCsr, iconGenerateCsrLoading, true);
-        
+
         try {
             const sansValue = sansInput ? sansInput.value.trim() : "";
             const sansArray = sansValue ? sansValue.split(",").map(s => s.trim()).filter(Boolean) : [];

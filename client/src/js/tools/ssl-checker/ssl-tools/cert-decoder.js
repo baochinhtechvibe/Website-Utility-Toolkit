@@ -106,7 +106,6 @@ export function init() {
             key_size, algorithm, signature_algorithm, serial_hex, serial_dec
         } = data;
 
-        const addr = [locality, state, country].filter(v => v).join(", ");
 
         const getExpiryStatus = (validTo) => {
             const expiry = new Date(validTo);
@@ -145,11 +144,23 @@ export function init() {
             </div>
             <div class="ssl-checker__result-row">
                 <div class="ssl-checker__result-label"><i class="fa-solid fa-building text-success mr-2"></i> Organization:</div>
-                <div class="ssl-checker__result-value">${safe(organization)} ${organizational_unit ? `(${safe(organizational_unit)})` : ""}</div>
+                <div class="ssl-checker__result-value">${safe(organization)}</div>
             </div>
             <div class="ssl-checker__result-row">
-                <div class="ssl-checker__result-label"><i class="fa-solid fa-map-location-dot text-success mr-2"></i> Location:</div>
-                <div class="ssl-checker__result-value">${safe(addr)}</div>
+                <div class="ssl-checker__result-label"><i class="fa-solid fa-sitemap text-success mr-2"></i> Organization Unit:</div>
+                <div class="ssl-checker__result-value">${safe(organizational_unit)}</div>
+            </div>
+            <div class="ssl-checker__result-row">
+                <div class="ssl-checker__result-label"><i class="fa-solid fa-map-pin text-success mr-2"></i> Locality:</div>
+                <div class="ssl-checker__result-value">${safe(locality)}</div>
+            </div>
+            <div class="ssl-checker__result-row">
+                <div class="ssl-checker__result-label"><i class="fa-solid fa-map text-success mr-2"></i> State:</div>
+                <div class="ssl-checker__result-value">${safe(state)}</div>
+            </div>
+            <div class="ssl-checker__result-row">
+                <div class="ssl-checker__result-label"><i class="fa-solid fa-globe text-success mr-2"></i> Country:</div>
+                <div class="ssl-checker__result-value">${safe(country)}</div>
             </div>
             <div class="ssl-checker__result-row">
                 <div class="ssl-checker__result-label"><i class="fa-solid fa-stamp text-success mr-2"></i> Issuer:</div>

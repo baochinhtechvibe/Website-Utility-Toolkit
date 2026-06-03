@@ -42,16 +42,26 @@ func readFormFile(c *gin.Context, formKey string) ([]byte, error) {
 		return nil, ErrFileTooLarge
 	}
 
-	data, err := io.ReadAll(file)
+	// Use LimitReader to prevent reading more than 512KB even if fileHeader.Size was spoofed
+	limitReader := io.LimitReader(file, 512*1024+1)
+	data, err := io.ReadAll(limitReader)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(data) > 512*1024 {
+		return nil, ErrFileTooLarge
 	}
 	return data, nil
 }
 
 func (h *ConvertHandler) HandleConvert(c *gin.Context) {
-	// 1. Phân tích MultiPart Form với max memory 20MB.
-	if err := c.Request.ParseMultipartForm(20 << 20); err != nil {
+	// Giới hạn tổng dung lượng request trước khi parse — tránh memory pressure
+	// (Cert 512KB + Key 512KB + Chain1 512KB + Chain2 512KB + metadata ≈ 2MB)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2*1024*1024) // 2MB
+
+	// 1. Phân tích MultiPart Form với max memory 2MB.
+	if err := c.Request.ParseMultipartForm(2 << 20); err != nil {
 		log.Error().Err(err).Msg("Failed to parse multipart form for Converter")
 		response.Error(c, http.StatusBadRequest, "Dữ liệu kích thước quá lớn.")
 		return
@@ -132,7 +142,7 @@ func (h *ConvertHandler) HandleConvert(c *gin.Context) {
 			return
 		}
 
-		response.Error(c, http.StatusBadRequest, err.Error())
+		response.Error(c, http.StatusBadRequest, errutil.TranslateError(err))
 		return
 	}
 

@@ -16,8 +16,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/service"
-	response "tools.bctechvibe.com/server/internal/response"
 	"tools.bctechvibe.com/server/internal/platform/errutil"
+	response "tools.bctechvibe.com/server/internal/response"
 )
 
 var validMatchTypes = map[string]bool{
@@ -34,6 +34,9 @@ func NewKeyMatchHandler(svc *service.Service) *KeyMatchHandler {
 }
 
 func (h *KeyMatchHandler) HandleKeyMatch(c *gin.Context) {
+	// Giới hạn body trước khi bind — tránh memory pressure từ request lớn
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 512*1024) // 512KB
+
 	var req models.MatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, "Dữ liệu yêu cầu không hợp lệ")

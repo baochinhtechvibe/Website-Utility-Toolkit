@@ -286,6 +286,45 @@
 }
 
 /* =======================================
+   1.5. DARK MODE FIX FOR RADIO & CHECKBOX
+========================================== */
+[data-theme="dark"] .form-radio,
+[data-theme="dark"] .form-checkbox {
+    color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .form-radio:hover,
+[data-theme="dark"] .form-checkbox:hover {
+    border-color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .form-radio::before {
+    background-color: var(--color-text-primary);
+    box-shadow: inset 1em 1em var(--color-text-primary);
+}
+
+[data-theme="dark"] .form-radio:focus,
+[data-theme="dark"] .form-checkbox:focus {
+    border-color: var(--color-text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-text-primary) 30%, transparent);
+}
+
+[data-theme="dark"] .form-radio:checked {
+    border-color: var(--color-text-primary);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-text-primary) 50%, transparent);
+}
+
+[data-theme="dark"] .form-checkbox:checked {
+    border-color: var(--color-text-primary);
+    background-color: var(--color-text-primary);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-text-primary) 50%, transparent);
+}
+
+[data-theme="dark"] .form-checkbox::before {
+    background-color: var(--color-text-inverse); /* Tick màu tối trên nền trắng */
+}
+
+/* =======================================
    2. FORM LAYOUT OBJECTS (Cấu trúc Bố cục Form)
    - Trách nhiệm: Chỉ quyết định layout (grid/flex), vị trí và khoảng cách các field.
 ========================================== */

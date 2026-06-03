@@ -35,7 +35,6 @@ func New() *Service {
 	return &Service{}
 }
 
-
 // getKeySize determines the key size for RSA and ECDSA public keys.
 func getKeySize(pubKey interface{}) int {
 	switch pub := pubKey.(type) {
@@ -91,7 +90,7 @@ func (s *Service) Decode(ctx context.Context, certPEM string) (*models.CERDecode
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		log.Debug().Err(err).Msg("x509 parse certificate failed") // Keep debug log
-		return nil, fmt.Errorf("%w: %v", ErrInvalidCER, err)     // Return specific error message
+		return nil, fmt.Errorf("%w: %v", ErrInvalidCER, err)      // Return specific error message
 	}
 
 	select {

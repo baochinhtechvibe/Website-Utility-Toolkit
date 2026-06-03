@@ -331,27 +331,30 @@ export function init() {
                 body: JSON.stringify({ type: mode, input1, input2 }),
             });
 
-            const data = await response.json();
+            const rawData = await response.json();
 
             if (!response.ok) {
-                showError(errorCard, errorMsg, data.message || data.error || "Lỗi hệ thống không xác định.", [resultCard]);
+                showError(errorCard, errorMsg, rawData.message || "Lỗi hệ thống không xác định.", [resultCard]);
                 return;
             }
 
-            if (data.input_errors) {
+            // Unwrap: backend trả { success, data: { matched, input_errors, ... } }
+            const result = rawData.data || rawData;
+
+            if (result.input_errors) {
                 hasInputErrors = true;
-                if (data.input_errors?.input1) {
+                if (result.input_errors?.input1) {
                     box1.classList.add("is-invalid");
                     if (errBox1) setDisplay(errBox1, "block");
-                    if (errMsg1) errMsg1.textContent = data.input_errors.input1;
+                    if (errMsg1) errMsg1.textContent = result.input_errors.input1;
                 }
-                if (data.input_errors?.input2) {
+                if (result.input_errors?.input2) {
                     box2.classList.add("is-invalid");
                     if (errBox2) setDisplay(errBox2, "block");
-                    if (errMsg2) errMsg2.textContent = data.input_errors.input2;
+                    if (errMsg2) errMsg2.textContent = result.input_errors.input2;
                 }
             } else {
-                renderResult(data);
+                renderResult(result);
             }
 
         } catch (err) {
