@@ -25,17 +25,14 @@ import (
 	dnsservice "tools.bctechvibe.com/server/internal/modules/dns/service"
 	"tools.bctechvibe.com/server/internal/modules/whois/models"
 	"tools.bctechvibe.com/server/internal/pkg/iana"
+	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 const (
 	cacheTTLDefault = 1 * time.Hour
-	cacheTTLVN      = 24 * time.Hour
-
-	// WHOIS server cho VNNIC (toàn bộ .vn và sub-ccTLD như .com.vn, .net.vn, .io.vn...)
-	vnnicWhoisServer = "whois.vnnic.vn"
+	cacheTTLVN      = 6 * time.Hour // Hạ từ 24h xuống 6h để cập nhật nhanh hơn cho .vn
 
 	// Tino API endpoint - Tầng 1 ưu tiên cho .vn
-	tinoAPIBase = "http://tino.vn/backend-api/whois/"
 	tinoTimeout = 4 * time.Second
 
 	// Timeout cho VNNIC port 43 (tầng fallback)
@@ -49,6 +46,12 @@ const (
 )
 
 var (
+	// WHOIS server cho VNNIC (toàn bộ .vn và sub-ccTLD như .com.vn, .net.vn, .io.vn...)
+	vnnicWhoisServer = "whois.vnnic.vn"
+
+	// Tino API endpoint - Tầng 1 ưu tiên cho .vn
+	tinoAPIBase = "https://tino.vn/backend-api/whois/"
+
 	// Cache hợp nhất: 1 LRU cache duy nhất chứa cả Response + Meta
 	whoisCache cache.Cache[string, *models.WhoisCacheEntry]
 
@@ -57,7 +60,7 @@ var (
 	bypassCooldown = 15 * time.Second
 
 	// Giới hạn số lần bypass theo IP (5 lần / 1 phút)
-	ipLimiter cache.Cache[string, []time.Time]
+	ipLimiter   cache.Cache[string, []time.Time]
 	ipLimiterMu sync.Mutex
 )
 
@@ -88,9 +91,9 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 	// Bypass rate limiting: giới hạn bypass cache liên tục
 	if bypassCache {
 		now := time.Now()
-		
+
 		ipLimiterMu.Lock()
-		
+
 		var validTimestamps []time.Time
 		if timestamps, ok := ipLimiter.Get(clientIP); ok {
 			for _, t := range timestamps {
@@ -119,7 +122,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 			validTimestamps = append(validTimestamps, now)
 			ipLimiter.Set(clientIP, validTimestamps, time.Minute)
 		}
-		
+
 		ipLimiterMu.Unlock()
 	}
 
@@ -175,7 +178,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 	wr := <-whoisChan
 	if wr.err != nil {
 		log.Error().Err(wr.err).Str("domain", domain).Msg("WHOIS all sources failed")
-		
+
 		// Fallback: Nếu truy vấn live lỗi nhưng có cache cũ, trả về cache luôn cho user đỡ thấy lỗi đỏ
 		if cachedEntry != nil {
 			log.Info().Str("domain", domain).Msg("WHOIS fallback to cache after live query failed")
@@ -268,7 +271,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 	if isVN {
 		ttl = cacheTTLVN
 	}
-	
+
 	// Giảm TTL xuống 10 phút nếu tên miền còn trống (Available) để cập nhật nhanh hơn
 	if isAvailable {
 		ttl = 10 * time.Minute
@@ -281,13 +284,17 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 	}
 	// Hậu xử lý: Chỉ hiển thị Chủ sở hữu cho tên miền .vn
 	if isVN {
+		// Nếu registrant rỗng hoặc placeholder → để rỗng, frontend sẽ hiển thị "Không công bố"
 		if isPlaceholderRegistrant(resp.Registrant) {
-			resp.Registrant = "Domain Admin"
+			resp.Registrant = ""
 		}
 	} else {
 		// Tên miền quốc tế: Xóa trắng trường registrant để frontend không hiển thị
 		resp.Registrant = ""
 	}
+
+	// Gán tld_type cho frontend phân loại timeline
+	resp.TLDType = classifyTLDType(domain, isVN)
 
 	whoisCache.Set(cacheKey, &models.WhoisCacheEntry{
 		Response: resp,
@@ -408,7 +415,7 @@ func queryVNDomain(parentCtx context.Context, domain string) (*models.WhoisRespo
 	}
 
 	if vnnicResult != nil {
-				return vnnicResult, nil
+		return vnnicResult, nil
 	}
 
 	return queryVNTier3Fallback(ctx, domain)
@@ -438,6 +445,9 @@ func queryVNTier3Fallback(ctx context.Context, domain string) (*models.WhoisResp
 			Status:          []string{"Available"},
 			IsAvailable:     true,
 			AvailableSource: "whois_port43",
+			Source:          "VNNIC",
+			Confidence:      "high",
+			Authoritative:   true,
 		}, nil
 	}
 
@@ -469,6 +479,9 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 			Status:          []string{"Available"},
 			IsAvailable:     true,
 			AvailableSource: "tino",
+			Source:          "Tino API",
+			Confidence:      "medium",
+			Authoritative:   false,
 		}, nil
 	}
 
@@ -497,8 +510,11 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 
 	// Map dữ liệu Tino → WhoisResponse
 	resp := &models.WhoisResponse{
-		IsVNDomain: true,
-		Domain:     domain,
+		IsVNDomain:    true,
+		Domain:        domain,
+		Source:        "Tino API",
+		Confidence:    "medium",
+		Authoritative: false,
 	}
 
 	if tinoResp.Whois != nil {
@@ -530,6 +546,9 @@ func queryTinoAPI(ctx context.Context, domain string) (*models.WhoisResponse, er
 			Status:          []string{"Available"},
 			IsAvailable:     true,
 			AvailableSource: "tino",
+			Source:          "Tino API",
+			Confidence:      "medium",
+			Authoritative:   false,
 		}, nil
 	}
 
@@ -750,6 +769,9 @@ func queryDomScanAPI(ctx context.Context, domain string, bypassCache bool) (*mod
 			IsAvailable:     true,
 			AvailableSource: "domscan",
 			Status:          []string{"Available"},
+			Source:          "DomScan API",
+			Confidence:      "medium",
+			Authoritative:   false,
 		}, nil
 	}
 
@@ -760,16 +782,31 @@ func queryDomScanAPI(ctx context.Context, domain string, bypassCache bool) (*mod
 // queryRDAP gọi rdap.org proxy để lấy dữ liệu json — nhận context để cancel khi cần
 func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error) {
 	// Dùng IANA RDAP Bootstrap để tìm đúng server authoritative
-	url := iana.GetAuthoritativeRDAPServer(domain)
-	if url == "" {
-		url = "https://rdap.org/domain/" + domain
+	rdapURL := iana.GetAuthoritativeRDAPServer(domain)
+	if rdapURL == "" {
+		rdapURL = "https://rdap.org/domain/" + domain
 	}
 
-	httpClient := &http.Client{Timeout: 10 * time.Second}
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			if !validator.IsSafeHostnameWithContext(ctx, req.URL.Hostname()) {
+				return fmt.Errorf("rdap: unsafe redirect detected: %s", req.URL.String())
+			}
+			return nil
+		},
+	}
 
 	// Helper để fetch RDAP JSON với SSRF check
 	fetchRDAP := func(targetURL string) (*models.RDAPResponse, error) {
-		if !isSafeURL(targetURL) {
+		u, err := url.Parse(targetURL)
+		if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+			return nil, fmt.Errorf("rdap: invalid url scheme")
+		}
+		if !validator.IsSafeHostnameWithContext(ctx, u.Hostname()) {
 			return nil, fmt.Errorf("rdap: unsafe URL detected: %s", targetURL)
 		}
 
@@ -803,7 +840,7 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 		return &r, nil
 	}
 
-	rdapResp, err := fetchRDAP(url)
+	rdapResp, err := fetchRDAP(rdapURL)
 	if err != nil {
 		if strings.Contains(err.Error(), "domain not found (rdap status 404)") {
 			return &models.WhoisResponse{
@@ -812,15 +849,21 @@ func queryRDAP(ctx context.Context, domain string) (*models.WhoisResponse, error
 				Status:          []string{"Available"},
 				IsAvailable:     true,
 				AvailableSource: "rdap",
+				Source:          "RDAP",
+				Confidence:      "high",
+				Authoritative:   true,
 			}, nil
 		}
 		return nil, fmt.Errorf("rdap registry: %w", err)
 	}
 
 	resp := &models.WhoisResponse{
-		IsVNDomain: false,
-		Domain:     domain,
-		Status:     rdapResp.Status,
+		IsVNDomain:    false,
+		Domain:        domain,
+		Status:        rdapResp.Status,
+		Source:        "RDAP",
+		Confidence:    "high",
+		Authoritative: true,
 	}
 
 	// Parse dates & nameservers từ Registry
@@ -1045,6 +1088,9 @@ func mergeWhoisResults(base, extra *models.WhoisResponse) *models.WhoisResponse 
 			base.IsAvailable = true
 			base.AvailableSource = extra.AvailableSource
 			base.Status = []string{"Available"}
+			base.Source = extra.Source
+			base.Confidence = extra.Confidence
+			base.Authoritative = extra.Authoritative
 		} else if !base.IsAvailable {
 			// Nếu extra là port43 báo available, nhưng base có dữ liệu thì không override
 			// Trừ khi base chỉ là record rỗng không có gì
@@ -1052,6 +1098,9 @@ func mergeWhoisResults(base, extra *models.WhoisResponse) *models.WhoisResponse 
 				base.IsAvailable = true
 				base.AvailableSource = extra.AvailableSource
 				base.Status = []string{"Available"}
+				base.Source = extra.Source
+				base.Confidence = extra.Confidence
+				base.Authoritative = extra.Authoritative
 			}
 		}
 	}
@@ -1153,7 +1202,7 @@ func deduplicateStatuses(statuses []string) []string {
 	for _, s := range statusMap {
 		result = append(result, s)
 	}
-	
+
 	// Sort để đảm bảo thứ tự ổn định (tránh random order của Go map)
 	sort.Strings(result)
 
@@ -1164,9 +1213,12 @@ func deduplicateStatuses(statuses []string) []string {
 // parseWhoisRaw parse raw text WHOIS thành WhoisResponse
 func parseWhoisRaw(domain, rawText string, isVN bool) *models.WhoisResponse {
 	resp := &models.WhoisResponse{
-		Domain:     domain, // Bắt buộc dùng domain input để tránh mất TLD (.com, .net...)
-		IsVNDomain: isVN,
-		RawText:    rawText,
+		Domain:        domain, // Bắt buộc dùng domain input để tránh mất TLD (.com, .net...)
+		IsVNDomain:    isVN,
+		RawText:       rawText,
+		Source:        "WHOIS (Port 43)",
+		Confidence:    "high",
+		Authoritative: true,
 	}
 
 	result, parseErr := whoisparser.Parse(rawText)
@@ -1464,6 +1516,23 @@ func isResultComplete(r *models.WhoisResponse) bool {
 	return hasBasics
 }
 
+// safeDialer implements proxy.Dialer to prevent SSRF
+type safeDialer struct {
+	ctx context.Context
+}
+
+func (d *safeDialer) Dial(network, address string) (net.Conn, error) {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		host = address
+	}
+	if !validator.IsSafeHostnameWithContext(d.ctx, host) {
+		return nil, fmt.Errorf("whois: unsafe server detected: %s", host)
+	}
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	return dialer.DialContext(d.ctx, network, address)
+}
+
 // queryWhoisRecursive thực hiện truy vấn WHOIS port 43 và tự động bám theo Referral Server nếu có.
 // Hỗ trợ mô hình "Thin WHOIS" của .com/.net.
 // depth: giới hạn số lần follow referral để tránh loop vô tận (tối đa 2 levels).
@@ -1472,6 +1541,9 @@ func queryWhoisRecursive(ctx context.Context, domain, startServer string, depth 
 
 	client := whois.NewClient()
 	client.SetTimeout(5 * time.Second) // Fail faster if server hangs
+
+	// Chặn SSRF ở cấp độ Dialer cho cả request ban đầu và referral
+	client.SetDialer(&safeDialer{ctx: ctx})
 
 	raw, err := doWhoisWithCtx(ctx, client, domain, startServer)
 	if err != nil {
@@ -1565,39 +1637,25 @@ func capitalizeFirst(s string) string {
 	return string(unicode.ToUpper(r[0])) + string(r[1:])
 }
 
-// isSafeURL kiểm tra URL để ngăn chặn SSRF
-func isSafeURL(rawURL string) bool {
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
-		return false
+// isSafeURL function has been removed. Use validator.IsSafeHostnameWithContext instead.
+
+// classifyTLDType phân loại TLD thành "vn", "gtld" hoặc "cctld".
+// Dùng iana.IsGTLD() — nguồn authoritative từ IANA Root Zone Database (fetch khi startup).
+// Fallback sang legacy list (com/net/org...) nếu IANA chưa load xong.
+func classifyTLDType(domain string, isVN bool) string {
+	if isVN {
+		return "vn"
 	}
 
-	host := strings.ToLower(u.Hostname())
-	// 1. Chặn localhost và các hostname không hợp lệ
-	if host == "" || host == "localhost" {
-		return false
+	parts := strings.Split(strings.ToLower(domain), ".")
+	if len(parts) < 2 {
+		return "cctld" // Fallback an toàn
+	}
+	tld := parts[len(parts)-1]
+
+	if iana.IsGTLD(tld) {
+		return "gtld"
 	}
 
-	// 2. Chặn hostname không có dấu chấm (thường là internal server name)
-	// trừ trường hợp hostname là IP literal (đã check ở dưới)
-	if !strings.Contains(host, ".") && net.ParseIP(host) == nil {
-		return false
-	}
-
-	// 3. Chặn các suffix nội bộ phổ biến
-	internalSuffixes := []string{".local", ".internal", ".corp", ".home", ".lan"}
-	for _, suffix := range internalSuffixes {
-		if strings.HasSuffix(host, suffix) {
-			return false
-		}
-	}
-
-	// 4. Kiểm tra IP literal
-	ip := net.ParseIP(host)
-	if ip != nil {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
-			return false
-		}
-	}
-	return true
+	return "cctld"
 }

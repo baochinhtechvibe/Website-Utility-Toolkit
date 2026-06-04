@@ -13,12 +13,18 @@ type WhoisResponse struct {
 	Status       []string `json:"status"`
 	Nameservers  []string `json:"nameservers"`
 	// Flags
-	IsParseFailed   bool                  `json:"is_parse_failed"`
-	IsVNDomain      bool                  `json:"is_vn_domain"`
-	IsAvailable     bool                  `json:"is_available"`
-	AvailableSource string                `json:"available_source,omitempty"`
+	IsParseFailed   bool   `json:"is_parse_failed"`
+	IsVNDomain      bool   `json:"is_vn_domain"`
+	IsAvailable     bool   `json:"is_available"`
+	AvailableSource string `json:"available_source,omitempty"`
+	// TLDType phân loại TLD cho frontend: "vn", "gtld", "cctld"
+	TLDType string `json:"tld_type"`
 	// Raw text fallback (khi parse thất bại hoặc VNNIC)
 	RawText string `json:"raw_text,omitempty"`
+	// Nguồn dữ liệu và độ tin cậy
+	Source        string `json:"source,omitempty"`
+	Confidence    string `json:"confidence,omitempty"`     // "high", "medium", "low"
+	Authoritative bool   `json:"authoritative"`
 	// DNSSEC Info
 	DNSSEC *dnsModels.DNSSECInfo `json:"dnssec,omitempty"`
 }
@@ -36,13 +42,7 @@ type WhoisCacheEntry struct {
 	Meta     *WhoisMeta
 }
 
-// APIResponse là format chuẩn trả về cho toàn bộ toolkit
-type APIResponse struct {
-	Success bool           `json:"success"`
-	Message string         `json:"message"`
-	Data    *WhoisResponse `json:"data,omitempty"`
-	Meta    *WhoisMeta     `json:"meta,omitempty"`
-}
+// APIResponse đã được xóa — sử dụng internal/response.APIResponse (shared) theo GEMINI.md rule B-02
 
 // TinoWhoisData là dữ liệu WHOIS đã parse sẵn từ API của Tino
 type TinoWhoisData struct {

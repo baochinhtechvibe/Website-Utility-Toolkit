@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -14,6 +15,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/singleflight"
 )
+
+var ianaRootZoneURL = "https://www.iana.org/domains/root/db"
 
 var (
 	// RootServerOrgs maps Root Server IPs/Hostnames to their managing organizations
@@ -52,7 +55,29 @@ var (
 	registryNSBootstrap atomic.Pointer[map[string]bool]
 	tldNSInflight       singleflight.Group
 	rootZoneSynced      atomic.Bool
+
+	// gtldSet chứa danh sách TLD loại "generic" từ IANA Root Zone Database.
+	// Atomic pointer để swap không cần lock khi refresh định kỳ.
+	gtldSet atomic.Pointer[map[string]bool]
 )
+
+// IsGTLD kiểm tra TLD có phải là ICANN generic TLD (gTLD) không.
+// Chỉ các gTLD mới áp lifecycle theo chuẩn ICANN. ccTLD có vòng đời riêng.
+// Fallback sang static set nếu IANA chưa load xong.
+func IsGTLD(tld string) bool {
+	tld = strings.ToLower(strings.TrimPrefix(tld, "."))
+	if m := gtldSet.Load(); m != nil && len(*m) > 0 {
+		return (*m)[tld]
+	}
+	// Fallback tĩnh: legacy gTLD chuẩn nhất, chỉ dùng khi IANA chưa fetch xong
+	return legacyGTLDs[tld]
+}
+
+// legacyGTLDs là fallback tối thiểu khi IANA chưa load xong.
+// CHỈ chứa legacy gTLD cực kỳ phổ biến và rõ ràng — không thêm bừa.
+var legacyGTLDs = map[string]bool{
+	"com": true, "net": true, "org": true, "info": true, "biz": true,
+}
 
 // Init initializes the IANA bootstrap data
 func Init() {
@@ -67,6 +92,11 @@ func Init() {
 			log.Warn().Err(err).Msg("IANA Registry NS Bootstrap: initial load failed")
 		}
 
+		// Fetch danh sách gTLD từ IANA Root Zone Database
+		if err := FetchAndCacheGTLDList(); err != nil {
+			log.Warn().Err(err).Msg("IANA gTLD List: initial load failed")
+		}
+
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
@@ -76,8 +106,80 @@ func Init() {
 			if err := FetchAndCacheRegistryNSBootstrap(); err != nil {
 				log.Warn().Err(err).Msg("IANA Registry NS Bootstrap: periodic refresh failed")
 			}
+			if err := FetchAndCacheGTLDList(); err != nil {
+				log.Warn().Err(err).Msg("IANA gTLD List: periodic refresh failed")
+			}
 		}
 	}()
+}
+
+// FetchAndCacheGTLDList tải danh sách TLD từ IANA Root Zone Database và lọc ra các gTLD (type=generic).
+// Nguồn: https://www.iana.org/domains/root/db (HTML table).
+// gTLD là những TLD do ICANN trực tiếp quản lý và áp dụng lifecycle chuẩn (Auto-Renew Grace, Redemption...).
+// ccTLD (country-code) có chính sách riêng từng nước, không nên áp lifecycle ICANN vào.
+func FetchAndCacheGTLDList() error {
+	client := &http.Client{Timeout: 15 * time.Second}
+	// IANA Root Zone DB dạng HTML table (ta parse raw text)
+	resp, err := client.Get(ianaRootZoneURL)
+	if err != nil {
+		return fmt.Errorf("iana gtld list: fetch failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("iana gtld list: status %d", resp.StatusCode)
+	}
+
+	// IANA trả HTML, cần parse các dòng table có dạng:
+	// <tr><td><a href="/domains/root/db/com.html">.com</a></td><td>generic</td>...</tr>
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024)) // Giới hạn 5MB
+	if err != nil {
+		return fmt.Errorf("iana gtld list: read body failed: %w", err)
+	}
+
+	newSet := make(map[string]bool)
+	content := string(body)
+
+	// Parse bằng string matching đơn giản (không cần HTML parser).
+	// IANA HTML khá ổn định. Pattern: "/domains/root/db/XXX.html" à type
+	lines := strings.Split(content, "\n")
+	var currentTLD string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		// Detect TLD name
+		if strings.Contains(line, "/domains/root/db/") && strings.Contains(line, ".html") {
+			// Extract TLD from href like: href="/domains/root/db/com.html"
+			start := strings.Index(line, "/domains/root/db/")
+			end := strings.Index(line, ".html")
+			if start >= 0 && end > start {
+				tldRaw := line[start+len("/domains/root/db/") : end]
+				// Bỏ Internationalized (bắt đầu bằng "xn--") — sử dụng punycode tương tự
+				currentTLD = strings.ToLower(tldRaw)
+			}
+		}
+
+		// Detect type sau khi có TLD
+		if currentTLD != "" {
+			if strings.Contains(line, ">generic<") || strings.Contains(line, ">generic-restricted<") {
+				newSet[currentTLD] = true
+				currentTLD = ""
+			} else if strings.Contains(line, ">country-code<") || strings.Contains(line, ">sponsored<") ||
+				strings.Contains(line, ">infrastructure<") || strings.Contains(line, ">test<") {
+				// Không phải gTLD
+				currentTLD = ""
+			}
+		}
+	}
+
+	if len(newSet) < 50 {
+		// Parse thất bại (IANA có >1200 gTLD) — giữ cache cũ
+		return fmt.Errorf("iana gtld list: parsed only %d entries, likely parse failure", len(newSet))
+	}
+
+	gtldSet.Store(&newSet)
+	log.Info().Int("count", len(newSet)).Msg("IANA Bootstrap: Loaded gTLD list")
+	return nil
 }
 
 // FetchAndCacheRDAPBootstrap loads the IANA RDAP Bootstrap JSON

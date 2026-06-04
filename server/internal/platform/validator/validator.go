@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"net"
 	"strings"
 )
@@ -15,39 +16,42 @@ func IsValidDomain(domain string) bool {
 		return false
 	}
 
-	// Allow IP addresses (used for PTR lookups)
+	// Allow IP addresses for tools that explicitly support PTR or IP lookups.
 	if net.ParseIP(domain) != nil {
 		return true
 	}
 
-	// Split into labels and validate each one
 	labels := strings.Split(domain, ".")
-
-	// Domain must have at least 2 labels (name + TLD)
 	if len(labels) < 2 {
 		return false
 	}
 
-	// TLD (last label) must be purely alphabetic and at least 2 chars
 	tld := labels[len(labels)-1]
 	if len(tld) < 2 {
 		return false
 	}
+	isASCIILettersOnly := true
 	for _, ch := range tld {
 		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+			isASCIILettersOnly = false
+			break
+		}
+	}
+
+	if !isASCIILettersOnly {
+		// Allow punycode TLDs (e.g. xn--p1ai)
+		if !strings.HasPrefix(strings.ToLower(tld), "xn--") || !isValidDNSLabel(tld) {
 			return false
 		}
 	}
 
-	// Validate each non-TLD label
 	allNumericLabels := true
 	hasOver255 := false
 	for _, label := range labels[:len(labels)-1] {
 		if !isValidDNSLabel(label) {
 			return false
 		}
-		
-		// Check if label is purely numeric
+
 		isNumeric := true
 		val := 0
 		for _, ch := range label {
@@ -65,8 +69,7 @@ func IsValidDomain(domain string) bool {
 		}
 	}
 
-	// Nếu tất cả các phần trước TLD đều là số VÀ có ít nhất một phần > 255
-	// thì đây khả năng cao là một địa chỉ IP gõ sai octet
+	// Reject IP-like input such as 999.1.1.com that is usually a mistyped IP.
 	if allNumericLabels && hasOver255 && len(labels) >= 3 {
 		return false
 	}
@@ -76,17 +79,12 @@ func IsValidDomain(domain string) bool {
 
 // isValidDNSLabel validates a single DNS label.
 // Allows: a-z, A-Z, 0-9, hyphen (-), underscore (_)
-// Underscore is needed for:
-//   - DKIM:  tino._domainkey.domain.com
-//   - DMARC: _dmarc.domain.com
-//   - ACME:  _acme-challenge.domain.com
-//   - SRV:   _sip._tcp.domain.com
+// Underscore is needed for DKIM, DMARC, ACME and SRV records.
 func isValidDNSLabel(label string) bool {
 	if label == "" || len(label) > 63 {
 		return false
 	}
 
-	// Label must not start or end with a hyphen
 	if label[0] == '-' || label[len(label)-1] == '-' {
 		return false
 	}
@@ -123,32 +121,41 @@ func ValidateAndDetect(hostname string) ValidationResult {
 }
 
 func IsSafeHostname(hostname string) bool {
-	// Resolve IP check
-	ips, err := net.LookupIP(hostname)
+	return IsSafeHostnameWithContext(context.Background(), hostname)
+}
+
+func IsSafeHostnameWithContext(ctx context.Context, hostname string) bool {
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", hostname)
 	if err != nil {
-		// If it's an IP string, net.ParseIP will handle it
+		if ctx.Err() != nil {
+			return false
+		}
 		if ip := net.ParseIP(hostname); ip != nil {
 			return IsSafeIP(ip)
 		}
-		// Otherwise, if it doesn't resolve, it's technically "safe" (cannot be used for SSRF)
-		return true 
+		// If it does not resolve, it cannot currently be used for SSRF.
+		return true
 	}
-	hasSafe := false
+	return areAllResolvedIPsSafe(ips)
+}
+
+func areAllResolvedIPsSafe(ips []net.IP) bool {
+	if len(ips) == 0 {
+		return false
+	}
 	for _, ip := range ips {
-		if IsSafeIP(ip) {
-			hasSafe = true
-			break
+		if !IsSafeIP(ip) {
+			return false
 		}
 	}
-	return hasSafe
+	return true
 }
 
 func IsSafeIP(ip net.IP) bool {
-	// In Go 1.17+, ip.IsPrivate() is available. We handle it for backwards compatibility if needed.
 	if ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
 		return false
 	}
-	
+
 	// CGNAT range (100.64.0.0/10)
 	if ip4 := ip.To4(); ip4 != nil {
 		if ip4[0] == 100 && (ip4[1] >= 64 && ip4[1] <= 127) {
@@ -156,8 +163,6 @@ func IsSafeIP(ip net.IP) bool {
 		}
 	}
 
-	// Use IsPrivate() for Go 1.17+ logic
-	// If the user's Go version is older, this will fail build, but they are on 1.25+ as per README.
 	if ip.IsPrivate() {
 		return false
 	}

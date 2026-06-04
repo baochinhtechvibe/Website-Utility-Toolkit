@@ -95,3 +95,17 @@ func Error(c *gin.Context, status int, msg string) {
 		Message: msg,
 	})
 }
+
+// FailWithData trả về response lỗi logic nghiệp vụ (Success: false) với HTTP 200 OK
+// nhưng vẫn đính kèm Data (ví dụ: nhật ký hành trình TraceLogs) và Meta cho frontend.
+func FailWithData(c *gin.Context, data interface{}, msg string) {
+	c.JSON(200, APIResponse{
+		Success: false,
+		Data:    data,
+		Message: msg,
+		Meta: &Meta{
+			Cached:    false,
+			FetchedAt: time.Now(),
+		},
+	})
+}

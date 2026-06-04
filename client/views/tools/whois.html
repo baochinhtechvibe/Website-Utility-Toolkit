@@ -21,13 +21,35 @@
 
 <body>
     <div class="wrapper page--whois">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--whois py-10 mb-4 text-center">
             <div class="container">
                 <div class="header__wrapper relative d-flex flex-col justify-center items-center">
                     <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
                         <div class="header__icon">
-                            <img src="../../public/assets/images/layout/header/settings.png" alt="tools.bctechvibe.com">
+                            <img src="../../public/assets/images/layout/header/whois-v2.png" alt="tools.bctechvibe.com">
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">
@@ -116,7 +138,7 @@
                         <div id="whoisResultCard" class="result-card mt-6 d-none">
                             <div class="result-card__header d-flex flex-row justify-between items-center">
                                 <h3 id="whoisResultTitle" class="result-card__title font-bold">
-                                    <i class="fa-solid fa-circle-check"></i>
+                                    <i class="fa-solid fa-address-card"></i>
                                     Thông tin WHOIS:
                                 </h3>
                             </div>

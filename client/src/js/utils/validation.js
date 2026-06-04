@@ -33,11 +33,15 @@ export function createRealtimeURLValidator(inputEl, errorEl, submitBtn) {
     ];
 
     function isValidURL(str) {
-        if (!/^https?:\/\//i.test(str)) return false;
-        try {
-            const u = new URL(str);
-            return (u.protocol === 'http:' || u.protocol === 'https:') && u.host.length > 0;
-        } catch { return false; }
+        // Chấp nhận URL đầy đủ
+        if (/^https?:\/\//i.test(str)) {
+            try {
+                const u = new URL(str);
+                return (u.protocol === 'http:' || u.protocol === 'https:') && u.host.length > 0;
+            } catch { return false; }
+        }
+        // Hoặc chấp nhận Domain/IP hợp lệ (để tự add https:// sau)
+        return isValidHostname(str);
     }
 
     function setBtn(enabled) {
@@ -94,7 +98,8 @@ export function createRealtimeURLValidator(inputEl, errorEl, submitBtn) {
 
 // Regex domain đơn giản nhưng đủ dùng cho realtime UX check
 // Chấp nhận: google.com, sub.example.org, my-site.co.uk, localhost, _domainkey (DKIM/DMARC)
-export const DOMAIN_RE = /^([a-zA-Z0-9_]([a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,}$|^localhost$/;
+// Đã hỗ trợ Unicode/IDN (tên miền tiếng Việt) bằng cách dùng \p{L} và \p{N} (flag u)
+export const DOMAIN_RE = /^([\p{L}\p{N}_]([\p{L}\p{N}\-_]{0,61}[\p{L}\p{N}_])?\.)+(xn--[a-zA-Z0-9\-]*[a-zA-Z0-9]|[\p{L}]{2,})$|^localhost$/u;
 
 // IPv4
 export const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;

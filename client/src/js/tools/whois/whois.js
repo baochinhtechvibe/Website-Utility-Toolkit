@@ -7,10 +7,24 @@ import {
     toggleLoading,
     escapeHTML,
     createRealtimeDomainValidator,
+    isValidHostname,
     renderSuccessHeader,
     normalizeHostnameInput,
+    IPV4_RE,
+    IPV6_RE,
 } from "../../utils/index.js";
 import { API_BASE_URL } from "../../config.js";
+
+// Kiểm tra xem chuỗi có phải là địa chỉ IP không (IPv4 hoặc IPv6)
+function isIPAddress(val) {
+    const stripped = val.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+    return IPV4_RE.test(stripped) || IPV6_RE.test(stripped);
+}
+
+function isValidWhoisDomain(val) {
+    const raw = val.trim();
+    return Boolean(raw) && isValidHostname(raw) && !isIPAddress(raw);
+}
 
 // =============================================
 //  TIMELINE CONSTANTS
@@ -69,11 +83,29 @@ function init() {
     let isProcessing = false;
     let currentAbortController = null;
 
-    // -------- Realtime Validation --------
+    // -------- Realtime Validation (domain-only, chặn IP) --------
     createRealtimeDomainValidator(domainInput, validationError, btnLookup);
 
-    // -------- Ẩn error/result card khi user thay đổi nhập liệu --------
+    // WHOIS không hỗ trợ IP — chặn thêm sau shared validator
     domainInput.addEventListener("input", () => {
+        const val = domainInput.value.trim();
+        const msgEl = validationError ? validationError.querySelector(".message-card__message") : null;
+
+        if (val && isIPAddress(val)) {
+            domainInput.classList.add("is-invalid");
+            if (msgEl) {
+                msgEl.textContent = "WHOIS không hỗ trợ địa chỉ IP. Vui lòng nhập tên miền (ví dụ: google.com).";
+            }
+            if (validationError) {
+                validationError.classList.remove("d-none");
+            }
+            btnLookup.disabled = true;
+        } else {
+            if (msgEl) {
+                msgEl.innerHTML = 'Vui lòng nhập đúng định dạng tên miền (ví dụ: <code>google.com</code>).';
+            }
+        }
+        btnLookup.disabled = !isValidWhoisDomain(val);
         setDisplay(errorCard, "none");
         setDisplay(resultCard, "none");
         setDisplay(shareCard, "none");
@@ -115,7 +147,8 @@ function init() {
         domainInput.value = domain;
         domainInput.dispatchEvent(new Event('input'));
 
-        if (!domain || btnLookup.disabled) return;
+        // Chặn IP ở submit (defense-in-depth)
+        if (!domain || btnLookup.disabled || isIPAddress(domain)) return;
         performLookup(domain, false);
     });
 
@@ -149,10 +182,12 @@ function init() {
             currentAbortController.abort();
         }
         currentAbortController = new AbortController();
-        const signal = currentAbortController.signal;
+        const requestController = currentAbortController;
+        const signal = requestController.signal;
 
         currentDomain = domain;
         isProcessing = true;
+        domainInput.disabled = true;
 
         // Reset UI
         showElements("none", resultCard, errorCard, shareCard, rawCard);
@@ -183,21 +218,24 @@ function init() {
             const statuses = json.data.status || [];
             const isAvailable = statuses.some(s => s.toLowerCase() === "available");
             if (isAvailable) {
-                showAvailable(json.data.domain || domain, json.meta);
+                showAvailable(json.data, domain, json.meta);
                 return;
             }
 
             displayResult(json.data, json.meta);
         } catch (err) {
             if (err.name === 'AbortError') {
-                console.log("WHOIS request aborted");
                 return; // Thoát âm thầm nếu bị hủy
             }
-            console.error("WHOIS fetch error:", err);
             showError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại.");
         } finally {
+            if (currentAbortController !== requestController) {
+                return;
+            }
             isProcessing = false;
+            domainInput.disabled = false;
             toggleLoading(btnLookup, lookupIcon, lookupLoading, false);
+            btnLookup.disabled = !isValidWhoisDomain(domainInput.value);
         }
     }
 
@@ -213,8 +251,10 @@ function init() {
     // ============================================
     //  SHOW AVAILABLE (Domain not registered)
     // ============================================
-    function showAvailable(domain, meta) {
+    function showAvailable(data, fallbackDomain, meta) {
         showElements("none", resultCard, shareCard);
+        
+        const domain = data.domain || fallbackDomain;
 
         // Reset title
         renderSuccessHeader(resultTitle, `Kết quả tra cứu: <span class="">"${escapeHTML(domain)}"</span>`);
@@ -237,17 +277,30 @@ function init() {
 
         // Ẩn layout chứa 2 cột thông tin đăng ký / vòng đời
         if (whoisLayout) whoisLayout.classList.add("d-none");
+        
+        const isMedium = data.confidence === "medium";
+        const titleText = isMedium ? "Có thể chưa được đăng ký" : "Tên miền chưa được đăng ký";
+        const descText = isMedium ? 
+            `Tên miền <strong>${escapeHTML(domain)}</strong> có thể chưa có người sở hữu (hoặc thông tin chưa cập nhật).` :
+            `Tên miền <strong>${escapeHTML(domain)}</strong> hiện chưa có người sở hữu. Bạn có thể đăng ký ngay để sở hữu tên miền này.`;
+        
+        const sourceHtml = data.source ? `
+            <div class="mt-3 text-sm">
+                <strong>Nguồn kiểm tra:</strong> ${formatSource(data.source, data.confidence, data.authoritative)}
+            </div>
+        ` : '';
 
         // Hiển thị thông báo "chưa đăng ký" kèm nút Mua full-width ở ngoài
         availableMsg.innerHTML = `
             <div class="message-card message-card--info">
                 <h4 class="message-card__title">
                     <i class="fa-regular fa-flag"></i>
-                    Tên miền chưa được đăng ký
+                    ${titleText}
                 </h4>
                 <p class="message-card__message">
-                    Tên miền <strong>${escapeHTML(domain)}</strong> hiện chưa có người sở hữu. Bạn có thể đăng ký ngay để sở hữu tên miền này.
+                    ${descText}
                 </p>
+                ${sourceHtml}
                 <div class="mt-4">
                     <button id="btnBuyDomain" class="btn btn-action btn-sm">
                         <i class="fa-solid fa-cart-shopping mr-1"></i> Mua tên miền này
@@ -312,7 +365,7 @@ function init() {
         }
 
         // Result title
-        renderSuccessHeader(resultTitle, `Thông tin WHOIS: <span class="text-success">"${escapeHTML(data.domain || currentDomain)}"</span>`);
+        renderSuccessHeader(resultTitle, `Thông tin WHOIS: <span class="text-success">"${escapeHTML(data.domain || currentDomain)}"</span>`, "fa-address-card");
 
         // Render Info List
         renderInfoList(data, infoList);
@@ -326,8 +379,36 @@ function init() {
             setDisplay(rawCard, "none");
         }
 
-        // Timeline
-        renderTimeline(data, timelineBadge, timelineList);
+        // Timeline: Ẩn/Hiện theo loại TLD
+        const tldType = data.tld_type || "cctld";
+        const timelineCol = document.querySelector('.whois__col-timeline');
+        const layoutEl = document.querySelector('.whois__layout');
+
+        if (tldType === "cctld") {
+            // ccTLD không hiển thị timeline
+            if (timelineCol) timelineCol.classList.add('d-none');
+            if (layoutEl) layoutEl.classList.add('whois__layout--single');
+        } else {
+            if (timelineCol) timelineCol.classList.remove('d-none');
+            if (layoutEl) layoutEl.classList.remove('whois__layout--single');
+
+            // Cập nhật tiêu đề timeline và ghi chú theo loại TLD
+            const timelineCard = timelineCol ? timelineCol.querySelector('.card--flat') : null;
+            if (timelineCard) {
+                const titleEl = timelineCard.querySelector('.card__title');
+                const subtitleEl = timelineCard.querySelector('.card__subtitle');
+
+                if (tldType === "vn") {
+                    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-timeline"></i> Vòng đời tên miền .vn';
+                    if (subtitleEl) subtitleEl.textContent = '* Thông tin chỉ mang tính chất tham khảo';
+                } else {
+                    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-timeline"></i> Vòng đời gTLD tham khảo';
+                    if (subtitleEl) subtitleEl.textContent = '* Timeline tham khảo theo ICANN. Registrar có thể áp dụng chính sách gia hạn, giữ tên miền hoặc đấu giá riêng.';
+                }
+            }
+
+            renderTimeline(data, timelineBadge, timelineList);
+        }
 
         // Share link
         const link = `${window.location.origin}${window.location.pathname}?domain=${encodeURIComponent(data.domain || currentDomain)}`;
@@ -354,12 +435,33 @@ function init() {
     }
 
     // ============================================
+    //  FORMAT: Data Source
+    // ============================================
+    function formatSource(source, confidence, authoritative) {
+        if (!source) return "-";
+        
+        let confidenceHtml = "";
+        if (confidence === "high") {
+            confidenceHtml = `<span class="badge badge-success ml-2">Tin cậy cao</span>`;
+        } else if (confidence === "medium") {
+            confidenceHtml = `<span class="badge badge-warning ml-2">Tham khảo</span>`;
+        }
+
+        let authHtml = "";
+        if (authoritative) {
+            authHtml = `<span class="badge badge-success ml-2"><i class="fa-solid fa-certificate mr-1"></i>Authoritative</span>`;
+        }
+
+        return `<span>${escapeHTML(source)}</span>${authHtml}${confidenceHtml}`;
+    }
+
+    // ============================================
     //  RENDER: Info List (DL)
     // ============================================
     function renderInfoList(data, container) {
         let registrantDisplay = data.registrant || "";
         if (!registrantDisplay || registrantDisplay.trim() === "" || registrantDisplay.trim() === "-") {
-            registrantDisplay = "Domain Admin";
+            registrantDisplay = "Không công bố";
         }
 
         const fields = [
@@ -373,6 +475,7 @@ function init() {
             { icon: "fa-toggle-on", label: "Trạng thái", value: (data.status && data.status.length) ? formatStatus(data.status) : "-" },
             { icon: "fa-shield-halved", label: "DNSSEC", value: formatDNSSEC(data.dnssec) },
             { icon: "fa-pen", label: "Cập nhật lần cuối", value: formatDateTime(data.updated_on) },
+            { icon: "fa-database", label: "Nguồn dữ liệu", value: formatSource(data.source, data.confidence, data.authoritative), isRawHTML: true },
         ];
 
         container.innerHTML = fields.map(f => {
@@ -380,7 +483,7 @@ function init() {
             if (f.isExpiry && data.expires_on) {
                 const expiryClass = getExpiryClass(data.expires_on);
                 valueHtml = `<span class="${expiryClass}">${formatDateTime(data.expires_on)}</span>`;
-            } else if (f.label === "Name Servers" || f.label === "Trạng thái" || f.label === "DNSSEC") {
+            } else if (f.label === "Name Servers" || f.label === "Trạng thái" || f.label === "DNSSEC" || f.isRawHTML) {
                 valueHtml = f.value; // Already escaped/formatted
             } else {
                 valueHtml = escapeHTML(f.value || "-");
@@ -682,7 +785,11 @@ function init() {
             domainInput.value = domain;
             performLookup(domain, false);
         } else {
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
             domainInput.value = "";
+            btnLookup.disabled = true;
             showElements("none", resultCard, errorCard, shareCard, rawCard);
         }
     });
