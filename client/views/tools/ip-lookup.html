@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; 
-                   script-src 'self' 'unsafe-inline' https://unpkg.com; 
-                   style-src 'self' 'unsafe-inline' https://unpkg.com; 
-                   img-src 'self' https://flagcdn.com https://*.tile.openstreetmap.org https://unpkg.com data:; 
-                   connect-src 'self' http://127.0.0.1:3101 https://api.ipify.org https://api4.my-ip.io https://ipapi.co https://unpkg.com;">
+        content="default-src 'self';
+                   script-src 'self' 'unsafe-inline' https://unpkg.com;
+                   style-src 'self' 'unsafe-inline' https://unpkg.com;
+                   img-src 'self' https://flagcdn.com https://*.tile.openstreetmap.org https://unpkg.com data:;
+                   connect-src 'self' http://127.0.0.1:3101 https://unpkg.com;">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
@@ -27,11 +27,34 @@
 
     <!-- SEO Meta Tags -->
     <title>My IP Lookup | Kiểm tra địa chỉ IP công cộng và thông tin vị trí</title>
-    <meta name="description" content="Công cụ tra cứu địa chỉ IPv4, IPv6 công cộng của bạn, cung cấp thông tin chi tiết về nhà mạng (ISP), vị trí địa lý, bản đồ và phát hiện VPN/Proxy.">
+    <meta name="description"
+        content="Công cụ tra cứu địa chỉ IPv4, IPv6 công cộng của bạn, cung cấp thông tin chi tiết về nhà mạng (ISP/ASN), vị trí địa lý, bản đồ và cấu hình trình duyệt thiết bị.">
 </head>
 
 <body>
     <div class="wrapper page--my-ip">
+        <!-- Begin: Top Bar -->
+                <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--my-ip py-10 mb-4 text-center">
             <div class="container">
@@ -66,7 +89,10 @@
                 <!-- 1. SUMMARY SECTION -->
                 <div class="card ip-summary-section">
                     <div class="card__header text-center">
-                        <h2 class="card__title uppercase">Địa chỉ IP Công cộng của bạn</h2>
+                        <h2 class="card__title">
+                            <i class="fa-solid fa-wifi"></i>
+                            Địa chỉ IP Công cộng của bạn
+                        </h2>
                     </div>
                     <div class="card__body ip-summary-body">
                         <div class="ip-summary-item">
@@ -76,7 +102,7 @@
                             </div>
                             <button id="btnCopyIpv4" class="btn btn-action btn-copy" data-target="#my-ip-v4"
                                 title="Copy IPv4" aria-label="Copy địa chỉ IPv4">
-                                <i class="fa-solid fa-copy" aria-hidden="true"></i> Copy IP
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> <span>Copy IP</span>
                             </button>
                         </div>
 
@@ -87,7 +113,7 @@
                             </div>
                             <button id="btnCopyIpv6" class="btn btn-action btn-copy" data-target="#my-ip-v6"
                                 title="Copy IPv6" disabled aria-label="Copy địa chỉ IPv6">
-                                <i class="fa-solid fa-copy" aria-hidden="true"></i> Copy IP
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> <span>Copy IP</span>
                             </button>
                         </div>
                     </div>
@@ -98,7 +124,8 @@
                     <h3 id="detailIPTitle" class="ip-details-title font-bold">IP Details For <span id="detailIPTarget"
                             class="ip-detail-target loading-text">Checking...</span></h3>
                     <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
-                        <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime"></b></span>
+                        <span><i class="fa-solid fa-clock"></i> Kết quả tra cứu mới nhất lúc <b
+                                id="cacheTime"></b></span>
                         <button type="button" id="btnRefreshIP" class="btn btn-sm btn-outline cache-card__btn"
                             aria-label="Làm mới thông tin IP">
                             <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
@@ -129,7 +156,7 @@
                                 </div>
                                 <div class="ip-detail-data loading-text" id="ip-detail-isp">Checking...</div>
                             </div>
-                            <div class="ip-detail-row">
+                            <div class="ip-detail-row" id="row-detail-services">
                                 <div class="ip-detail-label"><i class="fa-solid fa-microchip"></i> Dịch vụ:</div>
                                 <div class="ip-detail-data loading-text" id="ip-detail-services">Checking...</div>
                             </div>
@@ -175,6 +202,7 @@
                         <!-- Phải: Bản đồ & Nút bấm -->
                         <div class="ip-details-map-container">
                             <div id="ipMap" class="ip-map"></div>
+                            <small class="text-muted mt-2 d-block text-center text-sm">Bản đồ và quốc kỳ được cung cấp bởi bên thứ ba (OpenStreetMap, FlagCDN).</small>
                             <button class="btn btn-blacklist mt-2" id="btnCheckBlacklist">CLICK TO CHECK BLACKLIST
                                 STATUS</button>
                         </div>
@@ -192,13 +220,17 @@
 
                     <div class="footer__stat footer__stat--total">
                         <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
                             Tổng lượt truy cập:
                         </span>
                         <span id="visit-total" class="footer__stat-value">0</span>
                     </div>
 
                     <div class="footer__stat footer__stat--today">
-                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
                         <span id="visit-today" class="footer__stat-value">0</span>
                     </div>
 

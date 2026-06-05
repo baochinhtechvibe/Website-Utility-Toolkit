@@ -261,7 +261,7 @@
    RESPONSIVE LAYOUT 
    ========================================= */
 
-/* Desktop layout cho file Details */
+/* Summary: 2 cột từ 768px */
 @media (min-width: 768px) {
     .ip-summary-body {
         flex-direction: row;
@@ -283,7 +283,14 @@
     .ip-summary-item:last-child {
         padding-left: var(--space-4);
     }
-    
+
+    .ip-detail-label {
+        width: 165px;
+    }
+}
+
+/* Details grid: 2 cột từ 1024px, dưới đó nằm dọc */
+@media (min-width: 1024px) {
     .ip-details-grid {
         flex-direction: row;
         align-items: stretch;
@@ -294,24 +301,24 @@
         padding-right: var(--space-4);
         border-right: 1px solid var(--color-border-subtle);
     }
-    
+
     .ip-details-map-container {
         flex: 1 1 50%;
         padding-left: var(--space-2);
     }
-    
+
     .ip-map {
         height: 100%;
         min-height: 250px;
-    }
-
-    .ip-detail-label {
-        width: 165px;
     }
 }
 
 @media (min-width: 1024px) {
     .ip-details-section {
         padding: var(--space-6);
+    }
+
+    .ip-map {
+        height: 400px;
     }
 }

@@ -6,14 +6,12 @@
 
 import { API_BASE_URL } from "../../config.js";
 
-import { 
-    $, 
-    $$, 
-    escapeHTML, 
+import {
+    $,
+    $$,
+    escapeHTML,
     copyToClipboard,
-    setDisplay,
-    showElements,
-    renderSuccessHeader
+    setDisplay
 } from "../../utils/index.js";
 
 
@@ -23,7 +21,7 @@ let mapMarker = null;
 let isRefreshing = false;
 
 // Smart Watcher state
-let currentIP = null;
+let currentIPs = { v4: null, v6: null };
 let watcherIntervalId = null;
 const WATCHER_INTERVAL_MS = 30000; // 30 giây
 
@@ -64,21 +62,55 @@ function startSmartWatcher() {
  */
 async function checkIPChange() {
     // Không check khi đang refresh hoặc chưa có IP ban đầu
-    if (isRefreshing || !currentIP) return;
+    if (isRefreshing || (!currentIPs.v4 && !currentIPs.v6)) return;
 
     try {
-        const res = await fetch(`${API_BASE_URL}/ip-lookup/my-ip/check`);
-        if (!res.ok) return;
+        const isLocal = API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
 
-        const json = await res.json();
-        const newIP = json.ip;
+        let newV4 = "N/A";
+        let newV6 = "N/A";
 
-        if (newIP && newIP !== currentIP) {
-            console.log(`[Smart Watcher] IP đã thay đổi: ${currentIP} → ${newIP}`);
-            currentIP = newIP;
+        if (isLocal) {
+            const res = await fetch(`${API_BASE_URL}/ip-lookup/my-ip/check`);
+            if (!res.ok) return;
+            const json = await res.json();
+
+            if (json.ip && json.ip.includes(":")) {
+                newV6 = json.ip;
+                newV4 = currentIPs.v4; // Assume v4 didn't change
+            } else if (json.ip) {
+                newV4 = json.ip;
+                newV6 = currentIPs.v6; // Assume v6 didn't change
+            }
+        } else {
+            const fetchCheck = async (url) => {
+                try {
+                    const r = await fetch(url);
+                    if (r.ok) {
+                        const j = await r.json();
+                        return j.ip;
+                    }
+                } catch (e) {}
+                return "N/A";
+            };
+
+            const [v4, v6] = await Promise.all([
+                fetchCheck("https://ipv4.bctechvibe.com/api/ip-lookup/my-ip/check"),
+                fetchCheck("https://ipv6.bctechvibe.com/api/ip-lookup/my-ip/check")
+            ]);
+            newV4 = v4;
+            newV6 = v6;
+        }
+
+        const changedV4 = newV4 !== "N/A" && newV4 !== currentIPs.v4;
+        const changedV6 = newV6 !== "N/A" && newV6 !== currentIPs.v6;
+
+        if (changedV4 || changedV6) {
+            const changedIP = changedV4 ? newV4 : newV6;
+            currentIPs = { v4: newV4, v6: newV6 };
 
             // Hiện thông báo cho user
-            showIPChangeNotice(newIP);
+            showIPChangeNotice(changedIP);
 
             // Reset UI về trạng thái loading và load lại toàn bộ
             resetIPDisplayToLoading();
@@ -86,7 +118,6 @@ async function checkIPChange() {
         }
     } catch (err) {
         // Lỗi mạng khi check → bỏ qua âm thầm
-        console.debug("[Smart Watcher] Check failed:", err.message);
     }
 }
 
@@ -115,14 +146,14 @@ function setupRefreshLogic() {
         isRefreshing = true;
 
         const icon = btnRefreshIP.querySelector("i");
-        
+
         // 1. Hiệu ứng xoay icon
         icon?.classList.add("fa-spin");
         btnRefreshIP.disabled = true;
-        
+
         // 2. Reset các trường về trạng thái "Checking..."
         resetIPDisplayToLoading();
-        
+
         // 3. Truyền true để báo hiệu force refresh (bypass cache)
         try {
             await initMyIP(true);
@@ -141,11 +172,11 @@ function setupRefreshLogic() {
  */
 function resetIPDisplayToLoading() {
     const loadingHtml = `<span class="loading-text">Checking...</span>`;
-    
+
     // Summary
     const v4El = $("#my-ip-v4");
     if (v4El) v4El.innerHTML = loadingHtml;
-    
+
     const v6El = $("#my-ip-v6");
     if (v6El) v6El.innerHTML = loadingHtml;
 
@@ -156,17 +187,23 @@ function resetIPDisplayToLoading() {
         targetEl.classList.add("loading-text");
     }
 
+    // Disable nút Copy
+    const btnCopyIpv4 = $("#btnCopyIpv4");
+    if (btnCopyIpv4) btnCopyIpv4.disabled = true;
+    const btnCopyIpv6 = $("#btnCopyIpv6");
+    if (btnCopyIpv6) btnCopyIpv6.disabled = true;
+
     // Disable nút Check Blacklist khi đang load
     const btnBlacklist = $("#btnCheckBlacklist");
     if (btnBlacklist) btnBlacklist.disabled = true;
 
     // Grid details
     const detailIds = [
-        "decimal", "hostname", "asn", "timezone", "isp", 
-        "services", "country", "region", "city", 
+        "decimal", "hostname", "asn", "timezone", "isp",
+        "services", "country", "region", "city",
         "latitude", "longitude", "os", "browser", "ua"
     ];
-    
+
     detailIds.forEach(id => {
         const el = $(`#ip-detail-${id}`);
         if (el) {
@@ -174,44 +211,87 @@ function resetIPDisplayToLoading() {
             el.classList.add("loading-text");
         }
     });
+
+    const rowServices = $("#row-detail-services");
+    if (rowServices) rowServices.classList.remove("d-none");
 }
 
 /**
- * Khởi tạo dữ liệu IP khi load trang
+ * Khởi tạo dữ liệu IP khi load trang (Hỗ trợ Dual-stack IPv4/IPv6)
  */
 async function initMyIP(forceRefresh = false, retryCount = 0) {
     const MAX_RETRIES = 2;
 
     try {
-        // Fetch dữ liệu từ backend, thêm query refresh nếu cần
-        const url = forceRefresh 
-            ? `${API_BASE_URL}/ip-lookup/my-ip?refresh=true` 
-            : `${API_BASE_URL}/ip-lookup/my-ip`;
+        const qs = forceRefresh ? "?refresh=true" : "";
+        const isLocal = API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
 
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
-        }
+        let mainResult;
 
-        const result = await response.json();
+        if (isLocal) {
+            const url = `${API_BASE_URL}/ip-lookup/my-ip${qs}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-        if (result.success && result.data) {
-            // Cập nhật currentIP cho Smart Watcher
-            currentIP = result.data.ip;
+            mainResult = await response.json();
+            if (!mainResult.success || !mainResult.data) {
+                throw new Error(mainResult.message || mainResult.error || "Unknown error");
+            }
 
-            renderIPData(result.data, result.meta);
-            initMap(result.data.latitude, result.data.longitude, result.data.ip);
+            const isV4 = mainResult.data.version === "IPv4";
+            mainResult.data.ip_v4 = isV4 ? mainResult.data.ip : "N/A";
+            mainResult.data.ip_v6 = !isV4 ? mainResult.data.ip : "N/A";
+
         } else {
-            throw new Error(result.message || result.error || "Unknown error");
+            const url4 = `https://ipv4.bctechvibe.com/api/ip-lookup/my-ip${qs}`;
+            const url6 = `https://ipv6.bctechvibe.com/api/ip-lookup/my-ip${qs}`;
+
+            const fetchJson = async (url) => {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                const json = await res.json();
+                if (!json.success || !json.data) throw new Error(json.message || json.error || "Unknown error");
+                return json;
+            };
+
+            // Gọi song song 2 API ẩn để lấy cả 2 IP
+            const results = await Promise.allSettled([
+                fetchJson(url4),
+                fetchJson(url6)
+            ]);
+
+            const res4 = results[0].status === "fulfilled" ? results[0].value : null;
+            const res6 = results[1].status === "fulfilled" ? results[1].value : null;
+
+            // Nếu cả 2 đều lỗi thì ném lỗi
+            if (!res4 && !res6) {
+                throw new Error(results[0].reason?.message || results[1].reason?.message || "Failed to fetch from both IPv4 and IPv6");
+            }
+
+            // Ưu tiên dùng dữ liệu geo từ IPv4 (vì đa phần ổn định hơn), nếu rớt thì xài IPv6
+            mainResult = res4 || res6;
+
+            const v4Data = res4?.data?.version === "IPv4" ? res4.data : null;
+            const v6Data = res6?.data?.version === "IPv6" ? res6.data : null;
+
+            // Gán thêm data để renderIPData biết đường show cả 2
+            mainResult.data.ip_v4 = v4Data ? v4Data.ip : "N/A";
+            mainResult.data.ip_v6 = v6Data ? v6Data.ip : "N/A";
         }
-    } catch (error) {
-        console.error("Error initializing IP tool:", error);
+
+        // Cập nhật mảng currentIPs cho Smart Watcher (chứa cả 2 IP để detect change)
+        currentIPs = {
+            v4: mainResult.data.ip_v4,
+            v6: mainResult.data.ip_v6
+        };
+
+        renderIPData(mainResult.data, mainResult.meta);
+        initMap(mainResult.data.latitude, mainResult.data.longitude, mainResult.data.ip);
         
+    } catch (error) {
         // Retry logic
         if (retryCount < MAX_RETRIES) {
             const delay = 1000 * (retryCount + 1);
-            console.log(`Retrying in ${delay}ms... (${retryCount + 1}/${MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return initMyIP(forceRefresh, retryCount + 1);
         }
@@ -229,7 +309,7 @@ function showFetchError(msg) {
     if (v4El) v4El.innerHTML = errorHtml;
     const v6El = $("#my-ip-v6");
     if (v6El) v6El.innerHTML = errorHtml;
-    
+
     const targetEl = $("#detailIPTarget");
     if (targetEl) {
         targetEl.innerHTML = errorHtml;
@@ -237,8 +317,8 @@ function showFetchError(msg) {
     }
 
     const detailIds = [
-        "decimal", "hostname", "asn", "timezone", "isp", 
-        "services", "country", "region", "city", 
+        "decimal", "hostname", "asn", "timezone", "isp",
+        "services", "country", "region", "city",
         "latitude", "longitude", "os", "browser", "ua"
     ];
     detailIds.forEach(id => {
@@ -264,19 +344,17 @@ function renderIPData(data, meta = null) {
     v4El?.classList.remove("loading-text");
     v6El?.classList.remove("loading-text");
 
-    if (data.version === "IPv4") {
-        if (v4El) v4El.textContent = data.ip;
-        if (v6El) v6El.textContent = "N/A";
-    } else {
-        if (v4El) v4El.textContent = "N/A";
-        if (v6El) v6El.textContent = data.ip;
-    }
+    const btnCopyIpv4 = $("#btnCopyIpv4");
+    const btnCopyIpv6 = $("#btnCopyIpv6");
 
-    // 2. Phần chi tiết trong Title
-    const summaryTitle = $(".ip-summary-section .card__title");
-    if (summaryTitle) {
-        renderSuccessHeader(summaryTitle, "Địa chỉ IP Công cộng của bạn");
-    }
+    const ip4 = data.ip_v4 || (data.version === "IPv4" ? data.ip : "N/A");
+    const ip6 = data.ip_v6 || (data.version === "IPv6" ? data.ip : "N/A");
+
+    if (v4El) v4El.textContent = ip4;
+    if (v6El) v6El.textContent = ip6;
+
+    if (btnCopyIpv4) btnCopyIpv4.disabled = (ip4 === "N/A");
+    if (btnCopyIpv6) btnCopyIpv6.disabled = (ip6 === "N/A");
 
     const targetEl = $("#detailIPTarget");
     if (targetEl) {
@@ -291,6 +369,7 @@ function renderIPData(data, meta = null) {
     updateDetailField("ip-detail-isp", data.isp);
     // Xử lý hiển thị Services (VPN Detection)
     const servicesEl = document.getElementById("ip-detail-services");
+    const rowServicesEl = document.getElementById("row-detail-services");
     if (servicesEl) {
         servicesEl.classList.remove("loading-text");
         let tags = [];
@@ -300,22 +379,28 @@ function renderIPData(data, meta = null) {
 
         if (tags.length > 0) {
             servicesEl.innerHTML = tags.join(" ");
+            if (rowServicesEl) rowServicesEl.classList.remove("d-none");
         } else if (!data.services || data.services === "N/A") {
-            servicesEl.innerHTML = `<span class="text-na">N/A</span>`;
+            if (rowServicesEl) {
+                rowServicesEl.classList.add("d-none");
+            } else {
+                servicesEl.innerHTML = `<span class="text-na">N/A</span>`;
+            }
         } else {
             servicesEl.textContent = data.services;
+            if (rowServicesEl) rowServicesEl.classList.remove("d-none");
         }
     }
-    
+
     // Xử lý hiển thị Quốc gia kèm lá cờ
     const countryEl = document.getElementById("ip-detail-country");
     if (countryEl) {
         countryEl.classList.remove("loading-text");
         if (data.country && data.country_code) {
             countryEl.innerHTML = `
-                <img src="https://flagcdn.com/24x18/${escapeHTML(data.country_code.toLowerCase())}.png" 
+                <img src="https://flagcdn.com/24x18/${escapeHTML(data.country_code.toLowerCase())}.png"
                      srcset="https://flagcdn.com/48x36/${escapeHTML(data.country_code.toLowerCase())}.png 2x"
-                     width="24" height="18" 
+                     width="24" height="18"
                      alt="${escapeHTML(data.country)}"
                      class="ip-flag">
                 <span>${escapeHTML(data.country)}</span>
@@ -340,7 +425,7 @@ function renderIPData(data, meta = null) {
         lonEl.classList.remove("loading-text");
         lonEl.textContent = `${data.longitude} (${toDMS(data.longitude, false)})`;
     }
-    
+
     // OS, Browser & UA mới
     updateDetailField("ip-detail-os", data.os);
     updateDetailField("ip-detail-browser", data.browser);
@@ -357,8 +442,8 @@ function renderIPData(data, meta = null) {
         cacheNotice.classList.remove("d-none");
         const spanEl = cacheNotice.querySelector("span");
         if (spanEl) {
-            const timeStr = meta.fetched_at 
-                ? new Date(meta.fetched_at).toLocaleString('vi-VN') 
+            const timeStr = meta.fetched_at
+                ? new Date(meta.fetched_at).toLocaleString('vi-VN')
                 : new Date().toLocaleString('vi-VN');
 
             if (meta.cached) {
@@ -414,8 +499,8 @@ function updateDetailField(id, value) {
  * Khởi tạo hoặc cập nhật bản đồ Leaflet
  */
 function initMap(lat, lon, ip, retryCount = 0) {
-    if (!lat || !lon) return;
-    
+    if (lat == null || lon == null) return;
+
     // Đợi Leaflet (L) sẵn sàng nếu dùng defer
     if (typeof L === 'undefined') {
         if (retryCount < 10) { // Thử lại trong 2 giây (mỗi lần 200ms)
@@ -443,7 +528,7 @@ function initMap(lat, lon, ip, retryCount = 0) {
         mapMarker.remove();
         mapMarker = null;
     }
-    
+
     mapMarker = L.marker([lat, lon]).addTo(ipMap)
         .bindPopup(`IP: ${ip}`)
         .openPopup();
@@ -462,29 +547,27 @@ function setupEventListeners() {
                 const success = await copyToClipboard(text);
                 if (success) {
                     const icon = btn.querySelector("i");
-                    const span = btn.childNodes;
-                    
+                    const textSpan = btn.querySelector("span");
+
                     // Lưu nội dung gốc
-                    const originalIconClass = icon ? [...icon.classList] : [];
-                    const originalText = btn.textContent.trim();
-                    
+                    const originalText = textSpan ? textSpan.textContent : "Copy IP";
+
                     // Đổi sang trạng thái "Copied" — chỉ toggle class modifier
                     if (icon) {
                         icon.classList.remove("fa-copy");
                         icon.classList.add("fa-check");
                     }
                     btn.classList.add("btn-success");
-                    // Cập nhật text node (giữ nguyên icon element)
-                    const textNode = [...btn.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
-                    if (textNode) textNode.textContent = " Copied";
-                    
+                    // Cập nhật text trong span
+                    if (textSpan) textSpan.textContent = "Copied";
+
                     setTimeout(() => {
                         if (icon) {
                             icon.classList.remove("fa-check");
                             icon.classList.add("fa-copy");
                         }
                         btn.classList.remove("btn-success");
-                        if (textNode) textNode.textContent = " Copy IP";
+                        if (textSpan) textSpan.textContent = originalText;
                     }, 2000);
                 }
             }

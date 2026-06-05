@@ -2,17 +2,16 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"tools.bctechvibe.com/server/internal/modules/ip-lookup/models"
+	"tools.bctechvibe.com/server/internal/pkg/geoip"
 )
 
 var geoClient = &http.Client{
@@ -39,7 +38,9 @@ func GetIPDetails(ctx context.Context, ipStr string, ua string) *models.IPInfo {
 	}
 
 	// Hostname lookup
-	names, err := net.LookupAddr(ipStr)
+	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	names, err := net.DefaultResolver.LookupAddr(lookupCtx, ipStr)
 	if err == nil && len(names) > 0 {
 		info.Hostname = strings.TrimSuffix(names[0], ".")
 	} else {
@@ -47,7 +48,7 @@ func GetIPDetails(ctx context.Context, ipStr string, ua string) *models.IPInfo {
 	}
 
 	// Browser & OS detection (Simple parsing)
-	info.Browser, info.OS = parseUserAgent(ua)
+	info.Browser, info.OS = ParseUserAgent(ua)
 
 	// GeoIP & ISP Lookup
 	fillGeoInfo(ctx, info, ipStr)
@@ -59,12 +60,15 @@ func GetIPDetails(ctx context.Context, ipStr string, ua string) *models.IPInfo {
 // Giúp ích cho việc debug/test tính năng VPN khi chạy tool ở localhost.
 func ResolvePublicIP(ipStr string) string {
 	if ipStr == "127.0.0.1" || ipStr == "::1" || strings.HasPrefix(ipStr, "192.168.") || strings.HasPrefix(ipStr, "10.") {
-		resp, err := geoClient.Get("https://api.ipify.org")
+		resp, err := geoClient.Get("https://api64.ipify.org")
 		if err == nil {
 			defer resp.Body.Close()
-			ipBytes, _ := io.ReadAll(resp.Body)
+			ipBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 64))
 			if len(ipBytes) > 0 {
-				return string(ipBytes)
+				fetchedIP := strings.TrimSpace(string(ipBytes))
+				if net.ParseIP(fetchedIP) != nil {
+					return fetchedIP
+				}
 			}
 		}
 	}
@@ -81,20 +85,20 @@ func ipToDecimal(ip net.IP) string {
 	return i.String()
 }
 
-func parseUserAgent(ua string) (browser, os string) {
+func ParseUserAgent(ua string) (browser, os string) {
 	ua = strings.ToLower(ua)
 
 	// OS detection
 	if strings.Contains(ua, "windows") {
 		os = "Windows"
+	} else if strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad") {
+		os = "iOS"
 	} else if strings.Contains(ua, "macintosh") || strings.Contains(ua, "mac os") {
 		os = "macOS"
 	} else if strings.Contains(ua, "linux") {
 		os = "Linux"
 	} else if strings.Contains(ua, "android") {
 		os = "Android"
-	} else if strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad") {
-		os = "iOS"
 	} else {
 		os = "Unknown"
 	}
@@ -121,78 +125,41 @@ func parseUserAgent(ua string) (browser, os string) {
 }
 
 func fillGeoInfo(ctx context.Context, info *models.IPInfo, ipStr string) {
-	// ip-api.com (HTTP) là lựa chọn tốt nhất để lấy dữ liệu chi tiết (ISP, AS, Proxy,...) miễn phí từ Backend
-	reqURL := fmt.Sprintf(
-		"http://ip-api.com/json/%s?fields=status,message,country,countryCode,regionName,city,lat,lon,timezone,isp,as,org,proxy,hosting,mobile",
-		url.PathEscape(ipStr),
-	)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
 		return
 	}
 
-	// Tận dụng geoClient với timeout xác định để tránh treo request
-	resp, err := geoClient.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
+	if geoip.GeoIPDB != nil {
+		if city, err := geoip.GeoIPDB.City(ip); err == nil {
+			info.Country = city.Country.Names["en"]
+			info.CountryCode = strings.ToLower(city.Country.IsoCode)
 
-	var data struct {
-		Status      string  `json:"status"`
-		Message     string  `json:"message"`
-		Country     string  `json:"country"`
-		CountryCode string  `json:"countryCode"`
-		RegionName  string  `json:"regionName"`
-		City        string  `json:"city"`
-		Lat         float64 `json:"lat"`
-		Lon         float64 `json:"lon"`
-		ISP         string  `json:"isp"`
-		AS          string  `json:"as"`
-		Org         string  `json:"org"`
-		TimeZone    string  `json:"timezone"`
-		Proxy       bool    `json:"proxy"`
-		Hosting     bool    `json:"hosting"`
-		Mobile      bool    `json:"mobile"`
-	}
+			if len(city.Subdivisions) > 0 {
+				info.Region = city.Subdivisions[0].Names["en"]
+			}
+			info.City = city.City.Names["en"]
 
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return
-	}
-
-	if data.Status == "success" {
-		info.Country = data.Country
-		info.CountryCode = strings.ToLower(data.CountryCode)
-		info.Region = data.RegionName
-		info.City = data.City
-		info.Latitude = data.Lat
-		info.Longitude = data.Lon
-		info.TimeZone = data.TimeZone
-		info.ISP = data.ISP
-		info.ASN = data.AS
-
-		// Metadata xịn xò từ ip-api
-		info.IsProxy = data.Proxy
-		info.IsHosting = data.Hosting
-		info.IsMobile = data.Mobile
-
-		// Dịch vụ mapping thông minh
-		var services []string
-		if data.Proxy {
-			services = append(services, "VPN/Proxy")
-		}
-		if data.Hosting {
-			services = append(services, "Hosting/Datacenter")
-		}
-		if data.Mobile {
-			services = append(services, "Mobile Network")
-		}
-
-		if len(services) > 0 {
-			info.Services = strings.Join(services, ", ")
-		} else {
-			info.Services = "Residential/Global"
+			info.Latitude = city.Location.Latitude
+			info.Longitude = city.Location.Longitude
+			info.TimeZone = city.Location.TimeZone
 		}
 	}
+
+	if geoip.GeoASNDB != nil {
+		if asn, err := geoip.GeoASNDB.ASN(ip); err == nil {
+			org := strings.TrimSpace(asn.AutonomousSystemOrganization)
+			if org != "" {
+				info.ISP = org
+				info.ASN = fmt.Sprintf("AS%d", asn.AutonomousSystemNumber)
+			}
+		}
+	}
+
+	// Local DB doesn't have proxy/hosting/mobile boolean flags (needs GeoIP2-ISP/Anonymous DBs)
+	// We set defaults for now.
+	info.IsProxy = false
+	info.IsHosting = false
+	info.IsMobile = false
+	info.Services = "N/A"
 }
