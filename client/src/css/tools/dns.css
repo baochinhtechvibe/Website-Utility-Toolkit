@@ -356,35 +356,43 @@
     border-top-right-radius: var(--radius-md);
 }
 
-/* DOMAIN — min-width để thoáng, không wrap */
+/* DOMAIN — Ép cột ôm khít thẻ span bên trong */
 .page--dns .results-table td:nth-child(1),
 .page--dns .results-table th:nth-child(1) {
-    width: 25%;
+    width: 1%;
+    min-width: 175px;
     white-space: nowrap;
     text-align: left;
 }
 
-/* TYPE, TTL — min-width để thoáng, centered */
-.page--dns .results-table td:nth-child(2),
-.page--dns .results-table th:nth-child(2) {
-    width: 8%;
-    white-space: nowrap;
-    text-align: center;
+/* Wrapper span để giới hạn 250px và bẻ dòng (nếu quá dài) */
+.page--dns .results-table__value--domain {
+    display: inline-block;
+    max-width: 250px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    vertical-align: middle;
 }
 
+/* TYPE, TTL — Ôm khít nội dung */
+.page--dns .results-table td:nth-child(2),
+.page--dns .results-table th:nth-child(2),
 .page--dns .results-table td:nth-child(3),
 .page--dns .results-table th:nth-child(3) {
-    width: 10%;
+    width: 1%;
     white-space: nowrap;
     text-align: center;
 }
 
-/* ANSWER — chiếm hết phần còn lại */
+/* ANSWER — Hút hết toàn bộ không gian thừa của bảng */
 .page--dns .results-table td:nth-child(4),
 .page--dns .results-table th:nth-child(4) {
-    width: auto;
-    padding-right: var(--space-6); /* Đẩy ISP ra xa một chút để không bị dính sát */
-    white-space: nowrap;
+    width: 100%;
+    padding-right: var(--space-4);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     text-align: left;
 }
 
@@ -396,15 +404,27 @@
     overflow-wrap: anywhere;
 }
 
-/* ISP / ORG — fit-content, không wrap */
+/* ISP / ORG — Ôm khít nội dung */
 .page--dns .results-table td:nth-child(5),
 .page--dns .results-table th:nth-child(5) {
     width: 1%;
     white-space: nowrap;
     text-align: left;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
 }
 
+/* Đảm bảo nút bấm ISP không bị tràn ra khỏi ô 120px khi tên nhà mạng quá dài */
+.page--dns .isp-link {
+    max-width: 100%;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+}
 
+.page--dns .isp-link__text {
+    white-space: nowrap;
+    min-width: 0;
+}
 
 .page--dns .results-table__row--head .results-table__cell,
 .page--dns .results-table th {
@@ -484,6 +504,13 @@
 }
 
 /* CSS DNSKEY records */
+
+/* DNSSEC sub-tables giữ nguyên fixed để bảo toàn tỉ lệ cột mã hóa phức tạp */
+.page--dns .results-table.results-table--dnssec-dnskey,
+.page--dns .results-table.results-table--dnssec-ds,
+.page--dns .results-table.results-table--dnssec-rrsig {
+    table-layout: fixed;
+}
 
 .page--dns .results-table.results-table--dnssec-dnskey th:nth-child(1),
 .page--dns .results-table.results-table--dnssec-dnskey td:nth-child(1) {
@@ -739,13 +766,15 @@
 /* Blacklist Table - Column Layout */
 .page--dns .results-table--blacklist {
     width: 100%;
+    table-layout: fixed;
 }
 
 .page--dns .results-table--blacklist th:nth-child(1),
 .page--dns .results-table--blacklist td:nth-child(1) {
     width: 35%;
     text-align: left;
-    overflow-wrap: break-word; /* Đổi thành break-word để tránh cột bị bóp méo thành 1 ký tự */
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .page--dns .results-table--blacklist th:nth-child(2),
@@ -774,8 +803,14 @@
     white-space: nowrap;
 }
 
+/* Wrapper riêng cho bảng Blacklist để giới hạn chiều cao và cuộn mượt (Rule J-07) */
+.page--dns .table-wrapper--blacklist {
+    max-height: 650px;
+    overflow-y: auto;
+}
 
-@media (min-width:640px) {}
+
+
 
 
 @media (min-width:1024px) {
@@ -828,8 +863,9 @@
    ======================================================== */
 
 
-/* Mobile Card View (<= 640px) */
-@media (max-width: 640px) {
+/* Mobile Card View (< 800px) */
+@media (max-width: 799px) {
+
     /* Ghi đè min-width của table để không bị cuộn ngang */
     .page--dns .results-table {
         min-width: 0 !important;
@@ -871,12 +907,18 @@
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
-        align-items: center; /* Đổi sang center để icon và badge thẳng hàng theo chiều dọc */
-        padding: var(--space-3) !important; /* Dùng !important để ghi đè desktop padding */
-        text-align: left !important; /* Ghi đè desktop text-align */
-        border-bottom: var(--border-width-1) solid var(--color-border) !important; /* Đảm bảo không bị mất border */
+        align-items: center;
+        /* Đổi sang center để icon và badge thẳng hàng theo chiều dọc */
+        padding: var(--space-3) !important;
+        /* Dùng !important để ghi đè desktop padding */
+        text-align: left !important;
+        /* Ghi đè desktop text-align */
+        border-bottom: var(--border-width-1) solid var(--color-border) !important;
+        /* Đảm bảo không bị mất border */
         width: 100% !important;
         min-width: 0 !important;
+        max-width: none !important;
+        /* Reset max-width từ desktop (VD: cột DOMAIN có max-width: 140px) */
         box-sizing: border-box;
         white-space: normal !important;
     }
@@ -889,7 +931,8 @@
     .page--dns .results-table tbody td::before {
         content: attr(data-label);
         font-weight: var(--font-weight-bold);
-        color: var(--color-text-secondary); /* Đổi sang màu tối (Secondary Text) theo yêu cầu */
+        color: var(--color-text-secondary);
+        /* Đổi sang màu tối (Secondary Text) theo yêu cầu */
         flex-shrink: 0;
         width: 38%;
         margin-right: var(--space-2);
@@ -897,9 +940,11 @@
     }
 
     /* Các thành phần con còn lại (value, badge, icon) sẽ chiếm không gian còn lại */
-    .page--dns .results-table tbody td > * {
+    .page--dns .results-table tbody td>* {
         word-break: normal;
         overflow-wrap: anywhere;
+        min-width: 0;
+        max-width: calc(62% - var(--space-2));
     }
 
     /* Tối ưu chiều dọc cho các ô chứa chuỗi cực dài (như Public Key / Digest / Signature) */
@@ -907,9 +952,10 @@
     .page--dns .results-table td[data-label="DIGEST"],
     .page--dns .results-table td[data-label="SIGNATURE"] {
         flex-direction: column;
-        align-items: flex-start; /* Phải set flex-start để text không bị căn giữa theo chiều ngang */
+        align-items: flex-start;
+        /* Phải set flex-start để text không bị căn giữa theo chiều ngang */
     }
-    
+
     .page--dns .results-table td[data-label="PUBLIC KEY"]::before,
     .page--dns .results-table td[data-label="DIGEST"]::before,
     .page--dns .results-table td[data-label="SIGNATURE"]::before {

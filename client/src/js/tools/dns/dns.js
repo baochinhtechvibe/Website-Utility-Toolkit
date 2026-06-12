@@ -111,22 +111,26 @@ function init() {
         const source = record.org || record.isp;
         if (!source) return "-";
 
+        // Xử lý chuỗi từ Team Cymru: "SHORTNAME - Long Name" -> lấy SHORTNAME
+        if (source.includes(" - ")) {
+            return source.split(" - ")[0].trim();
+        }
+
         // 1️⃣ Nếu tên chứa keyword giữ nguyên (NIC / registry)
         if (shouldKeepFullName(source)) {
-            return truncateByWords(source, 3);
+            return source;
         }
 
         // 2️⃣ Kiểm tra có ngoặc trong tên không
+        let target = source;
         const match = source.match(/\(([^)]+)\)/);
         if (match && match[1]) {
-            const inner = stripLegalSuffix(match[1]);
-            return truncateByWords(inner, 3);
+            target = match[1];
         }
 
-        // 3️⃣ Bình thường → strip suffix, giữ toàn bộ brand (không chỉ từ đầu)
-        const normalized = stripLegalSuffix(source);
-        const truncated = truncateByWords(normalized, 3); // nếu muốn tối đa 3 từ
-        return truncated
+        // 3️⃣ Bình thường → strip suffix
+        const normalized = stripLegalSuffix(target);
+        return normalized
             .split(" ")
             .map(w => w.charAt(0).toUpperCase() + w.slice(1))
             .join(" ");
@@ -294,34 +298,35 @@ function init() {
     }
 
     function performBlacklistStream(ip) {
-        setDisplay(errorSection, "none");
-        resultsTableBody.innerHTML = "";
+        return new Promise((resolve, reject) => {
+            setDisplay(errorSection, "none");
+            resultsTableBody.innerHTML = "";
 
-        const rowMap = {};
+            const rowMap = {};
 
-        // Header
-        resultsTableHead.innerHTML = `
-        <tr>
-            <th class= "results-table__cell results-table__cell--rbl-provider">RBL PROVIDER</th>
-            <th class= "results-table__cell results-table__cell--rbl-type">CATEGORY</th>
-            <th class= "results-table__cell results-table__cell--rbl-level">LEVEL</th>
-            <th class= "results-table__cell results-table__cell--rbl-status">STATUS</th>
-            <th class= "results-table__cell results-table__cell--rbl-response-time">RESPONSE TIME</th>
-        </tr>
-    `;
+            // Header
+            resultsTableHead.innerHTML = `
+            <tr>
+                <th class= "results-table__cell results-table__cell--rbl-provider">RBL PROVIDER</th>
+                <th class= "results-table__cell results-table__cell--rbl-type">CATEGORY</th>
+                <th class= "results-table__cell results-table__cell--rbl-level">LEVEL</th>
+                <th class= "results-table__cell results-table__cell--rbl-status">STATUS</th>
+                <th class= "results-table__cell results-table__cell--rbl-response-time">RESPONSE TIME</th>
+            </tr>
+        `;
 
-        // Gắn class riêng để áp dụng layout cột chuyên biệt cho Blacklist
-        resultsTableBody.parentElement.classList.add('results-table--blacklist');
+            // Gắn class riêng để áp dụng layout cột chuyên biệt cho Blacklist
+            resultsTableBody.parentElement.classList.add('results-table--blacklist');
 
-        // Title ban đầu
-        resultsTitle.innerHTML = `
-        <i class="fas fa-shield-alt"></i>
-        Blacklist Check: ${escapeHTML(ip)}
-        <span class="ml-2 badge badge-default">Connecting...</span>
-    `;
+            // Title ban đầu
+            resultsTitle.innerHTML = `
+            <i class="fas fa-shield-alt"></i>
+            Blacklist Check: ${escapeHTML(ip)}
+            <span class="ml-2 badge badge-default">Connecting...</span>
+        `;
 
-        // ✅ 2. SSE STREAM
-        cleanupBlacklistStream();
+            // ✅ 2. SSE STREAM
+            cleanupBlacklistStream();
 
         blacklistEventSource = new EventSource(
             `${API_BASE_URL}/dns/blacklist-stream/${encodeURIComponent(ip)}`
@@ -367,7 +372,25 @@ function init() {
                         console.warn("SSE Timeout: Closing connection after 60s");
                         blacklistEventSource.close();
                         blacklistEventSource = null;
-                        toggleLoading(btnResolve, dLookupIcon, dLookupLoading, false);
+                        
+                        // Đánh dấu các mục chưa xong là TIMEOUT
+                        const pendingCells = resultsTableBody.querySelectorAll(".status-cell");
+                        pendingCells.forEach(cell => {
+                            if (cell.textContent.includes("Đang kiểm tra")) {
+                                cell.innerHTML = renderBlacklistStatus("TIMEOUT");
+                            }
+                        });
+                        
+                        // Cập nhật title thành trạng thái hoàn tất (partial) do timeout
+                        resultsTitle.innerHTML = `
+                        <i class="fas fa-shield-alt"></i>
+                        Blacklist Check:
+                        <div class="results__section-title-rbl-realtime">
+                            ${escapeHTML(data.ip || ip)}
+                            <span class="ml-1 badge badge-warning">Gián đoạn (Quá 60s)</span>
+                        </div>
+                    `;
+                        resolve(); // Báo hoàn thành cho luồng chính
                     }
                 }, 60000); // 60s is plenty for parallel RBL checks
 
@@ -395,13 +418,7 @@ function init() {
                     blacklistEventSource = null;
                 }
 
-                toggleLoading(
-                    btnResolve,
-                    dLookupIcon,
-                    dLookupLoading,
-                    false
-                );
-
+                resolve(); // Báo hoàn thành cho luồng chính
                 return;
             }
 
@@ -446,23 +463,19 @@ function init() {
                     <span class="ml-1 badge badge-warning">Kết nối bị gián đoạn</span>
                 </div>
             `;
+                resolve();
             } else {
                 // Chưa có data gì → lỗi kết nối thực sự
                 const msg = (ip === "127.0.0.1" || ip === "localhost")
                     ? "Địa chỉ IP Local/Loopback không thể kiểm tra Blacklist. Vui lòng dùng IP Public."
                     : "Không thể kết nối với dịch vụ kiểm tra Blacklist hoặc IP không hợp lệ.";
 
-                showError(errorSection, errorMessage, msg, [shareLinkSection, resultsSection]);
+                // Ở đây chúng ta gọi reject để throw lỗi ra ngoài, catch block bên ngoài sẽ hiển thị lỗi
+                reject(new Error(msg));
             }
-
-            toggleLoading(
-                btnResolve,
-                dLookupIcon,
-                dLookupLoading,
-                false
-            );
         };
-    }
+    });
+}
 
     function formatResponseTime(responseTimeMs) {
         return Number.isFinite(responseTimeMs) ? `${responseTimeMs} ms` : "-";
@@ -536,8 +549,7 @@ function init() {
         if (cacheNotice) setDisplay(cacheNotice, "none"); // Reset cache text
         setDisplay(resultsSection, "none"); // Hide main card
 
-        tableWrapper.style.removeProperty("max-height");
-        tableWrapper.style.removeProperty("overflow-y");
+        tableWrapper.classList.remove("table-wrapper--blacklist");
 
         // Xoá class layout Blacklist để không ảnh hưởng các bảng DNS thông thường
         resultsTableBody.parentElement.classList.remove('results-table--blacklist');
@@ -605,10 +617,12 @@ function init() {
 
                 // ISP/ORG có link
                 if (record.isp || record.org) {
+                    const fullText = escapeHTML(record.org || record.isp || "-");
                     const displayText = escapeHTML(getISPDisplay(record));
                     ispOrg = `
                     <a href="${getIPInfoLink(record.address)}"
                        target="_blank"
+                       title="${fullText}"
                        class="isp-link d-inline-flex items-center gap-1 btn btn-success">
                         <span class="isp-link__text">${displayText}</span>
                         <i class="fas fa-external-link-alt isp-link__icon"></i>
@@ -630,10 +644,12 @@ function init() {
             `;
 
                 if (record.isp || record.org) {
+                    const fullText = escapeHTML(record.org || record.isp || "-");
                     const displayText = escapeHTML(getISPDisplay(record));
                     ispOrg = `
                     <a href="${getIPInfoLink(record.address)}"
                         target="_blank"
+                        title="${fullText}"
                         class="isp-link d-inline-flex items-center gap-1 btn btn-success">
                         <span class="isp-link__text">${displayText}</span>
                         <i class="fas fa-external-link-alt isp-link__icon"></i>
@@ -895,7 +911,7 @@ function init() {
 
             resultsTableBody.innerHTML = `
             <tr>
-                <td class = "results-table__cell results-table__cell--domain" data-label="DOMAIN">${escapeHTML(hostname)}</td>
+                <td class = "results-table__cell results-table__cell--domain" data-label="DOMAIN"><span class="results-table__value results-table__value--domain">${escapeHTML(hostname)}</span></td>
                 <td class = "results-table__cell results-table__cell--type-dnssec" data-label="TYPE">${getTypeBadge("DNSSEC")}</td>
                 <td class = "results-table__cell results-table__cell--status-dnssec" data-label="STATUS">
                     <span class="status-badge ${getDNSSECStatusClass(data.data.dnssec.status)}">
@@ -1030,10 +1046,9 @@ function init() {
         hostnameInput.value = cleanHostname;
         shareLink.value = generateShareLink(cleanHostname, "BLACKLIST");
         showElements("block", shareLinkSection, resultsSection, tableWrapper);
-        tableWrapper.style.maxHeight = "650px";
-        tableWrapper.style.overflowY = "auto";
+        tableWrapper.classList.add("table-wrapper--blacklist"); // Sử dụng class thay vì inline style (Rule J-07)
 
-        performBlacklistStream(ip);
+        await performBlacklistStream(ip);
     }
 
     /**

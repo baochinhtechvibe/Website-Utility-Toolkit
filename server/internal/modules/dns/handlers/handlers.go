@@ -70,7 +70,7 @@ func isSafeHostnameForRequest(hostname string) bool {
 	return true
 }
 
-func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSLookupResponse) {
+func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSLookupResponse, err error) {
 	if res.Success {
 		cacheKey := generateCacheKey(req)
 
@@ -90,9 +90,12 @@ func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSL
 			responseAPI.Success(c, res.Data, false, time.Now())
 		}
 	} else {
-		// Nếu có TraceLogs trong response, trả HTTP 200 kèm success: false
-		// để Frontend vẫn nhận được toàn bộ data (bao gồm nhật ký hành trình)
-		if len(res.Data.TraceLogs) > 0 {
+		msgLower := strings.ToLower(res.Message)
+
+		// 1. Lỗi hệ thống bình thường nhưng không tìm thấy dữ liệu HOẶC có TraceLogs
+		isNXDOMAIN := err != nil && errors.Is(err, dns.ErrNXDOMAIN)
+		isNoData := err == nil
+		if len(res.Data.TraceLogs) > 0 || isNoData || isNXDOMAIN || strings.Contains(msgLower, "không tìm thấy") || strings.Contains(msgLower, "không tồn tại") {
 			if res.Message == "" {
 				res.Message = "Không tìm thấy bản ghi DNS!"
 			}
@@ -100,10 +103,11 @@ func sendResponse(c *gin.Context, req *models.DNSLookupRequest, res *models.DNSL
 			return
 		}
 
-		// Trả về lỗi chuẩn hóa cho các trường hợp không có trace logs
-		status := http.StatusBadRequest
+		// 2. Lỗi mạng/upstream
+		status := errutil.GetHTTPStatusCode(err)
+
 		if res.Message == "" {
-			res.Message = "Đã xảy ra lỗi trong quá trình xử lý yêu cầu DNS!"
+			res.Message = "Đã xảy ra lỗi kết nối đến máy chủ DNS!"
 		}
 		responseAPI.Error(c, status, res.Message)
 	}
@@ -523,7 +527,7 @@ func handleTraceRootLookup(c *gin.Context, req *models.DNSLookupRequest, respons
 	}
 
 	// Always send response even if empty
-	sendResponse(c, req, response)
+	sendResponse(c, req, response, finalErr)
 }
 
 // NEW: Smart ALL handler - detects input type and queries accordingly
@@ -571,7 +575,7 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 		} else {
 			response.Message = "Không tìm thấy bản ghi PTR cho IP này."
 		}
-		sendResponse(c, req, response)
+		sendResponse(c, req, response, lookupErr)
 		return
 	}
 
@@ -587,7 +591,7 @@ func handleIPAllRecords(c *gin.Context, serverKey string, req *models.DNSLookupR
 	// Insert summary at the beginning
 	response.Data.Records = append([]interface{}{summary}, allRecords...)
 
-	sendResponse(c, req, response)
+	sendResponse(c, req, response, nil)
 }
 
 // Handle ALL records for domain (A, AAAA, CNAME, MX, TXT, DNSSEC)
@@ -796,16 +800,19 @@ func handleDomainAllRecords(c *gin.Context, serverKey string, req *models.DNSLoo
 
 	if len(allRecords) == 0 {
 		response.Success = false
-		if lookupErr := firstLookupError(aResult.err, aaaaResult.err, mxResult.err, txtResult.err); lookupErr != nil && !errors.Is(lookupErr, dns.ErrNXDOMAIN) {
+		lookupErr := firstLookupError(aResult.err, aaaaResult.err, mxResult.err, txtResult.err)
+		if lookupErr != nil && !errors.Is(lookupErr, dns.ErrNXDOMAIN) {
 			response.Message = fmt.Sprintf("Lỗi từ máy chủ DNS: %s", errutil.TranslateError(lookupErr))
+		} else if errors.Is(lookupErr, dns.ErrNXDOMAIN) {
+			response.Message = fmt.Sprintf("Tên miền %s không tồn tại hoặc chưa có bản ghi DNS.", domain)
 		} else {
 			response.Message = fmt.Sprintf("Không tìm thấy bản ghi nào cho tên miền %s!", domain)
 		}
-		sendResponse(c, req, response)
+		sendResponse(c, req, response, lookupErr)
 		return
 	}
 	response.Data.Records = allRecords
-	sendResponse(c, req, response)
+	sendResponse(c, req, response, nil)
 }
 
 // Original handlers remain unchanged
@@ -841,13 +848,13 @@ func handlePTRLookup(c *gin.Context, serverKey string, req *models.DNSLookupRequ
 		} else {
 			response.Message = "Không tồn tại bản ghi PTR cho IP này."
 		}
-		sendResponse(c, req, response)
+		sendResponse(c, req, response, lookupErr)
 		return
 	}
 
 	response.Success = true
 	response.Data.Records = records
-	sendResponse(c, req, response)
+	sendResponse(c, req, response, nil)
 }
 
 func handleDNSSECLookup(c *gin.Context, serverKey string, req *models.DNSLookupRequest, response *models.DNSLookupResponse) {
@@ -876,7 +883,7 @@ func handleDNSSECLookup(c *gin.Context, serverKey string, req *models.DNSLookupR
 	// DNSSEC lookup không có records thường
 	response.Data.Records = []interface{}{}
 
-	sendResponse(c, req, response)
+	sendResponse(c, req, response, nil)
 }
 
 func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLookupRequest, response *models.DNSLookupResponse) {
@@ -1007,17 +1014,19 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 	if len(records) == 0 {
 		// Không có bản ghi → success:false để FE hiện message-card--error
 		response.Success = false
-		if err != nil {
+		if err != nil && !errors.Is(err, dns.ErrNXDOMAIN) {
 			response.Message = fmt.Sprintf("Lỗi từ máy chủ DNS: %v", errutil.TranslateError(err))
+		} else if errors.Is(err, dns.ErrNXDOMAIN) {
+			response.Message = fmt.Sprintf("Tên miền %s không tồn tại hoặc chưa có bản ghi DNS.", originalDomain)
 		} else {
 			response.Message = fmt.Sprintf("Không tìm thấy bản ghi %s cho tên miền %s!", req.Type, originalDomain)
 		}
-		sendResponse(c, req, response)
+		sendResponse(c, req, response, err)
 		return
 	}
 
 	response.Data.Records = records
-	sendResponse(c, req, response)
+	sendResponse(c, req, response, nil)
 }
 
 func sendSSE(c *gin.Context, payload interface{}) {

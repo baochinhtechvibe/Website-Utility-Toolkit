@@ -11,18 +11,16 @@ package dns
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
+	"tools.bctechvibe.com/server/internal/pkg/geoip"
 
 	"github.com/miekg/dns"
-	"github.com/oschwald/geoip2-golang"
 )
 
 // ErrNXDOMAIN is returned when DNS server confirms domain does not exist.
@@ -32,60 +30,15 @@ var ErrSERVFAIL = errors.New("SERVFAIL")
 var ErrREFUSED = errors.New("REFUSED")
 var ErrFORMERR = errors.New("FORMERR")
 
-var GeoIPDB *geoip2.Reader
-var GeoASNDB *geoip2.Reader
-
-func init() {
-	GeoIPDB = openGeoIPDB("GeoLite2-City.mmdb")
-	if GeoIPDB == nil {
-		log.Println("Không tìm thấy GeoLite2-City.mmdb, thông tin vị trí IP sẽ không khả dụng")
-	} else {
-		log.Println("Đã load thành công GeoLite2-City.mmdb")
-	}
-
-	GeoASNDB = openGeoIPDB("GeoLite2-ASN.mmdb")
-	if GeoASNDB == nil {
-		log.Println("Không tìm thấy GeoLite2-ASN.mmdb, thông tin ASN sẽ không khả dụng")
-	} else {
-		log.Println("Đã load thành công GeoLite2-ASN.mmdb")
-	}
-}
-
-func openGeoIPDB(filename string) *geoip2.Reader {
-	for _, path := range geoIPCandidatePaths(filename) {
-		if _, err := os.Stat(path); err != nil {
-			continue
-		}
-		reader, err := geoip2.Open(path)
-		if err == nil {
-			return reader
-		}
-		log.Printf("Không thể mở GeoIP DB %s: %v", path, err)
-	}
-	return nil
-}
-
-func geoIPCandidatePaths(filename string) []string {
-	paths := []string{
-		filepath.Join("geoip", filename),
-		filepath.Join("server", "geoip", filename),
-	}
-
-	if _, currentFile, _, ok := runtime.Caller(0); ok {
-		serverDir := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", "..", ".."))
-		paths = append(paths, filepath.Join(serverDir, "geoip", filename))
-	}
-
-	return paths
-}
-
 // ============================================
 // PUBLIC FACADE (USED BY HANDLERS)
 // ============================================
 
 // QueryDNSDirect is used for specific lookups like PTR where we explicitly want to target a DoH server.
 func QueryDNSDirect(server string, domain string, qtype uint16) ([]interface{}, error) {
-	return QueryDNSDirectContext(context.Background(), server, domain, qtype)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return QueryDNSDirectContext(ctx, server, domain, qtype)
 }
 
 func QueryDNSDirectContext(ctx context.Context, server string, domain string, qtype uint16) ([]interface{}, error) {
@@ -135,7 +88,9 @@ func isSuspendedOrNotFound(err error, records []models.DNSRecord) bool {
 // Note: true Root DNS tracing is complex. To keep it robust, we use Google and OpenDNS as immediate fallbacks.
 // If all fail, it returns an empty slice.
 func QueryDNS(domain string, qtype uint16) ([]interface{}, string, error) {
-	return QueryDNSContext(context.Background(), domain, qtype)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	return QueryDNSContext(ctx, domain, qtype)
 }
 
 func QueryDNSContext(ctx context.Context, domain string, qtype uint16) ([]interface{}, string, error) {
@@ -283,16 +238,24 @@ func QueryDNSUDP(server, domain string, qtype uint16) []interface{} {
 // ============================================
 
 func enrichIPInfo(record *models.DNSRecord, ip net.IP) {
-	if GeoIPDB != nil {
-		if city, err := GeoIPDB.City(ip); err == nil {
+	if geoip.GeoIPDB != nil {
+		if city, err := geoip.GeoIPDB.City(ip); err == nil {
 			record.Country = city.Country.Names["en"]
 			record.CountryCode = strings.ToLower(city.Country.IsoCode)
 		}
 	}
 
-	if GeoASNDB != nil {
-		if asn, err := GeoASNDB.ASN(ip); err == nil {
+	if geoip.GeoASNDB != nil {
+		if asn, err := geoip.GeoASNDB.ASN(ip); err == nil {
 			org := strings.TrimSpace(asn.AutonomousSystemOrganization)
+			
+			// Attempt to get shorter AS name from Team Cymru DNS
+			if asn.AutonomousSystemNumber > 0 {
+				if shortName := getCymruASName(asn.AutonomousSystemNumber); shortName != "" {
+					org = shortName
+				}
+			}
+
 			if org != "" {
 				record.Org = org
 				record.ISP = org
@@ -309,4 +272,35 @@ func EnrichIPInfoByString(record *models.DNSRecord, ipStr string) {
 	if ip != nil {
 		enrichIPInfo(record, ip)
 	}
+}
+
+// getCymruASName queries Team Cymru DNS to get a short AS Name (e.g. VNNIC-AS-VN)
+func getCymruASName(asn uint) string {
+	if asn == 0 {
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 800*time.Millisecond)
+	defer cancel()
+
+	query := fmt.Sprintf("AS%d.asn.cymru.com", asn)
+	var resolver net.Resolver
+	txtRecords, err := resolver.LookupTXT(ctx, query)
+	if err != nil || len(txtRecords) == 0 {
+		return ""
+	}
+
+	// Format: "45944 | VN | apnic | 2002-08-28 | VNNIC-AS-VN, VN"
+	parts := strings.Split(txtRecords[0], "|")
+	if len(parts) >= 5 {
+		asInfo := strings.TrimSpace(parts[4])
+		
+		// "VNNIC-AS-VN, VN" -> extract "VNNIC-AS-VN"
+		nameParts := strings.Split(asInfo, ",")
+		if len(nameParts) > 0 {
+			return strings.TrimSpace(nameParts[0])
+		}
+		return asInfo
+	}
+	return ""
 }

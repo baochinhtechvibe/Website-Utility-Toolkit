@@ -1,7 +1,11 @@
 package errutil
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -12,6 +16,15 @@ var (
 	reDNSLookup    = regexp.MustCompile(`lookup ([a-zA-Z0-9\-\.]+): no such host`)
 	reCertValidFor = regexp.MustCompile(`x509: certificate is valid for ([^,]+), not ([^\s]+)`)
 )
+
+// GetHTTPStatusCode maps internal errors to proper HTTP status codes
+func GetHTTPStatusCode(err error) int {
+	if err != nil && (errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err)) {
+		return http.StatusGatewayTimeout
+	}
+	// Default upstream/network error (even if err == nil to prevent returning 200 in error branch)
+	return http.StatusBadGateway
+}
 
 // TranslateError dịch các lỗi mạng/hệ thống sang Tiếng Việt dễ hiểu.
 // Lưu ý: hàm này KHÔNG BAO GIỜ trả lỗi gốc (err.Error()) ra ngoài client
@@ -32,12 +45,27 @@ func TranslateError(err error) string {
 		}
 		return "Không phân giải được tên miền. Vui lòng kiểm tra lại địa chỉ website."
 	}
+	if msgLower == "nxdomain" {
+		return "Tên miền không tồn tại (NXDOMAIN)."
+	}
+	if msgLower == "servfail" {
+		return "Máy chủ tên miền (DNS) của website gặp sự cố hoặc cấu hình sai (SERVFAIL)."
+	}
+	if msgLower == "refused" {
+		return "Yêu cầu truy vấn DNS bị từ chối (REFUSED)."
+	}
+	if msgLower == "formerr" {
+		return "Định dạng truy vấn DNS không hợp lệ (FORMERR)."
+	}
 	if strings.Contains(msgLower, "server misbehaving") || strings.Contains(msgLower, "dns lookup") {
 		return "Máy chủ DNS không phản hồi hoặc gặp sự cố. Vui lòng thử lại sau."
 	}
+	if strings.Contains(msgLower, "dns error code") {
+		return "Máy chủ DNS trả về mã lỗi không thành công. Vui lòng thử lại sau."
+	}
 
 	// ─── 2. SSRF Protection ───────────────────────────────────────────────────
-	if strings.Contains(msg, "SSRF Protection") {
+	if strings.Contains(msgLower, "ssrf protection") {
 		return "URL trỏ tới địa chỉ IP nội bộ hoặc mạng riêng, không được phép truy cập từ hệ thống."
 	}
 
@@ -93,7 +121,7 @@ func TranslateError(err error) string {
 	}
 
 	// ─── 7. HTTP Protocol Errors ─────────────────────────────────────────────
-	if strings.Contains(msgLower, "too many redirects") || strings.Contains(msgLower, "stopped after") {
+	if strings.Contains(msgLower, "too many redirects") || strings.Contains(msgLower, "stopped after") || strings.Contains(msgLower, "vượt quá giới hạn chuyển hướng") {
 		return "Website bị lỗi vòng lặp chuyển hướng (Too many redirects)."
 	}
 	if strings.Contains(msgLower, "server gave http response to https client") {

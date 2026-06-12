@@ -15,6 +15,21 @@ import (
 	"tools.bctechvibe.com/server/internal/modules/dns/models"
 )
 
+var dohClient *http.Client
+
+func init() {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.MaxIdleConns = 100
+	t.MaxConnsPerHost = 100
+	t.MaxIdleConnsPerHost = 100
+	t.IdleConnTimeout = 90 * time.Second
+
+	dohClient = &http.Client{
+		Transport: t,
+		// Timeout is handled by request context
+	}
+}
+
 const maxDoHResponseBody = 1024 * 1024
 
 // ✅ FIX: Add Authority section to struct
@@ -32,7 +47,13 @@ type dohRecord struct {
 }
 
 func (r *DoHResolver) Query(domain string, qtype uint16) ([]models.DNSRecord, error) {
-	return r.QueryContext(context.Background(), domain, qtype)
+	timeout := r.Timeout
+	if timeout == 0 {
+		timeout = 10 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return r.QueryContext(ctx, domain, qtype)
 }
 
 func (r *DoHResolver) QueryContext(ctx context.Context, domain string, qtype uint16) ([]models.DNSRecord, error) {
@@ -56,13 +77,7 @@ func (r *DoHResolver) queryJSON(ctx context.Context, domain string, qtype uint16
 	req.URL.RawQuery = q.Encode()
 	req.Header.Set("Accept", "application/dns-json")
 
-	timeout := r.Timeout
-	if timeout == 0 {
-		timeout = 5 * time.Second
-	}
-
-	client := &http.Client{Timeout: timeout}
-	resp, err := client.Do(req)
+	resp, err := dohClient.Do(req)
 	if err != nil {
 		return records, err
 	}
@@ -194,8 +209,7 @@ func (r *DoHResolver) queryRFC8484(ctx context.Context, domain string, qtype uin
 	req.Header.Set("Content-Type", "application/dns-message")
 	req.Header.Set("Accept", "application/dns-message")
 
-	client := &http.Client{Timeout: r.Timeout}
-	resp, err := client.Do(req)
+	resp, err := dohClient.Do(req)
 	if err != nil {
 		return records, err
 	}

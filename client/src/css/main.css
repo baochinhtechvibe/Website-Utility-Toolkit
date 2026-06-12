@@ -20,8 +20,9 @@
 @import './tokens/spacing.css';
 @import './tokens/z-index.css';
 /* ===================================
-   2. BASE
+   2. VENDOR & BASE
    ================================= */
+@import url('../../public/assets/vendor/fontawesome/css/all.min.css');
 @import './base/animations.css';
 @import './base/reset.css';
 @import './base/base.css';
