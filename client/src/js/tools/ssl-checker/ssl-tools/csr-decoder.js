@@ -143,9 +143,12 @@ function init() {
         }
     });
 
+    // --- AbortController state ---
+    let currentAbortController = null;
+
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        
+
         let csr;
         try {
             csr = normalizeCSRInput(inputCsr.value);
@@ -153,6 +156,12 @@ function init() {
             showError(toolError, toolErrorMsg, err.message, [toolResult]);
             return;
         }
+
+        // Abort request cũ nếu đang chạy
+        if (currentAbortController) currentAbortController.abort();
+
+        const controller = new AbortController();
+        currentAbortController = controller;
 
         toggleLoading(btnDecoder, iconDecoder, iconLoading, true);
         setElementsEnabled([inputCsr, btnDecoder], false);
@@ -162,13 +171,23 @@ function init() {
             const response = await fetch(`${API_BASE_URL}/ssl/csr/decode`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ csr })
+                body: JSON.stringify({ csr }),
+                signal: controller.signal,
             });
 
-            const result = await response.json();
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || "Giải mã CSR thất bại.");
+            let result;
+            try {
+                result = await response.json();
+            } catch (_) {
+                throw new Error(`Lỗi từ máy chủ: ${response.status} ${response.statusText}`);
             }
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || result.error || "Giải mã CSR thất bại.");
+            }
+
+            // Stale guard: bỏ qua nếu đã bị đè bởi request mới hơn
+            if (currentAbortController !== controller) return;
 
             const data = result.data;
             renderSuccessHeader(resultTitle, "Kết quả giải mã CSR", "fa-qrcode");
@@ -191,11 +210,17 @@ function init() {
             toolResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
+            // Stale guard: bỏ qua error render nếu đã bị đè
+            if (currentAbortController !== controller) return;
             console.error("Decode Error:", error);
             showError(toolError, toolErrorMsg, error.message, [toolResult]);
         } finally {
-            toggleLoading(btnDecoder, iconDecoder, iconLoading, false);
-            setElementsEnabled([inputCsr, btnDecoder], true);
+            if (currentAbortController === controller) {
+                currentAbortController = null;
+                toggleLoading(btnDecoder, iconDecoder, iconLoading, false);
+                setElementsEnabled([inputCsr, btnDecoder], true);
+            }
         }
     });
 

@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -42,10 +43,10 @@ var (
 // DNS RESOLUTION
 // ===========================
 
-func resolveIP(ctx context.Context, domain string) (string, error) {
+func resolveIP(ctx context.Context, domain string) ([]string, error) {
 	// Nếu domain đã là một IP hợp lệ, trả về luôn để đỡ tốn thời gian DNS
 	if net.ParseIP(domain) != nil {
-		return domain, nil
+		return []string{domain}, nil
 	}
 
 	type result struct {
@@ -88,35 +89,44 @@ func resolveIP(ctx context.Context, domain string) (string, error) {
 		select {
 		case res := <-ch:
 			if res.err == nil && len(res.ips) > 0 {
-				return pickIP(res.ips)
+				return pickIPs(res.ips)
 			}
 			if res.err != nil {
 				lastErr = res.err
 			}
 		case <-ctx.Done():
-			return "", ErrDNSFailed
+			return nil, ctx.Err()
 		}
 	}
 
 	if lastErr != nil {
-		return "", fmt.Errorf("%w: %v", ErrDNSFailed, lastErr)
+		return nil, fmt.Errorf("%w: %w", ErrDNSFailed, lastErr)
 	}
 
-	return "", ErrNoIP
+	return nil, ErrNoIP
 }
 
-func pickIP(ips []net.IP) (string, error) {
+func pickIPs(ips []net.IP) ([]string, error) {
+	var v4s, v6s []string
 	for _, ip := range ips {
-		if v4 := ip.To4(); v4 != nil && ip.IsGlobalUnicast() && !ip.IsPrivate() {
-			return v4.String(), nil
+		if !ip.IsGlobalUnicast() || ip.IsPrivate() {
+			continue
+		}
+		if v4 := ip.To4(); v4 != nil {
+			if len(v4s) < 2 {
+				v4s = append(v4s, v4.String())
+			}
+		} else {
+			if len(v6s) < 1 {
+				v6s = append(v6s, ip.String())
+			}
 		}
 	}
-	for _, ip := range ips {
-		if ip.To16() != nil && ip.IsGlobalUnicast() && !ip.IsPrivate() {
-			return ip.String(), nil
-		}
+	res := append(v4s, v6s...)
+	if len(res) == 0 {
+		return nil, ErrNoIP
 	}
-	return "", ErrNoIP
+	return res, nil
 }
 
 func lookupWithDNS(parent context.Context, domain, dnsAddr string) ([]net.IP, error) {
@@ -130,6 +140,16 @@ func lookupWithDNS(parent context.Context, domain, dnsAddr string) ([]net.IP, er
 	ctx, cancel := context.WithTimeout(parent, 4*time.Second)
 	defer cancel()
 	return r.LookupIP(ctx, "ip", domain)
+}
+
+func shouldRetryTCPDial(err error, attempt int, totalIPs int) bool {
+	if err == nil || attempt >= 2 {
+		return false
+	}
+	if totalIPs <= 1 {
+		return true
+	}
+	return os.IsTimeout(err)
 }
 
 // ===========================
@@ -537,45 +557,83 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 	}
 
 	// 1. DNS resolve
-	ip, err := resolveIP(ctx, domain)
+	ips, err := resolveIP(ctx, domain)
 	if err != nil {
-		return nil, err // Đã có ErrDNSFailed bên trong resolveIP
+		return nil, err // Đã trả đúng ctx.Err() hoặc ErrDNSFailed
 	}
 
 	// 2. TLS handshake
-	// SECURITY: Chỉ dial tới addrIP (đã qua filter private IP trong resolveIP).
-	// Không fallback sang domain để tránh SSRF bypass qua DNS rebinding.
 	dialer := &net.Dialer{Timeout: TLSDialTimeout}
-	addrIP := net.JoinHostPort(ip, "443")
-	baseConf := &tls.Config{ServerName: domain}
+
+	conf := &tls.Config{
+		ServerName:         domain,
+		InsecureSkipVerify: true, //nolint:gosec
+	}
 
 	var conn *tls.Conn
-	var tcpSuccess bool
-
-	conn, tcpSuccess, err = dialTLS(ctx, dialer, addrIP, baseConf)
-
-	var insecureConn bool
+	var finalIP string = ips[0]
+	var anyTCPSuccess bool
+	var lastErr error
 	var handshakeErr string
 
-	if err != nil {
-		// Nếu TCP fail (timeout/connection refused), return lỗi ngay
-		if !tcpSuccess {
-			return nil, fmt.Errorf("%w: %v", ErrTLSFailed, err)
+IP_LOOP:
+	for _, ipStr := range ips {
+		addrIP := net.JoinHostPort(ipStr, "443")
+
+		for attempt := 1; attempt <= 2; attempt++ {
+			c, tcpSuccess, err := dialTLS(ctx, dialer, addrIP, conf)
+			if tcpSuccess {
+				anyTCPSuccess = true
+				finalIP = ipStr // Cập nhật finalIP khi có kết nối TCP thành công
+			}
+
+			if err == nil {
+				conn = c
+				lastErr = nil
+				break IP_LOOP
+			}
+			lastErr = err
+
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+
+			if !tcpSuccess {
+				if !shouldRetryTCPDial(err, attempt, len(ips)) {
+					break
+				}
+				log.Warn().Err(err).Int("attempt", attempt).Str("ip", ipStr).Msg("SSL: TCP dial failed, retrying once...")
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(200 * time.Millisecond):
+				}
+				continue
+			}
+
+			// TCP thành công nhưng Handshake hỏng -> Retry nhẹ 1 lần (cho chính IP này) để chống WAF drop
+			log.Warn().Err(err).Int("attempt", attempt).Str("ip", ipStr).Msg("SSL: handshake dropped, retrying quickly...")
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(200 * time.Millisecond):
+			}
 		}
 
-		// TCP thành công nhưng Handshake fail -> Thử Insecure fallback
-		insecure := baseConf.Clone()
-		insecure.InsecureSkipVerify = true //nolint:gosec
-
-		conn2, _, err2 := dialTLS(ctx, dialer, addrIP, insecure)
-		if err2 == nil {
-			conn = conn2
-			insecureConn = true
-			log.Warn().Str("domain", domain).Str("ip", ip).Msg("SSL: fell back to InsecureSkipVerify")
-		} else {
-			// Cả 2 đều fail -> Đánh dấu lỗi handshake nhưng vẫn tiếp tục để lấy Server Type
-			handshakeErr = fmt.Sprintf("Không tìm thấy chứng chỉ SSL hoặc không thể thiết lập kết nối an toàn tới %s. Vui lòng đảm bảo tên miền đã trỏ đúng IP máy chủ và cổng SSL (mặc định là 443) đang mở.", domain)
+		if anyTCPSuccess && finalIP == ipStr {
+			// Đã có TCP tới IP này nhưng handshake vẫn hỏng -> partial result,
+			// không thử IP khác vì cụm này đã chứng minh server 443 có phản hồi TCP.
+			break IP_LOOP
 		}
+	}
+
+	if lastErr != nil {
+		if !anyTCPSuccess {
+			return nil, fmt.Errorf("%w: %w", ErrTLSFailed, lastErr)
+		}
+		// Có ít nhất 1 lần TCP thành công nhưng Handshake vẫn fail
+		log.Error().Err(lastErr).Str("domain", domain).Msg("SSL: handshake failed even with InsecureSkipVerify")
+		handshakeErr = fmt.Sprintf("Không tìm thấy chứng chỉ SSL hoặc không thể thiết lập kết nối an toàn tới %s. Vui lòng đảm bảo tên miền đã trỏ đúng IP máy chủ và cổng SSL (mặc định là 443) đang mở.", domain)
 	}
 
 	// 3. PARALLEL: Detect server type + OCSP revocation check
@@ -588,9 +646,13 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srvCtx, srvCancel := context.WithTimeout(ctx, ProbeTimeout)
+		timeout := ProbeTimeout
+		if handshakeErr != "" {
+			timeout = 2 * time.Second // Giảm probe timeout xuống 2s nếu TLS fail
+		}
+		srvCtx, srvCancel := context.WithTimeout(ctx, timeout)
 		defer srvCancel()
-		serverType = DetectServerType(srvCtx, domain, ip)
+		serverType = DetectServerType(srvCtx, domain, finalIP)
 	}()
 
 	now := time.Now()
@@ -600,7 +662,7 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		wg.Wait()
 		return &models.SSLCheckResponse{
 			Hostname:       domain,
-			IP:             ip,
+			IP:             finalIP,
 			ServerType:     serverType,
 			HandshakeError: handshakeErr,
 			CheckTime:      now,
@@ -617,7 +679,7 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		wg.Wait()
 		return &models.SSLCheckResponse{
 			Hostname:       domain,
-			IP:             ip,
+			IP:             finalIP,
 			ServerType:     serverType,
 			HandshakeError: fmt.Sprintf("Máy chủ %s không trả về bất kỳ chứng chỉ SSL nào.", domain),
 			CheckTime:      now,
@@ -637,28 +699,41 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 		go func() {
 			defer wg.Done()
 
+			// Hard cap 2.5s cho TOÀN BỘ nhánh Revocation Check (kể cả OCSP và CRL fallback)
+			revCtx, revCancel := context.WithTimeout(ctx, 2500*time.Millisecond)
+			defer revCancel()
+
 			// 1. Thử OCSP (Ưu tiên vì nhanh hơn)
 			if issuer != nil && (len(leaf.OCSPServer) > 0 || len(state.OCSPResponse) > 0) {
-				st, err := CheckOCSP(ctx, leaf, issuer, state.OCSPResponse)
-				if err == nil && st == OCSPStatusRevoked {
-					ocspStatus = OCSPStatusRevoked
-					return
+				st, err := CheckOCSP(revCtx, leaf, issuer, state.OCSPResponse)
+				if err == nil {
+					if st == OCSPStatusRevoked {
+						ocspStatus = OCSPStatusRevoked
+						return
+					}
+					if st == OCSPStatusGood {
+						ocspStatus = OCSPStatusGood
+						return
+					}
 				}
 			}
 
-			// 2. Fallback sang CRL nếu OCSP không có hoặc không báo revoked
+			// 2. Fallback sang CRL nếu OCSP không có hoặc không check được
 			if len(leaf.CRLDistributionPoints) > 0 {
-				revoked, err := CheckCRL(ctx, leaf)
-				if err == nil && revoked {
-					ocspStatus = OCSPStatusRevoked
+				revoked, err := CheckCRL(revCtx, leaf)
+				if err == nil {
+					if revoked {
+						ocspStatus = OCSPStatusRevoked
+					} else {
+						ocspStatus = OCSPStatusGood
+					}
 					return
 				}
-				if err != nil {
-					log.Debug().Err(err).Str("domain", domain).Msg("CRL check failed")
-				}
+				log.Debug().Err(err).Str("domain", domain).Msg("CRL check failed")
 			}
 
-			ocspStatus = OCSPStatusGood
+			// Tất cả điểm kiểm tra đều không thể truy cập hoặc thất bại
+			ocspStatus = OCSPStatusUnknown
 		}()
 	} else {
 		ocspStatus = OCSPStatusUnknown
@@ -701,14 +776,14 @@ func Scan(ctx context.Context, domain string) (*models.SSLCheckResponse, error) 
 
 	return &models.SSLCheckResponse{
 		Hostname:           domain,
-		IP:                 ip,
+		IP:                 finalIP,
 		ServerType:         serverType,
 		Valid:              valid,
 		IsExpired:          isExpired,
 		DaysLeft:           daysLeft,
 		TLSVersion:         tlsVersion,
 		CipherSuite:        cipherSuite,
-		InsecureConnection: insecureConn,
+		InsecureConnection: false,
 		HostnameOK:         hostnameOK,
 		Trusted:            trust.Trusted,
 		TrustIssues:        trust.Issues,

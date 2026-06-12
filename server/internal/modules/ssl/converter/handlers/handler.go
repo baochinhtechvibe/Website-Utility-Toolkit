@@ -62,8 +62,8 @@ func (h *ConvertHandler) HandleConvert(c *gin.Context) {
 
 	// 1. Phân tích MultiPart Form với max memory 2MB.
 	if err := c.Request.ParseMultipartForm(2 << 20); err != nil {
-		log.Error().Err(err).Msg("Failed to parse multipart form for Converter")
-		response.Error(c, http.StatusBadRequest, "Dữ liệu kích thước quá lớn.")
+		log.Warn().Err(err).Msg("Failed to parse multipart form for Converter (input quá lớn hoặc sai định dạng)")
+		response.Error(c, http.StatusBadRequest, "Dữ liệu kích thước quá lớn hoặc không hợp lệ.")
 		return
 	}
 
@@ -146,6 +146,8 @@ func (h *ConvertHandler) HandleConvert(c *gin.Context) {
 		return
 	}
 
-	// 6. Trả response chuẩn API (success: true, data: { ... })
+	// 6. Trả response chuẩn API kèm Security Headers chống cache
+	c.Header("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
+	c.Header("Pragma", "no-cache")
 	response.SuccessNoMeta(c, res)
 }

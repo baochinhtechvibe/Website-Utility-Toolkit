@@ -6,7 +6,10 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
+
+	"golang.org/x/net/idna"
 
 	"tools.bctechvibe.com/server/internal/modules/ssl/generator/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/generator/service"
@@ -22,6 +25,24 @@ var domainRe = regexp.MustCompile(
 	`^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`,
 )
 
+// csrSemaphore giới hạn số lượng request sinh key RSA/ECDSA chạy song song toàn server.
+// RSA 4096 là CPU-bound, cho phép tối đa 5 goroutine song song để tránh starve CPU.
+var csrSemaphore = make(chan struct{}, 5)
+
+func normalizeIDN(host string) string {
+	// Bỏ prefix wildcard trước khi normalize
+	prefix := ""
+	if strings.HasPrefix(host, "*.") {
+		prefix = "*."
+		host = host[2:]
+	}
+	// Thử chuyển Unicode domain → Punycode (idna.Lookup)
+	if ascii, err := idna.Lookup.ToASCII(host); err == nil {
+		return prefix + ascii
+	}
+	return prefix + host
+}
+
 func isValidCN(cn string) bool {
 	if cn == "localhost" {
 		return true
@@ -29,7 +50,8 @@ func isValidCN(cn string) bool {
 	if net.ParseIP(cn) != nil {
 		return true
 	}
-	return domainRe.MatchString(cn)
+	normalized := normalizeIDN(cn)
+	return domainRe.MatchString(normalized)
 }
 
 // GeneratorHandler đại diện cho bộ Router Handler của mô hình CSR Generator
@@ -56,9 +78,20 @@ func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
 		return
 	}
 
+	// Trim server-side tất cả subject fields để tránh nhồi khoảng trắng
+	req.DomainName = strings.TrimSpace(req.DomainName)
+	req.State = strings.TrimSpace(req.State)
+	req.Locality = strings.TrimSpace(req.Locality)
+	req.Organization = strings.TrimSpace(req.Organization)
+	req.OrganizationalUnit = strings.TrimSpace(req.OrganizationalUnit)
+	req.Country = strings.TrimSpace(req.Country)
+
+	// Normalize IDN → Punycode trước khi validate
+	req.DomainName = normalizeIDN(req.DomainName)
+
 	// Validate Struct Fields bắt buộc của Interface
 	if err := h.validate.Struct(req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Dữ liệu cấu hình không hợp chuẩn (Bắt buộc phải có Tên miền, Key Type và Size)")
+		response.Error(c, http.StatusBadRequest, "Dữ liệu cấu hình không hợp chuẩn (Kiểm tra lại độ dài và định dạng các trường)")
 		return
 	}
 
@@ -75,7 +108,7 @@ func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
 		}
 	}
 
-	// Validate Regex Regex Domain Name (CN)
+	// Validate Regex Domain Name (CN) — sau IDN normalize
 	if !isValidCN(req.DomainName) {
 		response.Error(c, http.StatusBadRequest, "Định dạng tên miền (Common Name) không hợp lệ")
 		return
@@ -84,13 +117,17 @@ func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
 	// Validate mảng SANs tối đa 100 Items
 	var validSans []string
 	for _, san := range req.Sans {
-		if san != "" {
-			if !isValidCN(san) {
-				response.Error(c, http.StatusBadRequest, "Danh sách SANs chứa Tên miền hoặc IP bị hỏng cấu trúc chuẩn")
-				return
-			}
-			validSans = append(validSans, san)
+		san = strings.TrimSpace(san)
+		if san == "" {
+			continue
 		}
+		// Normalize IDN cho từng SAN
+		san = normalizeIDN(san)
+		if !isValidCN(san) {
+			response.Error(c, http.StatusBadRequest, "Danh sách SANs chứa Tên miền hoặc IP bị hỏng cấu trúc chuẩn")
+			return
+		}
+		validSans = append(validSans, san)
 	}
 	if len(validSans) > 100 {
 		response.Error(c, http.StatusBadRequest, "Chỉ cho phép khai báo tối đa 100 IP/Domain con (SANs)")
@@ -98,11 +135,20 @@ func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
 	}
 	req.Sans = validSans
 
-	// Khởi tạo Context Timeout cho phép gen 30 giây phục vụ Thread Block API đối với các server yếu (Core i3 không kéo nổi file 4096 liên tục)
+	// Khởi tạo Context Timeout trước semaphore để deadline chạy ngay từ đây
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
-	// Kích hoạt Core Logic x509 Module của Golang (No OpenSSL, No Exec, Memory-based, Native C Code speed)
+	// Semaphore: fail-fast nếu đang bận tối đa, trả 503 ngay lập tức không queue
+	select {
+	case csrSemaphore <- struct{}{}:
+		defer func() { <-csrSemaphore }()
+	default:
+		response.Error(c, http.StatusServiceUnavailable, "Máy chủ đang bận sinh khóa, vui lòng thử lại sau")
+		return
+	}
+
+	// Kích hoạt Core Logic x509 Module của Golang
 	res, err := h.svc.GenerateCSR(ctx, &req)
 	if err != nil {
 		log.Error().Err(err).Msg("GenerateCSR Service x509 Error")
@@ -115,6 +161,10 @@ func (h *GeneratorHandler) GenerateCSR(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, errutil.TranslateError(err))
 		return
 	}
+
+	// [P1] Ngăn proxy/CDN/browser cache response chứa private key
+	c.Header("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
+	c.Header("Pragma", "no-cache")
 
 	response.SuccessNoMeta(c, res)
 }

@@ -1,66 +1,55 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"tools.bctechvibe.com/server/internal/modules/ssl/converter/service"
+	"tools.bctechvibe.com/server/internal/modules/ssl/converter/handlers"
+	"tools.bctechvibe.com/server/internal/modules/ssl/converter/models"
 )
 
-func TestHandleConvert_MultipartSizeLimit(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	router := gin.Default()
-
-	// Khởi tạo handler với real service (tuy nhiên test sẽ fail trước khi gọi service)
-	svc := service.New()
-	handler := NewConvertHandler(svc)
-
-	router.POST("/convert", handler.HandleConvert)
-
-	// Tạo một request Multipart giả mạo lớn hơn giới hạn 2MB (VD: 3MB)
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	// Thêm 3MB dữ liệu vào form
-	part, err := writer.CreateFormFile("certificate", "cert.pem")
-	if err != nil {
-		t.Fatalf("Failed to create form file: %v", err)
-	}
-
-	// Ghi 3MB chuỗi 'a'
-	largeData := strings.Repeat("a", 3*1024*1024)
-	part.Write([]byte(largeData))
-
-	writer.WriteField("currentFormat", "pem")
-	writer.WriteField("targetFormat", "der")
-	writer.Close()
-
-	req, _ := http.NewRequest(http.MethodPost, "/convert", body)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	// Nếu http.MaxBytesReader (2MB) hoạt động, ParseMultipartForm sẽ trả về lỗi HTTP 400 hoặc hệ thống chặn request
-	// Error code sẽ phụ thuộc vào việc Gin xử lý EOF hoặc max bytes
-	if w.Code != http.StatusBadRequest && w.Code != http.StatusRequestEntityTooLarge {
-		t.Errorf("Expected 400 or 413 for multipart too large, got %v", w.Code)
-	}
+// --- Mock Service ---
+type mockService struct {
+	convertFunc func(ctx context.Context, req *models.ConvertRequest) (*models.ConvertResponse, error)
 }
+
+func (m *mockService) Convert(ctx context.Context, req *models.ConvertRequest) (*models.ConvertResponse, error) {
+	if m.convertFunc != nil {
+		return m.convertFunc(ctx, req)
+	}
+	return &models.ConvertResponse{
+		Filename:    "test.pem",
+		Data:        "dGVzdA==",
+		ContentType: "application/x-pem-file",
+	}, nil
+}
+
+func init() {
+	gin.SetMode(gin.TestMode)
+}
+
+func setupRouter(svc *mockService) *gin.Engine {
+	router := gin.Default()
+	handler := handlers.NewConvertHandler(svc)
+	router.POST("/convert", handler.HandleConvert)
+	return router
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
 
 func generateTestCertPEM(t *testing.T) []byte {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -86,39 +75,144 @@ func generateTestCertPEM(t *testing.T) []byte {
 	return pem.EncodeToMemory(pemBlock)
 }
 
-func TestHandleConvert_HappyPath_PEM2DER(t *testing.T) {
-	// Skip if openssl is not available
-	if _, err := exec.LookPath("openssl"); err != nil {
-		t.Skip("OpenSSL not installed, skipping happy path test")
-	}
-
-	gin.SetMode(gin.TestMode)
-	router := gin.Default()
-	svc := service.New()
-	handler := NewConvertHandler(svc)
-	router.POST("/convert", handler.HandleConvert)
-
+func createMultipartReq(t *testing.T, currentFormat, targetFormat string, certData []byte) (*http.Request, string) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	certPEM := generateTestCertPEM(t)
-	part, err := writer.CreateFormFile("certificate", "cert.pem")
-	if err != nil {
-		t.Fatalf("Failed to create form file: %v", err)
+	if certData != nil {
+		part, err := writer.CreateFormFile("certificate", "cert.pem")
+		if err != nil {
+			t.Fatalf("Failed to create form file: %v", err)
+		}
+		part.Write(certData)
 	}
-	part.Write(certPEM)
 
-	writer.WriteField("currentFormat", "pem")
-	writer.WriteField("targetFormat", "der")
+	if currentFormat != "" {
+		writer.WriteField("currentFormat", currentFormat)
+	}
+	if targetFormat != "" {
+		writer.WriteField("targetFormat", targetFormat)
+	}
 	writer.Close()
 
 	req, _ := http.NewRequest(http.MethodPost, "/convert", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req, writer.FormDataContentType()
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────
+
+func TestHandleConvert_ValidRequest(t *testing.T) {
+	svc := &mockService{}
+	router := setupRouter(svc)
+	certPEM := generateTestCertPEM(t)
+	req, _ := createMultipartReq(t, "pem", "der", certPEM)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200 OK for valid conversion, got %v", w.Code)
+		t.Errorf("Expected 200 OK, got %v", w.Code)
+	}
+
+	// Đảm bảo có Cache-Control: no-store
+	cc := w.Header().Get("Cache-Control")
+	if !strings.Contains(cc, "no-store") {
+		t.Errorf("Expected Cache-Control: no-store in response, got %s", cc)
+	}
+}
+
+func TestHandleConvert_InvalidFormat(t *testing.T) {
+	svc := &mockService{}
+	router := setupRouter(svc)
+	certPEM := generateTestCertPEM(t)
+	// 'txt' is invalid
+	req, _ := createMultipartReq(t, "txt", "der", certPEM)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for invalid format, got %v", w.Code)
+	}
+}
+
+func TestHandleConvert_SameFormat(t *testing.T) {
+	svc := &mockService{}
+	router := setupRouter(svc)
+	certPEM := generateTestCertPEM(t)
+	// pem -> pem is invalid
+	req, _ := createMultipartReq(t, "pem", "pem", certPEM)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for same format, got %v", w.Code)
+	}
+}
+
+func TestHandleConvert_MissingCertificate(t *testing.T) {
+	svc := &mockService{}
+	router := setupRouter(svc)
+	// certData = nil
+	req, _ := createMultipartReq(t, "pem", "der", nil)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for missing certificate, got %v", w.Code)
+	}
+}
+
+func TestHandleConvert_PerFileTooLarge(t *testing.T) {
+	svc := &mockService{}
+	router := setupRouter(svc)
+	// 513KB file
+	largeData := bytes.Repeat([]byte("A"), 513*1024)
+	req, _ := createMultipartReq(t, "pem", "der", largeData)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for file too large, got %v", w.Code)
+	}
+}
+
+func TestHandleConvert_ServiceTimeout(t *testing.T) {
+	svc := &mockService{
+		convertFunc: func(ctx context.Context, req *models.ConvertRequest) (*models.ConvertResponse, error) {
+			return nil, context.DeadlineExceeded
+		},
+	}
+	router := setupRouter(svc)
+	certPEM := generateTestCertPEM(t)
+	req, _ := createMultipartReq(t, "pem", "der", certPEM)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusGatewayTimeout {
+		t.Errorf("Expected 504 for service timeout, got %v", w.Code)
+	}
+}
+
+func TestHandleConvert_ServiceError(t *testing.T) {
+	svc := &mockService{
+		convertFunc: func(ctx context.Context, req *models.ConvertRequest) (*models.ConvertResponse, error) {
+			return nil, errors.New("Mật khẩu PFX là bắt buộc để mã hóa/giải mã.")
+		},
+	}
+	router := setupRouter(svc)
+	certPEM := generateTestCertPEM(t)
+	req, _ := createMultipartReq(t, "pem", "der", certPEM)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for service input error, got %v", w.Code)
 	}
 }

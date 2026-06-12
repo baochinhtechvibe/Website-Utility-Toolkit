@@ -11,6 +11,9 @@ import { API_BASE_URL } from "../../../config.js";
  * Refactored to be robust against browser gesture timeouts
  */
 export function init() {
+    // --- AbortController state ---
+    let currentAbortController = null;
+
     const form = document.getElementById("formConverter");
     if (!form) return;
 
@@ -82,6 +85,10 @@ export function init() {
 
     // --- Result Reset ---
     function clearResults() {
+        if (currentAbortController) {
+            currentAbortController.abort();
+        }
+
         setDisplay(mainErrorCard, "none");
         if (mainSuccessCard) setDisplay(mainSuccessCard, "none");
         const downloadArea = document.getElementById("converterDownloadArea");
@@ -199,17 +206,27 @@ export function init() {
             }
         }
 
+        // Abort request cũ nếu đang chạy
+        if (currentAbortController) currentAbortController.abort();
+        const controller = new AbortController();
+        currentAbortController = controller;
+
         try {
             toggleLoading(btnSubmit, iconNormal, iconLoading, true);
             setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputKey, inputChain1, inputChain2, inputPfxPw], false);
 
             const response = await fetch(`${API_BASE_URL}/ssl/converter/convert`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
 
-            const result = await response.json();
-
+            let result;
+            try {
+                result = await response.json();
+            } catch (_) {
+                throw new Error(`Lỗi từ máy chủ: ${response.status} ${response.statusText}`);
+            }
 
             // Logic check: ưu tiên response.ok và bọc dữ liệu trong .data
             if (!response.ok || (result.success === false)) {
@@ -221,6 +238,8 @@ export function init() {
             const payload = result.data || result; 
             const { filename, data, contentType } = payload;
             
+            if (currentAbortController !== controller) return;
+
             const ok = await triggerDownload(data, filename, contentType);
 
             if (ok) {
@@ -228,18 +247,24 @@ export function init() {
                     setDisplay(mainSuccessCard, "block");
                     mainSuccessCard.scrollIntoView({ behavior: "smooth", block: "center" });
                 }
-                // Clear password for security
-                if (inputPfxPw) inputPfxPw.value = "";
             } else {
                 throw new Error("Không thể tạo tệp tải về trên trình duyệt này.");
             }
 
         } catch (err) {
+            if (err.name === 'AbortError') return;
+            if (currentAbortController !== controller) return;
             showError(mainErrorCard, mainErrorCard.querySelector(".message-card__message"), err.message);
             if (mainSuccessCard) setDisplay(mainSuccessCard, "none");
         } finally {
-            toggleLoading(btnSubmit, iconNormal, iconLoading, false);
-            setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputKey, inputChain1, inputChain2, inputPfxPw], true);
+            if (currentAbortController === controller) {
+                currentAbortController = null;
+                toggleLoading(btnSubmit, iconNormal, iconLoading, false);
+                setElementsEnabled([btnSubmit, selectCurrent, selectTarget, inputCert, inputKey, inputChain1, inputChain2, inputPfxPw], true);
+                
+                // Clear password for security on every attempt
+                if (inputPfxPw) inputPfxPw.value = "";
+            }
         }
     });
 

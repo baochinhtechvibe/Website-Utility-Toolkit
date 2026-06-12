@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
@@ -9,16 +9,24 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/handlers"
 	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/models"
 	"tools.bctechvibe.com/server/internal/modules/ssl/key-matcher/service"
 )
 
-func TestHandleKeyMatch_ResponseShape(t *testing.T) {
+func init() {
 	gin.SetMode(gin.TestMode)
+}
 
+func setupRouter() *gin.Engine {
 	router := gin.Default()
-	handler := NewKeyMatchHandler(service.New())
+	handler := handlers.NewKeyMatchHandler(service.New())
 	router.POST("/match", handler.HandleKeyMatch)
+	return router
+}
+
+func TestHandleKeyMatch_ResponseShape(t *testing.T) {
+	router := setupRouter()
 
 	// Dùng chuỗi rác để trigger input_errors (đảm bảo code service.Match() trả về SuccessNoMeta với InputErrors)
 	reqPayload := models.MatchRequest{
@@ -61,11 +69,7 @@ func TestHandleKeyMatch_ResponseShape(t *testing.T) {
 }
 
 func TestHandleKeyMatch_PayloadLimit(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	router := gin.Default()
-	handler := NewKeyMatchHandler(service.New())
-	router.POST("/match", handler.HandleKeyMatch)
+	router := setupRouter()
 
 	// Tạo payload 600KB (vượt quá MaxBytesReader 512KB)
 	largeInput := strings.Repeat("a", 600*1024)
@@ -85,5 +89,40 @@ func TestHandleKeyMatch_PayloadLimit(t *testing.T) {
 	// ShouldBindJSON khi gặp MaxBytesReader lỗi sẽ văng 400 Bad Request
 	if w.Code != http.StatusBadRequest && w.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("Expected 400 or 413 for payload too large, got %v. Body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleKeyMatch_InvalidMatchType(t *testing.T) {
+	router := setupRouter()
+
+	reqPayload := models.MatchRequest{
+		Type:   "invalid_type",
+		Input1: "valid_input",
+		Input2: "valid_input",
+	}
+	body, _ := json.Marshal(reqPayload)
+
+	req, _ := http.NewRequest(http.MethodPost, "/match", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for invalid match type, got %v", w.Code)
+	}
+}
+
+func TestHandleKeyMatch_MalformedJSON(t *testing.T) {
+	router := setupRouter()
+
+	req, _ := http.NewRequest(http.MethodPost, "/match", strings.NewReader("{ invalid_json }"))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for malformed JSON, got %v", w.Code)
 	}
 }

@@ -12,6 +12,7 @@ package service
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -25,8 +26,10 @@ import (
 )
 
 var (
-	ErrInvalidPEM = errors.New("PEM block không hợp lệ")
-	ErrInvalidCER = errors.New("Certificate không thể parse được")
+	ErrInvalidPEM   = errors.New("PEM block không hợp lệ")
+	ErrInvalidCER   = errors.New("Certificate không thể parse được")
+	ErrCertTooLarge = errors.New("Certificate vượt quá kích thước cho phép")
+	ErrTrailingPEM  = errors.New("PEM chứa dữ liệu thừa sau Certificate")
 )
 
 type Service struct{}
@@ -42,6 +45,8 @@ func getKeySize(pubKey interface{}) int {
 		return pub.N.BitLen()
 	case *ecdsa.PublicKey:
 		return pub.Params().BitSize
+	case ed25519.PublicKey:
+		return len(pub) * 8
 	default:
 		return 0
 	}
@@ -52,7 +57,7 @@ func (s *Service) Decode(ctx context.Context, certPEM string) (*models.CERDecode
 	const maxCertSize = 100 * 1024 // 100KB
 	// Pre-validate size before anything else
 	if len(certPEM) > maxCertSize {
-		return nil, errors.New("certificate vượt quá kích thước cho phép")
+		return nil, ErrCertTooLarge
 	}
 
 	// 1. Preprocess
@@ -69,9 +74,14 @@ func (s *Service) Decode(ctx context.Context, certPEM string) (*models.CERDecode
 	}
 
 	// 2. Decode PEM
-	block, _ := pem.Decode([]byte(certPEM))
+	block, rest := pem.Decode([]byte(certPEM))
 	if block == nil {
 		return nil, fmt.Errorf("%w: failed to decode PEM block", ErrInvalidPEM)
+	}
+
+	// Reject trailing data (e.g. private keys, extra certs)
+	if strings.TrimSpace(string(rest)) != "" {
+		return nil, ErrTrailingPEM
 	}
 
 	// Friendly block type mapping

@@ -13,6 +13,9 @@ import { initFileUploadToggle, resetFileUpload } from "../../../utils/file-uploa
  * Refactored to modular init() pattern
  */
 export function init() {
+    // --- AbortController state ---
+    let currentAbortController = null;
+
     const form = document.getElementById("formKeyMatcher");
     if (!form) return;
 
@@ -134,6 +137,10 @@ export function init() {
 
     // ─── Cập nhật nhãn và xóa state khi đổi mode ─────────────────────────────
     function updateLabels() {
+        if (currentAbortController) {
+            currentAbortController.abort();
+        }
+
         if (!lblBox1 || !lblBox2) return;
 
         box1.value = "";
@@ -317,9 +324,18 @@ export function init() {
         const input1 = box1.value.trim();
         const input2 = box2.value.trim();
 
+        // Abort request cũ nếu đang chạy
+        if (currentAbortController) currentAbortController.abort();
+        const controller = new AbortController();
+        currentAbortController = controller;
+
+        const modeControls = [
+            ...document.querySelectorAll('input[name="matcherMode"], input[name="matcher1Mode"], input[name="matcher2Mode"]')
+        ];
+
         setDisplay(resultCard, "none");
         setDisplay(errorCard, "none");
-        setElementsEnabled([box1, box2, btnSubmit], false);
+        setElementsEnabled([box1, box2, btnSubmit, ...modeControls], false);
         toggleLoading(btnSubmit, iconNormal, iconLoading, true);
 
         let hasInputErrors = false;
@@ -329,14 +345,21 @@ export function init() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type: mode, input1, input2 }),
+                signal: controller.signal,
             });
 
-            const rawData = await response.json();
+            let rawData;
+            try {
+                rawData = await response.json();
+            } catch (_) {
+                throw new Error(`Lỗi từ máy chủ: ${response.status} ${response.statusText}`);
+            }
 
             if (!response.ok) {
-                showError(errorCard, errorMsg, rawData.message || "Lỗi hệ thống không xác định.", [resultCard]);
-                return;
+                throw new Error(rawData.message || rawData.error || "Lỗi hệ thống không xác định.");
             }
+
+            if (currentAbortController !== controller) return;
 
             // Unwrap: backend trả { success, data: { matched, input_errors, ... } }
             const result = rawData.data || rawData;
@@ -358,11 +381,16 @@ export function init() {
             }
 
         } catch (err) {
-            showError(errorCard, errorMsg, "Không thể kết nối đến máy chủ. Vui lòng thử lại.", [resultCard]);
+            if (err.name === 'AbortError') return;
+            if (currentAbortController !== controller) return;
+            showError(errorCard, errorMsg, err.message || "Không thể kết nối đến máy chủ. Vui lòng thử lại.", [resultCard]);
         } finally {
-            toggleLoading(btnSubmit, iconNormal, iconLoading, false);
-            setElementsEnabled([box1, box2, btnSubmit], true);
-            if (hasInputErrors) btnSubmit.disabled = true;
+            if (currentAbortController === controller) {
+                currentAbortController = null;
+                toggleLoading(btnSubmit, iconNormal, iconLoading, false);
+                setElementsEnabled([box1, box2, btnSubmit, ...modeControls], true);
+                if (hasInputErrors) btnSubmit.disabled = true;
+            }
         }
     });
 

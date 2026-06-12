@@ -2,14 +2,13 @@ package models
 
 // GenerateCSRRequest định nghĩa cấu trúc JSON nhận từ Client cho tính năng khởi tạo CSR Generator.
 type GenerateCSRRequest struct {
-	DomainName string `json:"domainName" validate:"required"`
-	// Sans là danh sách tên miền phụ. Client phải gửi dạng JSON array ["www.ex.com"], không gửi comma-separated.
+	DomainName         string   `json:"domainName" validate:"required,max=253"`
 	Sans               []string `json:"sans"`
 	Country            string   `json:"country" validate:"omitempty,len=2"`
-	State              string   `json:"state"`
-	Locality           string   `json:"locality"`
-	Organization       string   `json:"organization"`
-	OrganizationalUnit string   `json:"organizationalUnit"`
+	State              string   `json:"state" validate:"omitempty,max=128"`
+	Locality           string   `json:"locality" validate:"omitempty,max=128"`
+	Organization       string   `json:"organization" validate:"omitempty,max=256"`
+	OrganizationalUnit string   `json:"organizationalUnit" validate:"omitempty,max=256"`
 	KeyType            string   `json:"keyType" validate:"required,oneof=rsa ecdsa"`
 	KeySize            int      `json:"keySize" validate:"required,min=1"`
 }

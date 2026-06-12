@@ -50,10 +50,30 @@ func (h *CSRHandler) HandleCSRDecode(c *gin.Context) {
 	// 3. Decode
 	result, err := h.svc.Decode(ctx, req.CSR)
 	if err != nil {
-		log.Error().Err(err).Msg("Decode CSR error")
+		// Hạ log level xuống Warn cho các lỗi input của người dùng
+		if errors.Is(err, service.ErrCSRTooLarge) ||
+			errors.Is(err, service.ErrTrailingPEM) ||
+			errors.Is(err, service.ErrInvalidPEM) ||
+			errors.Is(err, service.ErrInvalidCSR) {
+			log.Warn().Err(err).Msg("Decode CSR input error")
+		} else {
+			log.Error().Err(err).Msg("Decode CSR internal error")
+		}
 
 		if errors.Is(err, context.DeadlineExceeded) {
 			response.Error(c, http.StatusGatewayTimeout, "Xử lý yêu cầu quá hạn, vui lòng thử lại")
+			return
+		}
+
+		// [P1] CSR quá lớn là lỗi input của user → 400, không phải 500
+		if errors.Is(err, service.ErrCSRTooLarge) {
+			response.Error(c, http.StatusBadRequest, "CSR vượt quá kích thước cho phép (tối đa 100KB)")
+			return
+		}
+
+		// [P2] Trailing PEM data → 400
+		if errors.Is(err, service.ErrTrailingPEM) {
+			response.Error(c, http.StatusBadRequest, "Dữ liệu PEM chứa nội dung thừa sau CSR (private key, chứng chỉ khác...)")
 			return
 		}
 

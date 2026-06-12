@@ -12,6 +12,7 @@ package service
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -23,8 +24,10 @@ import (
 )
 
 var (
-	ErrInvalidPEM = errors.New("PEM block không hợp lệ")
-	ErrInvalidCSR = errors.New("CSR không thể parse được")
+	ErrInvalidPEM  = errors.New("PEM block không hợp lệ")
+	ErrInvalidCSR  = errors.New("CSR không thể parse được")
+	ErrCSRTooLarge = errors.New("CSR vượt quá kích thước cho phép")
+	ErrTrailingPEM = errors.New("PEM chứa dữ liệu thừa sau CSR")
 )
 
 type Service struct{}
@@ -40,9 +43,10 @@ func (s *Service) Decode(ctx context.Context, csrPEM string) (*models.CSRDecodeR
 	csrPEM = strings.ReplaceAll(csrPEM, "\r\n", "\n")
 	csrPEM = strings.TrimSpace(csrPEM)
 
+	// [P1] Dùng sentinel ErrCSRTooLarge để handler map về 400 thay vì 500
 	const maxCSRSize = 100 * 1024 // 100KB
 	if len(csrPEM) > maxCSRSize {
-		return nil, errors.New("CSR vượt quá kích thước cho phép")
+		return nil, ErrCSRTooLarge
 	}
 
 	select {
@@ -52,13 +56,18 @@ func (s *Service) Decode(ctx context.Context, csrPEM string) (*models.CSRDecodeR
 	}
 
 	// 2. Decode PEM
-	block, _ := pem.Decode([]byte(csrPEM))
+	block, rest := pem.Decode([]byte(csrPEM))
 	if block == nil {
 		return nil, fmt.Errorf("%w: failed to decode PEM block", ErrInvalidPEM)
 	}
 
 	if block.Type != "CERTIFICATE REQUEST" && block.Type != "NEW CERTIFICATE REQUEST" {
 		return nil, fmt.Errorf("%w: invalid PEM type %s", ErrInvalidPEM, block.Type)
+	}
+
+	// [P2] Reject trailing data (private key, extra certs, v.v.)
+	if strings.TrimSpace(string(rest)) != "" {
+		return nil, ErrTrailingPEM
 	}
 
 	// 3. Parse CSR
@@ -105,12 +114,14 @@ func (s *Service) Decode(ctx context.Context, csrPEM string) (*models.CSRDecodeR
 		Algorithm: req.PublicKeyAlgorithm.String(),
 	}
 
-	// Key Size
+	// Key Size — [P2] bổ sung Ed25519
 	switch pub := req.PublicKey.(type) {
 	case *rsa.PublicKey:
 		resp.KeySize = pub.N.BitLen()
 	case *ecdsa.PublicKey:
 		resp.KeySize = pub.Params().BitSize
+	case ed25519.PublicKey:
+		resp.KeySize = len(pub) * 8 // 256 bit
 	default:
 		resp.KeySize = 0
 	}

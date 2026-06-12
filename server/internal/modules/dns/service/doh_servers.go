@@ -26,7 +26,7 @@ var DoHServers = map[string]*DoHResolver{
 		Name:         "Cloudflare",
 		Endpoint:     "https://cloudflare-dns.com/dns-query",
 		Timeout:      5 * time.Second,
-		SupportsJSON: false,  // ✅ FIX: Cloudflare uses RFC 8484 binary format, NOT JSON
+		SupportsJSON: false, // ✅ FIX: Cloudflare uses RFC 8484 binary format, NOT JSON
 	},
 	"quad9": {
 		Key:          "quad9",

@@ -126,16 +126,20 @@ func HandleSSLCheck(c *gin.Context) {
 		return
 	}
 
-	// 7. Update cache & Log success
-	sslCache.Set(cacheKey, cachedSSL{
-		Data:      result,
-		FetchedAt: time.Now(),
-	}, 0)
-
 	if result.HandshakeError != "" {
 		log.Warn().Str("domain", domain).Str("error", result.HandshakeError).Msg("SSL handshake failed (Partial Result)")
+		// Cache partial result với TTL cực ngắn (ví dụ: 30 giây) để tránh chặn người dùng thử lại thành công
+		sslCache.Set(cacheKey, cachedSSL{
+			Data:      result,
+			FetchedAt: time.Now(),
+		}, 30*time.Second)
 	} else {
 		log.Info().Str("domain", domain).Dur("duration", duration).Msg("SSL check success")
+		// 7. Update cache bình thường nếu thành công hoàn toàn
+		sslCache.Set(cacheKey, cachedSSL{
+			Data:      result,
+			FetchedAt: time.Now(),
+		}, 0) // Dùng TTL mặc định
 	}
 
 	// 8. Response thành công (ngay cả khi handshake_error có dữ liệu, vì ta vẫn có IP/ServerType)

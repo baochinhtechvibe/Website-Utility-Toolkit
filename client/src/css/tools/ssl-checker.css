@@ -216,6 +216,8 @@
 .ssl-checker__icon--expiryDay-critical { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/day_left_critical.png"); }
 .ssl-checker__icon--hostnameok { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/hostname_ok.png"); }
 .ssl-checker__icon--hostnamefalse { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/critical.png"); }
+.ssl-checker__icon--cipher { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/cipher.png"); }
+.ssl-checker__icon--public-key { background-image: url("/client/public/assets/images/tools/ssl/summary_icon/public-key.png"); }
 
 .ssl-checker__message { 
     color: var(--color-text-secondary);

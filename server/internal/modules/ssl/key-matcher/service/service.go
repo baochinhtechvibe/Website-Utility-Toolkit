@@ -9,6 +9,7 @@ package service
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -116,9 +117,13 @@ func (s *Service) extractWithRole(pemStr string, role inputRole) (string, string
 	pemStr = strings.ReplaceAll(pemStr, "\r\n", "\n")
 	pemStr = strings.TrimSpace(pemStr)
 
-	block, _ := pem.Decode([]byte(pemStr))
+	block, rest := pem.Decode([]byte(pemStr))
 	if block == nil {
 		return "", "", 0, fmt.Errorf("%s: không thể đọc khối PEM — dữ liệu có thể bị hỏng hoặc copy không đầy đủ", role.Label)
+	}
+
+	if strings.TrimSpace(string(rest)) != "" {
+		return "", "", 0, fmt.Errorf("%s: chứa dữ liệu thừa sau khối PEM chính (private key khác, chứng chỉ dư...)", role.Label)
 	}
 
 	// Kiểm tra PEM block type có phù hợp với role không
@@ -132,8 +137,8 @@ func (s *Service) extractWithRole(pemStr string, role inputRole) (string, string
 
 	pub, err := extractPublicKey(block)
 	if err != nil {
-		// Log raw error server-side — không đưa error gốc ra client
-		log.Warn().Err(err).Str("role", role.Label).Str("pem_type", block.Type).Msg("extractPublicKey failed")
+		// Log raw error server-side bằng Debug để tránh spam — không đưa error gốc ra client
+		log.Debug().Err(err).Str("role", role.Label).Str("pem_type", block.Type).Msg("extractPublicKey failed")
 		return "", "", 0, fmt.Errorf("%s: %s", role.Label, friendlyCryptoError(err))
 	}
 
@@ -227,6 +232,8 @@ func extractPublicKey(block *pem.Block) (interface{}, error) {
 			return &k.PublicKey, nil
 		case *ecdsa.PrivateKey:
 			return &k.PublicKey, nil
+		case ed25519.PrivateKey:
+			return k.Public(), nil
 		default:
 			return nil, fmt.Errorf("loại Private Key không được hỗ trợ: %T", rawKey)
 		}
@@ -242,6 +249,8 @@ func describeKey(pub interface{}) (string, int) {
 		return "RSA", k.N.BitLen()
 	case *ecdsa.PublicKey:
 		return "ECDSA", k.Params().BitSize
+	case ed25519.PublicKey:
+		return "Ed25519", len(k) * 8
 	default:
 		return "Unknown", 0
 	}

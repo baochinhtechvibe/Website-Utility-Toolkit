@@ -398,12 +398,12 @@ export function init() {
 
         // Cipher Row
         if (cipher_suite) {
-            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--tls ok">&nbsp;</td><td><span>Cipher: <strong class="font-mono">${escapeHTML(cipher_suite)}</strong></span></td></tr>`);
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--cipher">&nbsp;</td><td><span>Cipher: <strong class="font-mono">${escapeHTML(cipher_suite)}</strong></span></td></tr>`);
         }
 
         // Public Key Row
         if (pk) {
-            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--server">&nbsp;</td><td><span>Public Key: <strong>${pk}</strong></span></td></tr>`);
+            tableRows.push(`<tr><td class="ssl-checker__icon ssl-checker__icon--public-key">&nbsp;</td><td><span>Public Key: <strong>${pk}</strong></span></td></tr>`);
         }
 
         // Case Specific Rows (Trust, Expiry, Hostname, Issues, Handshake Error)
@@ -456,9 +456,17 @@ export function init() {
 
     // --- Controller ---
 
+    let currentAbortController = null;
+
     async function handleCheckRequest(hostname) {
-        if (isProcessing) return;
+        if (isProcessing) {
+            if (currentAbortController) currentAbortController.abort();
+        }
         isProcessing = true;
+        
+        const controller = new AbortController();
+        currentAbortController = controller;
+
         setElementsEnabled([inputChecker, btnSubmitChecker], false);
         resetUI([toolResultChecker, toolShareLink, toolError, cacheNotice]);
         toggleLoading(btnSubmitChecker, iconCheckerArrow, iconCheckerLoading, true);
@@ -468,8 +476,23 @@ export function init() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ domain: hostname, bypass_cache: isBypassCache }),
+                signal: controller.signal,
             });
-            const rawData = await resp.json();
+            
+            let rawData;
+            try {
+                rawData = await resp.json();
+            } catch (jsonErr) {
+                throw new Error(`Lỗi từ máy chủ: ${resp.status} ${resp.statusText}`);
+            }
+
+            if (!resp.ok && (!rawData || !rawData.data)) {
+                throw new Error(rawData?.message || rawData?.error || `Lỗi từ máy chủ: ${resp.status}`);
+            }
+
+            // Chống stale render nếu request bị đè trước khi kịp displayResults
+            if (currentAbortController !== controller) return;
+
             const res = { ...(rawData?.data || rawData), meta: rawData?.meta };
             displayResults(res);
 
@@ -479,12 +502,19 @@ export function init() {
                 window.history.pushState({}, "", url.toString());
             }
         } catch (err) {
-            showError(toolError, toolErrorMessage, "Mạng không ổn định hoặc lỗi kết nối.", [toolShareLink, toolResultChecker]);
+            if (err.name === 'AbortError') return;
+            // Chống stale error render nếu request bị đè trước khi kịp renderFatalError
+            if (currentAbortController !== controller) return;
+            
+            renderFatalError(err.message || "Mạng không ổn định hoặc lỗi kết nối.");
         } finally {
-            isProcessing = false;
-            isBypassCache = false;
-            toggleLoading(btnSubmitChecker, iconCheckerArrow, iconCheckerLoading, false);
-            setElementsEnabled([inputChecker, btnSubmitChecker], true);
+            if (currentAbortController === controller) {
+                isProcessing = false;
+                currentAbortController = null;
+                isBypassCache = false;
+                toggleLoading(btnSubmitChecker, iconCheckerArrow, iconCheckerLoading, false);
+                setElementsEnabled([inputChecker, btnSubmitChecker], true);
+            }
         }
     }
 

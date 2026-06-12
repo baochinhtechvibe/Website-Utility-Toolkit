@@ -50,11 +50,28 @@ func (h *CERHandler) HandleCerDecode(c *gin.Context) {
 	// 3. Decode
 	result, err := h.svc.Decode(ctx, req.CERT)
 	if err != nil {
-		// Log internal err to terminate
-		log.Error().Err(err).Msg("Decode Certificate error")
+		// Hạ log level xuống Warn cho các lỗi input của người dùng
+		if errors.Is(err, service.ErrCertTooLarge) ||
+			errors.Is(err, service.ErrTrailingPEM) ||
+			errors.Is(err, service.ErrInvalidPEM) ||
+			errors.Is(err, service.ErrInvalidCER) {
+			log.Warn().Err(err).Msg("Decode Certificate input error")
+		} else {
+			log.Error().Err(err).Msg("Decode Certificate internal error")
+		}
 
 		if errors.Is(err, context.DeadlineExceeded) {
 			response.Error(c, http.StatusGatewayTimeout, "Xử lý yêu cầu quá hạn, vui lòng thử lại")
+			return
+		}
+
+		if errors.Is(err, service.ErrCertTooLarge) {
+			response.Error(c, http.StatusBadRequest, "Certificate vượt quá kích thước cho phép (tối đa 100KB)")
+			return
+		}
+
+		if errors.Is(err, service.ErrTrailingPEM) {
+			response.Error(c, http.StatusBadRequest, "Dữ liệu PEM chứa nội dung thừa sau Certificate (private key, v.v.)")
 			return
 		}
 

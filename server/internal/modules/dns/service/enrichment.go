@@ -49,7 +49,7 @@ func (em *EnrichmentManager) EnrichStep(step *models.TraceStep, queryDomain stri
 		if rdapURL != "" {
 			step.Enrichment.NodeType = "TLD"
 			step.Enrichment.RegistryURL = rdapURL
-			
+
 			// Hardcoded common registries for better UX without extra requests
 			switch strings.ToLower(tld) {
 			case "com", "net":

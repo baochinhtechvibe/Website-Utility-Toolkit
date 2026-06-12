@@ -246,7 +246,7 @@ func (s *serviceImpl) runOpenSSL(ctx context.Context, args []string, hasPassword
 		}
 
 		stderrStr := stderr.String()
-		log.Error().Err(err).Str("stderr", stderrStr).Str("path", exePath).Msg("openssl command failed")
+		log.Debug().Err(err).Str("stderr", stderrStr).Str("path", exePath).Msg("openssl command failed")
 
 		// 1. Kiểm tra nếu file không tồn tại
 		if errors.Is(err, exec.ErrNotFound) || (runtime.GOOS == "windows" && exePath == "openssl" && stderrStr == "") {

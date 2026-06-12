@@ -8,7 +8,6 @@ import {
 import { API_BASE_URL } from "../../../config.js";
 import { initFileUploadToggle } from "../../../utils/file-upload.js";
 
-const CERT_STORAGE_KEY = "web_utility_kit_cert_decoder_input";
 
 /**
  * SSL Certificate Decoder Module
@@ -196,6 +195,9 @@ export function init() {
 
     // ─── Actions ────────────────────────────────────────────────────────────
 
+    // --- AbortController state ---
+    let currentAbortController = null;
+
     async function handleDecode() {
         const raw = inputCert.value;
         let clean = "";
@@ -205,6 +207,10 @@ export function init() {
             showError(errorCardCert, errorMsgCert, err.message, [resultCardCert]);
             return;
         }
+
+        if (currentAbortController) currentAbortController.abort();
+        const controller = new AbortController();
+        currentAbortController = controller;
 
         toggleLoading(btnCertDecoder, iconCertDecoder, iconCertLoading, true);
         setElementsEnabled([btnCertDecoder, inputCert], false);
@@ -216,19 +222,34 @@ export function init() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ cert: clean }),
+                signal: controller.signal,
             });
-            const res = await resp.json();
+
+            let res;
+            try {
+                res = await resp.json();
+            } catch (_) {
+                throw new Error(`Lỗi từ máy chủ: ${resp.status} ${resp.statusText}`);
+            }
 
             if (!resp.ok || !res.success) {
-                showError(errorCardCert, errorMsgCert, res.message || "Lỗi máy chủ.", [resultCardCert]);
-            } else {
-                renderCERTResult(res.data);
+                throw new Error(res.message || res.error || "Giải mã Certificate thất bại.");
             }
+
+            if (currentAbortController !== controller) return;
+
+            renderCERTResult(res.data);
+
         } catch (err) {
-            showError(errorCardCert, errorMsgCert, "Không thể kết nối đến máy chủ.", [resultCardCert]);
+            if (err.name === 'AbortError') return;
+            if (currentAbortController !== controller) return;
+            showError(errorCardCert, errorMsgCert, err.message || "Không thể kết nối đến máy chủ.", [resultCardCert]);
         } finally {
-            toggleLoading(btnCertDecoder, iconCertDecoder, iconCertLoading, false);
-            setElementsEnabled([btnCertDecoder, inputCert], true);
+            if (currentAbortController === controller) {
+                currentAbortController = null;
+                toggleLoading(btnCertDecoder, iconCertDecoder, iconCertLoading, false);
+                setElementsEnabled([btnCertDecoder, inputCert], true);
+            }
         }
     }
 
@@ -238,7 +259,6 @@ export function init() {
         const dropzone = document.getElementById("uploadCertDropzone");
         const isUploadMode = document.querySelector('input[name="certInputMode"]:checked')?.value === 'upload';
         
-        sessionStorage.setItem(CERT_STORAGE_KEY, val);
         setDisplay(errorCardCert, "none");
         setDisplay(resultCardCert, "none");
 
@@ -279,9 +299,7 @@ export function init() {
     btnCertDecoder.addEventListener("click", handleDecode);
 
     // Initial State
-    const saved = sessionStorage.getItem(CERT_STORAGE_KEY);
-    if (saved) {
-        inputCert.value = saved;
+    if (inputCert.value) {
         inputCert.dispatchEvent(new Event("input"));
     } else {
         btnCertDecoder.disabled = true;
