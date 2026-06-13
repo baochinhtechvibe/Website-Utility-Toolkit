@@ -6,21 +6,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
     <link rel="shortcut icon" href="../../public/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
-    <link rel="stylesheet" href="../../src/css/tools/chmod.css">
 
     <title>Chmod Calculator | Công cụ tính quyền truy cập Linux miễn phí</title>
-    <meta name="description" content="Công cụ chuyển đổi và tính toán chuẩn quyền truy cập file/thư mục (Chmod) trên hệ thống Linux/Unix từ dạng số (Octal) sang ký hiệu (Symbolic) và ngược lại.">
+    <meta name="description"
+        content="Công cụ chuyển đổi và tính toán chuẩn quyền truy cập file/thư mục (Chmod) trên hệ thống Linux/Unix từ dạng số (Octal) sang ký hiệu (Symbolic) và ngược lại.">
 </head>
 
 <body>
     <div class="wrapper page--chmod">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--chmod py-10 mb-4 text-center">
             <div class="container">
@@ -78,7 +99,8 @@
                                     </h4>
                                 </div>
                                 <div class="message-card__body">
-                                    <p class="message-card__message">Định dạng không hợp lệ. Vui lòng nhập 3 chữ số (0-7)
+                                    <p class="message-card__message">Định dạng không hợp lệ. Vui lòng nhập 3 chữ số
+                                        (0-7)
                                         hoặc 10 ký tự (-rwxr-xr-x).</p>
                                 </div>
                             </div>
@@ -95,15 +117,18 @@
                             <div class="card__body">
                                 <div class="form-group-checkbox">
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="owner">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4"
+                                            data-group="owner">
                                         <span class="checkbox-label">Read (4)</span>
                                     </label>
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="owner">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2"
+                                            data-group="owner">
                                         <span class="checkbox-label">Write (2)</span>
                                     </label>
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="owner">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1"
+                                            data-group="owner">
                                         <span class="checkbox-label">Execute (1)</span>
                                     </label>
                                 </div>
@@ -118,15 +143,18 @@
                             <div class="card__body">
                                 <div class="form-group-checkbox">
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="group">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4"
+                                            data-group="group">
                                         <span class="checkbox-label">Read (4)</span>
                                     </label>
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="group">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2"
+                                            data-group="group">
                                         <span class="checkbox-label">Write (2)</span>
                                     </label>
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="group">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1"
+                                            data-group="group">
                                         <span class="checkbox-label">Execute (1)</span>
                                     </label>
                                 </div>
@@ -141,15 +169,18 @@
                             <div class="card__body">
                                 <div class="form-group-checkbox">
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="others">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="4"
+                                            data-group="others">
                                         <span class="checkbox-label">Read (4)</span>
                                     </label>
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="others">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="2"
+                                            data-group="others">
                                         <span class="checkbox-label">Write (2)</span>
                                     </label>
                                     <label class="checkbox-wrapper form-checkbox-label">
-                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="others">
+                                        <input type="checkbox" class="perm-check form-checkbox" data-bit="1"
+                                            data-group="others">
                                         <span class="checkbox-label">Execute (1)</span>
                                     </label>
                                 </div>
@@ -166,15 +197,18 @@
                             </div>
                             <div class="card__body d-flex flex-row gap-4 flex-wrap">
                                 <label class="checkbox-wrapper checkbox-wrapper--special form-checkbox-label">
-                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="4" data-group="special">
+                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="4"
+                                        data-group="special">
                                     <span class="checkbox-label">SUID (4)</span>
                                 </label>
                                 <label class="checkbox-wrapper checkbox-wrapper--special form-checkbox-label">
-                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="2" data-group="special">
+                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="2"
+                                        data-group="special">
                                     <span class="checkbox-label">SGID (2)</span>
                                 </label>
                                 <label class="checkbox-wrapper checkbox-wrapper--special form-checkbox-label">
-                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="1" data-group="special">
+                                    <input type="checkbox" class="perm-check form-checkbox" data-bit="1"
+                                        data-group="special">
                                     <span class="checkbox-label">Sticky (1)</span>
                                 </label>
                             </div>
@@ -257,7 +291,7 @@
                     </div>
 
                     <!-- 5. SECURITY ADVISOR -->
-                    
+
                     <div id="securityAdvisor" class="message-card message-card--warning mt-4 d-none">
                         <div class="message-card__header">
                             <h4 class="message-card__title">
@@ -266,7 +300,8 @@
                             </h4>
                         </div>
                         <div class="message-card__body">
-                            <p class="message-card__message" id="securityMessage">Cấu hình quyền truy cập này có thể không an toàn.</p>
+                            <p class="message-card__message" id="securityMessage">Cấu hình quyền truy cập này có thể
+                                không an toàn.</p>
                         </div>
                     </div>
                 </div>
@@ -282,13 +317,17 @@
 
                     <div class="footer__stat footer__stat--total">
                         <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
                             Tổng lượt truy cập:
                         </span>
                         <span id="visit-total" class="footer__stat-value">0</span>
                     </div>
 
                     <div class="footer__stat footer__stat--today">
-                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
                         <span id="visit-today" class="footer__stat-value">0</span>
                     </div>
 

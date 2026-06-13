@@ -138,10 +138,9 @@ function syncFromMaster(val) {
         return;
     }
 
-    // 2. Detect Symbolic (10 chars, e.g., -rwxr-xr-x)
-    // Lưu ý: Chỉ accept '-' (file) và 'd' (directory) cho sự đơn giản.
-    // Các loại file khác (l, c, b, p, s) không hỗ trợ tại tool này.
-    const symbolicRegex = /^[-d][r-][w-][xSs-][r-][w-][xSs-][r-][w-][xTt-]$/;
+    // 2. Detect Symbolic (9 hoặc 10 chars, e.g., rwxr-xr-x hoặc -rwxr-xr-x)
+    // Lưu ý: Chỉ accept optional '-' (file) và 'd' (directory) cho sự đơn giản.
+    const symbolicRegex = /^([-d])?[r-][w-][xSs-][r-][w-][xSs-][r-][w-][xTt-]$/;
     if (symbolicRegex.test(val)) {
         setInvalid(false);
         syncFromSymbolic(val);
@@ -175,14 +174,19 @@ function syncFromSymbolic(str) {
     // Reset all special bits first
     $$('.perm-check[data-group="special"]').forEach(cb => cb.checked = false);
 
+    const offset = str.length === 10 ? 1 : 0;
+
     for (let i = 0; i < 3; i++) {
         const group = groups[i];
-        const start = 1 + (i * 3);
+        const start = offset + (i * 3);
         const r = str[start] === 'r';
         const w = str[start + 1] === 'w';
         const xChar = str[start + 2];
         
-        const x = "xsbt".includes(xChar.toLowerCase());
+        // Uppercase S/T = special bit set, execute bit OFF (POSIX spec)
+        // Lowercase s/t = special bit set, execute bit ON
+        // x = execute bit ON, - = all OFF
+        const x = "xst".includes(xChar);
         const isSpecial = "sStT".includes(xChar);
 
         if (isSpecial) {
@@ -246,6 +250,35 @@ function updateTerminalPreview(symbolic) {
 }
 
 /**
+ * Bao bọc tên file bằng POSIX single-quote an toàn cho shell.
+ * - Nếu chỉ gồm ký tự an toàn (a-z, A-Z, 0-9, _, /, ., -) → giữ nguyên.
+ * - Ngược lại → wrap trong nháy đơn và escape dấu nháy đơn bên trong.
+ * @param {string} str
+ * @returns {string}
+ */
+function shellQuote(str) {
+    if (/^[a-zA-Z0-9_/\-\.]+$/.test(str)) {
+        return str;
+    }
+    // Escape mọi nháy đơn: ' → '\'' rồi wrap toàn bộ trong '...'
+    return "'" + str.replace(/'/g, "'\\''")
+                    .replace(/\r?\n/g, "")
+                    + "'";
+}
+
+/**
+ * Quote tên pattern dùng trong find -name.
+ * Luôn dùng nháy đơn để tránh shell globbing mở rộng sai.
+ * @param {string} str
+ * @returns {string}
+ */
+function findNameQuote(str) {
+    return "'" + str.replace(/'/g, "'\\''")
+                    .replace(/\r?\n/g, "")
+                    + "'";
+}
+
+/**
  * Generates and displays the final command
  */
 function updateCommandDisplay(octal) {
@@ -255,7 +288,6 @@ function updateCommandDisplay(octal) {
     const isRecursive = $("#recursiveToggle").checked;
     const cmdType = $("#commandType").value;
     const filename = $("#targetFilename")?.value || "filename";
-    const recFlag = isRecursive ? " -R" : "";
     
     // Toggle recursive checkbox visibility (not applicable for find)
     const recursiveWrapper = $("#recursiveToggle").closest(".recursive-wrapper");
@@ -276,14 +308,20 @@ function updateCommandDisplay(octal) {
     }
 
     const span = (cls, text) => `<span class="${cls}">${escapeHTML(text)}</span>`;
-    const safeName = escapeHTML(filename);
+
+    // Shell-safe: dùng POSIX quoting để chống injection khi user copy command.
+    // escapeHTML() chỉ bảo vệ HTML render, shellQuote() bảo vệ shell khi thực thi.
+    const safeShellName = shellQuote(filename);
+    const safeNameHtml = escapeHTML(safeShellName);
 
     if (cmdType === "chmod") {
-        commandHtml = `${span("code-program", "chmod")}${isRecursive ? " " + span("code-keyword", "-R") : ""} ${span("code-value", displayOctal)} <span class="code-string">${safeName}</span>`;
+        commandHtml = `${span("code-program", "chmod")}${isRecursive ? " " + span("code-keyword", "-R") : ""} ${span("code-value", displayOctal)} ${span("code-keyword", "--")} <span class="code-string">${safeNameHtml}</span>`;
     } else if (cmdType === "find-f") {
-        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type f")} ${span("code-keyword", "-name")} <span class="code-string">"${safeName}"</span> ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "{} +")}`;
+        const safeFindName = escapeHTML(findNameQuote(filename));
+        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type f")} ${span("code-keyword", "-name")} <span class="code-string">${safeFindName}</span> ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "--")} ${span("code-keyword", "{} +")}`;
     } else if (cmdType === "find-d") {
-        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type d")} ${span("code-keyword", "-name")} <span class="code-string">"${safeName}"</span> ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "{} +")}`;
+        const safeFindName = escapeHTML(findNameQuote(filename));
+        commandHtml = `${span("code-program", "find")} . ${span("code-keyword", "-type d")} ${span("code-keyword", "-name")} <span class="code-string">${safeFindName}</span> ${span("code-parameter", "-exec chmod")} ${span("code-value", displayOctal)} ${span("code-keyword", "--")} ${span("code-keyword", "{} +")}`;
     }
     
     display.innerHTML = commandHtml;
@@ -300,15 +338,19 @@ function checkSecurity(octal, symbolic) {
     let warning = null;
     const othersWrite = symbolic[7] === 'w';
     const is777 = octal.endsWith("777");
-    const specialBit = parseInt(octal[0]);
-    const hasSUID = specialBit > 0;
+    const specialBit = octal.length === 4 ? parseInt(octal[0]) : 0;
+    const hasSUID = (specialBit & 4) !== 0;
+    const hasSGID = (specialBit & 2) !== 0;
+    const hasSticky = (specialBit & 1) !== 0;
 
     if (is777) {
         warning = "<b>NGUY HIỂM: Phát hiện quyền 777.</b> Điều này cho phép TẤT CẢ MỌI NGƯỜI có thể đọc, ghi và thực thi file này. Cực kỳ rủi ro trong môi trường production.";
     } else if (othersWrite) {
         warning = "<b>Cảnh báo: Quyền Ghi công cộng (World-Writable).</b> Những người dùng khác có quyền chỉnh sửa file này, dễ dẫn đến các lỗ hổng bảo mật.";
-    } else if (hasSUID) {
-        warning = "<b>Thận trọng: Các bit đặc biệt đang bật.</b> SUID/SGID cho phép file thực thi với quyền của chủ sở hữu hoặc nhóm. Hãy cực kỳ cẩn trọng khi sử dụng.";
+    } else if (hasSUID || hasSGID) {
+        warning = "<b>Thận trọng: Các bit SUID/SGID đang bật.</b> Cho phép file thực thi với quyền của chủ sở hữu hoặc nhóm. Hãy cực kỳ cẩn trọng khi sử dụng.";
+    } else if (hasSticky) {
+        warning = "<b>Lưu ý: Sticky bit đang bật.</b> Sticky bit thường dùng cho thư mục công cộng để chỉ chủ sở hữu file mới được phép xoá file của họ.";
     }
 
     if (warning) {
