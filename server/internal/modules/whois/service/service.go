@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -172,7 +173,7 @@ func LookupWhois(ctx context.Context, domain string, bypassCache bool, clientIP 
 
 	// DNSSEC validation chạy song song, dọn độ trễ 200-500ms
 	go func() {
-		dnssecChan <- dnsservice.ValidateDNSSEC("cloudflare", domain)
+		dnssecChan <- dnsservice.ValidateDNSSECContext(lookupCtx, "cloudflare", domain)
 	}()
 
 	wr := <-whoisChan
@@ -428,6 +429,9 @@ func queryVNTier3Fallback(ctx context.Context, domain string) (*models.WhoisResp
 	client.SetTimeout(4 * time.Second)
 	rawText, err := doWhoisWithCtx(ctx, client, domain, "whois.vnnic.vn")
 	if err != nil && rawText == "" {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, err
+		}
 		return nil, &WhoisError{
 			Message: "Không thể tra cứu thông tin tên miền này. Tên miền chưa được đăng ký hoặc hệ thống WHOIS đang gián đoạn.",
 		}
@@ -678,7 +682,7 @@ func queryGenericDomain(parentCtx context.Context, domain string, bypassCache bo
 			if bestRes != nil {
 				return bestRes, nil
 			}
-			return nil, &WhoisError{Message: "Yêu cầu tra cứu quá hạn (timeout)."}
+			return nil, ctx.Err()
 		}
 	}
 

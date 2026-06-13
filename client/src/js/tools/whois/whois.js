@@ -207,7 +207,14 @@ function init() {
                 `${API_BASE_URL}/whois/lookup?domain=${encodeURIComponent(domain)}&bypassCache=${bypass}`,
                 { signal }
             );
-            const json = await res.json();
+            let json;
+            try {
+                json = await res.json();
+            } catch (_) {
+                throw new Error(`Lỗi từ máy chủ: ${res.status} ${res.statusText}`);
+            }
+
+            if (currentAbortController !== requestController) return;
 
             if (!json.success || !json.data) {
                 showError(json.message || "Tra cứu WHOIS thất bại. Vui lòng thử lại sau.");
@@ -224,9 +231,8 @@ function init() {
 
             displayResult(json.data, json.meta);
         } catch (err) {
-            if (err.name === 'AbortError') {
-                return; // Thoát âm thầm nếu bị hủy
-            }
+            if (err.name === 'AbortError') return;
+            if (currentAbortController !== requestController) return;
             showError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại.");
         } finally {
             if (currentAbortController !== requestController) {
@@ -281,14 +287,8 @@ function init() {
         const isMedium = data.confidence === "medium";
         const titleText = isMedium ? "Có thể chưa được đăng ký" : "Tên miền chưa được đăng ký";
         const descText = isMedium ? 
-            `Tên miền <strong>${escapeHTML(domain)}</strong> có thể chưa có người sở hữu (hoặc thông tin chưa cập nhật).` :
+            `Tên miền <strong>${escapeHTML(domain)}</strong> có thể chưa có người sở hữu.` :
             `Tên miền <strong>${escapeHTML(domain)}</strong> hiện chưa có người sở hữu. Bạn có thể đăng ký ngay để sở hữu tên miền này.`;
-        
-        const sourceHtml = data.source ? `
-            <div class="mt-3 text-sm">
-                <strong>Nguồn kiểm tra:</strong> ${formatSource(data.source, data.confidence, data.authoritative)}
-            </div>
-        ` : '';
 
         // Hiển thị thông báo "chưa đăng ký" kèm nút Mua full-width ở ngoài
         availableMsg.innerHTML = `
@@ -300,7 +300,6 @@ function init() {
                 <p class="message-card__message">
                     ${descText}
                 </p>
-                ${sourceHtml}
                 <div class="mt-4">
                     <button id="btnBuyDomain" class="btn btn-action btn-sm">
                         <i class="fa-solid fa-cart-shopping mr-1"></i> Mua tên miền này
@@ -475,14 +474,13 @@ function init() {
             { icon: "fa-toggle-on", label: "Trạng thái", value: (data.status && data.status.length) ? formatStatus(data.status) : "-" },
             { icon: "fa-shield-halved", label: "DNSSEC", value: formatDNSSEC(data.dnssec) },
             { icon: "fa-pen", label: "Cập nhật lần cuối", value: formatDateTime(data.updated_on) },
-            { icon: "fa-database", label: "Nguồn dữ liệu", value: formatSource(data.source, data.confidence, data.authoritative), isRawHTML: true },
         ];
 
         container.innerHTML = fields.map(f => {
             let valueHtml;
             if (f.isExpiry && data.expires_on) {
                 const expiryClass = getExpiryClass(data.expires_on);
-                valueHtml = `<span class="${expiryClass}">${formatDateTime(data.expires_on)}</span>`;
+                valueHtml = `<span class="${expiryClass}">${escapeHTML(formatDateTime(data.expires_on))}</span>`;
             } else if (f.label === "Name Servers" || f.label === "Trạng thái" || f.label === "DNSSEC" || f.isRawHTML) {
                 valueHtml = f.value; // Already escaped/formatted
             } else {

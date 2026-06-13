@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -46,4 +48,23 @@ func TestHandleWhoisLookup_IPv4(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "địa chỉ IP hiện chưa được hỗ trợ")
+}
+
+func TestHandleWhoisLookup_Timeout(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// Tạo một request với context đã hết hạn (timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+	time.Sleep(5 * time.Millisecond) // Đảm bảo context hết hạn
+
+	req := httptest.NewRequest("GET", "/api/whois/lookup?domain=example.com", nil)
+	c.Request = req.WithContext(ctx)
+
+	HandleWhoisLookup(c)
+
+	assert.Equal(t, http.StatusGatewayTimeout, w.Code)
+	assert.Contains(t, w.Body.String(), "quá hạn")
 }
