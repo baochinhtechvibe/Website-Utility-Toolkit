@@ -52,7 +52,7 @@ function getOriginBadge(origin) {
 }
 
 function getSubtypeBadge(subtype) {
-    return `<span class="badge badge-info badge-circle text-xs lowercase">${escapeHTML(subtype)}</span>`;
+    return `<span class="badge badge-info badge-pill lowercase">${escapeHTML(subtype)}</span>`;
 }
 
 // ─── Export XLSX (styled) ────────────────────────────────────────────────────
@@ -80,19 +80,19 @@ function exportXLSX(items, scannedUrl) {
     };
 
     const headerStyle = {
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
         fill: { fgColor: { rgb: "1A56DB" } },
         alignment: { horizontal: "center", vertical: "center", wrapText: true },
         border,
     };
 
     const rowStyles = {
-        Active: { fill: { fgColor: { rgb: "FEE2E2" } }, font: { color: { rgb: "991B1B" }, sz: 10 } },
-        Passive: { fill: { fgColor: { rgb: "FEF3C7" } }, font: { color: { rgb: "92400E" }, sz: 10 } },
-        Info: { fill: { fgColor: { rgb: "DBEAFE" } }, font: { color: { rgb: "1E40AF" }, sz: 10 } },
+        Active: { fill: { fgColor: { rgb: "FEE2E2" } }, font: { color: { rgb: "991B1B" } } },
+        Passive: { fill: { fgColor: { rgb: "FEF3C7" } }, font: { color: { rgb: "92400E" } } },
+        Info: { fill: { fgColor: { rgb: "DBEAFE" } }, font: { color: { rgb: "1E40AF" } } },
     };
 
-    const defaultRowFont = { sz: 10, color: { rgb: "344054" } };
+    const defaultRowFont = { color: { rgb: "344054" } };
 
     // ─── Sheet 1: Chi tiết ────────────────────────────────────────────────
     const headers = ["#", "Mức độ", "Loại tài nguyên", "Vị trí (Tag)", "URL HTTP", "Gợi ý Fix (HTTPS)", "Nguồn gốc"];
@@ -124,15 +124,18 @@ function exportXLSX(items, scannedUrl) {
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
     // Auto-width
-    ws["!cols"] = [
-        { wch: 5 },   // #
-        { wch: 12 },  // Mức độ
-        { wch: 16 },  // Loại
-        { wch: 14 },  // Tag
-        { wch: 55 },  // URL
-        { wch: 55 },  // Fix
-        { wch: 14 },  // Nguồn gốc
-    ];
+    const detailColWidths = headers.map(h => ({ wch: h.length + 5 }));
+    wsData.forEach(row => {
+        row.forEach((cell, colIdx) => {
+            if (cell && cell.v !== undefined && cell.v !== null) {
+                const len = cell.v.toString().length + 4; // Thêm padding
+                if (detailColWidths[colIdx]) {
+                    detailColWidths[colIdx].wch = Math.max(detailColWidths[colIdx].wch, Math.min(len, 100)); // Giới hạn max 100 ký tự
+                }
+            }
+        });
+    });
+    ws["!cols"] = detailColWidths;
 
     // Freeze header
     ws["!freeze"] = { xSplit: 0, ySplit: 1 };
@@ -145,12 +148,12 @@ function exportXLSX(items, scannedUrl) {
     const passiveCount = items.filter(i => i.type === "Passive").length;
     const infoCount = items.filter(i => i.type === "Info").length;
 
-    const titleStyle = { font: { bold: true, sz: 13, color: { rgb: "1A56DB" } } };
-    const labelStyle = { font: { bold: true, sz: 11 }, border };
-    const valueStyle = { font: { sz: 11 }, border, alignment: { horizontal: "left" } };
-    const dangerVal = { font: { sz: 11, bold: true, color: { rgb: "DC2626" } }, border };
-    const warnVal = { font: { sz: 11, bold: true, color: { rgb: "D97706" } }, border };
-    const infoVal = { font: { sz: 11, bold: true, color: { rgb: "2563EB" } }, border };
+    const titleStyle = { font: { bold: true, sz: 16, color: { rgb: "1A56DB" } } };
+    const labelStyle = { font: { bold: true }, border };
+    const valueStyle = { border, alignment: { horizontal: "left" } };
+    const dangerVal = { font: { bold: true, color: { rgb: "DC2626" } }, border };
+    const warnVal = { font: { bold: true, color: { rgb: "D97706" } }, border };
+    const infoVal = { font: { bold: true, color: { rgb: "2563EB" } }, border };
 
     const summaryData = [
         [{ v: "📊 Tổng quan Mixed Content Scan", s: titleStyle }],
@@ -165,13 +168,43 @@ function exportXLSX(items, scannedUrl) {
         [{ v: "  Info:", s: labelStyle }, { v: infoCount, s: infoVal }],
         [],
         [{ v: "Ghi chú:", s: labelStyle }],
-        [{ v: "• Active: Tài nguyên có thể bị chặn bởi trình duyệt (script, iframe, css).", s: { font: { sz: 10 } } }],
-        [{ v: "• Passive: Tài nguyên hiển thị cảnh báo nhưng vẫn load được (img, video, audio).", s: { font: { sz: 10 } } }],
-        [{ v: "• Info: Link hoặc form action sử dụng HTTP — không bị chặn nhưng không an toàn.", s: { font: { sz: 10 } } }],
+        [{ v: "• Active: Tài nguyên có thể bị chặn bởi trình duyệt (script, iframe, css).", s: {} }],
+        [{ v: "• Passive: Tài nguyên hiển thị cảnh báo nhưng vẫn load được (img, video, audio).", s: {} }],
+        [{ v: "• Info: Link hoặc form action sử dụng HTTP — không bị chặn nhưng không an toàn.", s: {} }],
     ];
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    wsSummary["!cols"] = [{ wch: 28 }, { wch: 60 }];
+
+    // Auto-width summary
+    const summaryColWidths = [{ wch: 28 }, { wch: 60 }];
+    summaryData.forEach((row, rowIndex) => {
+        if (rowIndex === 0) return; // Bỏ qua tiêu đề
+        row.forEach((cell, colIdx) => {
+            if (cell && cell.v !== undefined && cell.v !== null) {
+                const len = cell.v.toString().length + 4;
+                if (summaryColWidths[colIdx] && len > summaryColWidths[colIdx].wch) {
+                    summaryColWidths[colIdx].wch = Math.min(len, 100);
+                }
+            }
+        });
+    });
+    wsSummary["!cols"] = summaryColWidths;
+
+    // Hàm áp dụng font mặc định (Cambria, size 13) cho TẤT CẢ các ô
+    const applyDefaultFont = (worksheet) => {
+        for (const key in worksheet) {
+            if (!key.startsWith('!')) {
+                if (!worksheet[key].s) worksheet[key].s = {};
+                if (!worksheet[key].s.font) worksheet[key].s.font = {};
+
+                worksheet[key].s.font.name = "Cambria";
+                if (!worksheet[key].s.font.sz) worksheet[key].s.font.sz = 13;
+            }
+        }
+    };
+
+    applyDefaultFont(wsSummary);
+    applyDefaultFont(ws);
 
     // ─── Workbook ─────────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
@@ -225,7 +258,7 @@ function init() {
         state.currentPage = 1;
 
         // Summary
-        resultsTitle.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart mr-2"></i> Báo cáo quét trên <span class="text-success">"${escapeHTML(data.scannedUrl)}"</span>`;
+        resultsTitle.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart mr-2"></i> Báo cáo kết quả quét Mixed-content`;
 
         statTotal.textContent = data.totalFound;
         statActive.textContent = data.activeCount;
@@ -305,24 +338,26 @@ function init() {
 
             issuesTableBody.innerHTML = pageItems.map(item => `
             <tr>
-                <td class="mc-table__cell--level">
+                <td class="mc-table__cell--level" data-label="Mức độ">
                     <div class="mc-table__level-wrapper">
                         ${getSeverityBadge(item.type)}
                         ${getOriginBadge(item.origin)}
                     </div>
                 </td>
-                <td class="mc-table__cell--type">${getSubtypeBadge(item.subtype)}</td>
-                <td class="mc-table__cell--found"><span class="badge badge-default badge-subtle">${escapeHTML(item.foundIn)}</span></td>
-                <td class="mc-combined-cell">
-                    <div class="mc-url-block">
-                        <a href="${safeHref(item.url)}" target="_blank" rel="noopener noreferrer" class="mc-url-link">
-                            <i class="fa-solid fa-link-slash mr-1"></i>
-                            ${escapeHTML(item.url)}
-                        </a>
-                    </div>
-                    <div class="mc-fix-block">
-                        <span class="mc-fix-arrow text-success"> <i class="fa-solid fa-arrow-right"></i> Gợi ý:</span>
-                        <span class="mc-fix-url"> <i class="fa-solid fa-link mr-1"></i> ${escapeHTML(item.fixSuggestion)}</span>
+                <td class="mc-table__cell--type" data-label="Loại">${getSubtypeBadge(item.subtype)}</td>
+                <td class="mc-table__cell--found" data-label="Vị trí"><span class="badge badge-default badge-subtle">${escapeHTML(item.foundIn)}</span></td>
+                <td class="mc-combined-cell" data-label="Chi tiết & Gợi ý fix">
+                    <div class="mc-combined-wrapper">
+                        <div class="mc-url-block">
+                            <a href="${safeHref(item.url)}" target="_blank" rel="noopener noreferrer" class="mc-url-link">
+                                <i class="fa-solid fa-link-slash mr-1"></i>
+                                ${escapeHTML(item.url)}
+                            </a>
+                        </div>
+                        <div class="mc-fix-block">
+                            <span class="mc-fix-arrow text-success"> <i class="fa-solid fa-arrow-right"></i> Gợi ý:</span>
+                            <span class="mc-fix-url"> <i class="fa-solid fa-link mr-1"></i> ${escapeHTML(item.fixSuggestion)}</span>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -440,7 +475,7 @@ function init() {
     async function performScan(bypassCache = false) {
         if (isScanning) return;
         resetUI();
-        
+
         const rawUrl = urlInput.value.trim();
         const url = normalizeURLInput(rawUrl);
 
@@ -456,7 +491,7 @@ function init() {
 
         try {
             isScanning = true;
-            setElementsEnabled([urlInput, btnScan, btnBypassCache], false);
+            setElementsEnabled([urlInput, btnScan, btnBypassCache, ignoreTLSInput], false);
             toggleLoading(btnScan, scanIcon, scanLoading, true);
 
             const response = await fetch(`${API_BASE_URL}/mixed-content/scan`, {
@@ -469,9 +504,15 @@ function init() {
                 }),
             });
 
-            const result = await response.json();
-            if (!result.success) {
-                errorMessage.textContent = result.message || "Scan thất bại. Vui lòng thử lại.";
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                throw new Error(`Máy chủ trả về phản hồi không hợp lệ (HTTP ${response.status}).`);
+            }
+
+            if (!response.ok || !result.success) {
+                errorMessage.textContent = result.message || `Scan thất bại (HTTP ${response.status}). Vui lòng thử lại.`;
                 setDisplay(errorCard, "block");
                 return;
             }
@@ -479,12 +520,12 @@ function init() {
             renderResults(result.data, result.meta);
         } catch (err) {
             console.error("Scan error:", err);
-            errorMessage.textContent = "Không thể kết nối tới server. Vui lòng thử lại sau.";
+            errorMessage.textContent = err.message || "Không thể kết nối tới server. Vui lòng thử lại sau.";
             setDisplay(errorCard, "block");
         } finally {
             isScanning = false;
             toggleLoading(btnScan, scanIcon, scanLoading, false);
-            setElementsEnabled([urlInput, btnScan, btnBypassCache], true);
+            setElementsEnabled([urlInput, btnScan, btnBypassCache, ignoreTLSInput], true);
         }
     }
 

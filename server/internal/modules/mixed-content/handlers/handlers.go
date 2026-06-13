@@ -35,7 +35,7 @@ func HandleScan(c *gin.Context) {
 	if err != nil {
 		// 2. Sanitize URL trước khi log (Quy tắc #40) - Dùng pre-allocated sanitizer (Quy tắc #48)
 		log.Warn().Err(err).Str("url", sanitizeForLog(req.URL)).Msg("mixedcontent scan error")
-		
+
 		// 3. Phân loại lỗi HTTP chuyên sâu (Quy tắc #42) - Tránh shadowing interface (Quy tắc #47)
 		status := resolveHTTPStatus(err, ctx.Err())
 
@@ -68,13 +68,19 @@ func resolveHTTPStatus(err error, ctxErr error) int {
 		return http.StatusTooManyRequests
 	}
 
-	// Check lỗi network type-safe. 
+	// Check lỗi network type-safe.
 	// net.DNSError cũng implement net.Error nên sẽ match ở đây (Quy tắc #47).
 	var netErr net.Error
 	if errors.As(err, &netErr) {
 		if netErr.Timeout() {
 			return http.StatusGatewayTimeout
 		}
+		return http.StatusBadGateway
+	}
+
+	// Check lỗi từ Upstream (ví dụ: target server sập, 404, 500)
+	var upstreamErr *service.UpstreamError
+	if errors.As(err, &upstreamErr) {
 		return http.StatusBadGateway
 	}
 

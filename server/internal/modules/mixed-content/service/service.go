@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -14,19 +15,19 @@ import (
 	"sync"
 	"time"
 
+	cache "github.com/go-pkgz/expirable-cache/v3"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/html"
-	cache "github.com/go-pkgz/expirable-cache/v3"
 	"tools.bctechvibe.com/server/internal/modules/mixed-content/models"
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
 const (
-	maxItems        = 200
-	maxBodySize     = 5 * 1024 * 1024 // 5MB
-	maxRedirects    = 3
-	cacheTTL        = 5 * time.Minute
-	scanUserAgent   = "MixedContentScanner/1.0 (+https://tools.bctechvibe.com)"
+	maxItems      = 200
+	maxBodySize   = 5 * 1024 * 1024 // 5MB
+	maxRedirects  = 3
+	cacheTTL      = 5 * time.Minute
+	scanUserAgent = "MixedContentScanner/1.0 (+https://tools.bctechvibe.com)"
 )
 
 // ─── Cache & Rate Limiting ──────────────────────────────────────────────────
@@ -49,6 +50,15 @@ var (
 	// ErrRateLimited là lỗi sentinel cho rate limit (Quy tắc #45)
 	ErrRateLimited = errors.New("rate_limited")
 )
+
+// UpstreamError đại diện cho lỗi từ server đích, bao gồm mã HTTP (VD: 404, 500, 301 loop)
+type UpstreamError struct {
+	StatusCode int
+}
+
+func (e *UpstreamError) Error() string {
+	return fmt.Sprintf("upstream trả về mã lỗi HTTP %d", e.StatusCode)
+}
 
 func init() {
 	// Khởi tạo cache với LRU và TTL chuẩn của github.com/go-pkgz/expirable-cache/v3
@@ -107,7 +117,7 @@ func buildSecureClient(ignoreTLS bool) *http.Client {
 				return http.ErrUseLastResponse
 			}
 			// Block redirect đến private IP
-			if err := validateHostSSRF(req.URL.Hostname()); err != nil {
+			if err := validateHostSSRF(req.Context(), req.URL.Hostname()); err != nil {
 				return err
 			}
 			return nil
@@ -123,7 +133,7 @@ func buildSecureClient(ignoreTLS bool) *http.Client {
 				if err != nil {
 					return nil, err
 				}
-				ips, err := net.LookupIP(host)
+				ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
 				if err != nil {
 					return nil, err
 				}
@@ -159,8 +169,8 @@ func getSecureClient(ignoreTLS bool) *http.Client {
 	return defaultClient
 }
 
-func validateHostSSRF(hostname string) error {
-	if !validator.IsSafeHostname(hostname) {
+func validateHostSSRF(ctx context.Context, hostname string) error {
+	if !validator.IsSafeHostnameWithContext(ctx, hostname) {
 		return fmt.Errorf("SSRF Protection: địa chỉ IP nội bộ bị chặn")
 	}
 	return nil
@@ -169,11 +179,11 @@ func validateHostSSRF(hostname string) error {
 // ─── Classification ──────────────────────────────────────────────────────────
 
 var activeSubtypes = map[string]bool{
-	"script":  true,
-	"iframe":  true,
-	"object":  true,
-	"embed":   true,
-	"css":     true,
+	"script": true,
+	"iframe": true,
+	"object": true,
+	"embed":  true,
+	"css":    true,
 }
 
 var infoSubtypes = map[string]bool{
@@ -371,6 +381,10 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest, clientIP stri
 	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
 		return nil, fmt.Errorf("URL phải bắt đầu bằng http:// hoặc https://"), false, time.Time{}
 	}
+	// Auto-upgrade HTTP to HTTPS for scan entrypoint
+	if strings.HasPrefix(lower, "http://") {
+		rawURL = "https://" + rawURL[7:]
+	}
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -378,12 +392,14 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest, clientIP stri
 	}
 
 	// SSRF check trước khi fetch
-	if err := validateHostSSRF(parsed.Hostname()); err != nil {
+	if err := validateHostSSRF(ctx, parsed.Hostname()); err != nil {
 		return nil, err, false, time.Time{}
 	}
 
-	// Cache key bao gồm TLS mode (Quy tắc #42)
-	cacheKey := fmt.Sprintf("%s|tls=%v", rawURL, req.IgnoreTLSErrors)
+	// Cache key bao gồm TLS mode và hash SHA256 để chống key dài/bẩn
+	rawCacheKey := fmt.Sprintf("%s|tls=%v", rawURL, req.IgnoreTLSErrors)
+	hash := sha256.Sum256([]byte(rawCacheKey))
+	cacheKey := fmt.Sprintf("%x", hash)
 
 	// Cache lookup (chỉ khi không bypass)
 	if !req.BypassCache {
@@ -415,6 +431,10 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest, clientIP stri
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &UpstreamError{StatusCode: resp.StatusCode}, false, time.Time{}
+	}
+
 	// Validate Content-Type: chỉ parse HTML, bỏ qua binary (PDF, ZIP...)
 	ct := resp.Header.Get("Content-Type")
 	if ct != "" && !strings.Contains(ct, "text/html") && !strings.Contains(ct, "application/xhtml") {
@@ -433,7 +453,7 @@ func ScanMixedContent(ctx context.Context, req models.ScanRequest, clientIP stri
 			activeCount++
 		case "Passive":
 			passiveCount++
-		// "Info" type: không tính vào active hay passive
+			// "Info" type: không tính vào active hay passive
 		}
 	}
 
