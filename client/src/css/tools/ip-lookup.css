@@ -153,20 +153,33 @@
     flex: 1; /* Cho phép nở rộng */
 }
 
+#ip-details-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
 .ip-detail-row {
     display: flex;
     gap: var(--space-4);
     align-items: flex-start;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px dashed var(--color-border-subtle);
+}
+
+.ip-detail-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .ip-detail-label {
-    width: 140px; /* Tăng nhẹ để chứa icon */
+    width: clamp(135px, 116.82px + 5.68vw, 175px); /* Scale mượt từ 135px (mobile) lên 175px (desktop) */
     flex-shrink: 0;
-    padding-top: var(--space-half);
     display: flex;
     align-items: center;
     gap: var(--space-2);
     font-weight: var(--font-weight-semibold);
+    white-space: nowrap; /* Cấm rớt dòng */
 }
 
 .ip-detail-label i {
@@ -199,6 +212,15 @@
     line-height: var(--line-height-snug);
     opacity: 0.85;
     white-space: normal; /* Đảm bảo User Agent luôn xuống dòng */
+}
+
+/* Row đặc biệt cho dòng IP chính để nổi bật (chỉ khi load xong) */
+#ip-detail-address:not(.loading-text) {
+    font-weight: var(--font-weight-bold);
+    font-style: normal;
+    font-family: var(--font-family-mono);
+    font-size: var(--text-md);
+    color: var(--text-ip-detail-target);
 }
 
 .ip-detail-data a {
@@ -283,10 +305,6 @@
     .ip-summary-item:last-child {
         padding-left: var(--space-4);
     }
-
-    .ip-detail-label {
-        width: 165px;
-    }
 }
 
 /* Details grid: 2 cột từ 1024px, dưới đó nằm dọc */
@@ -321,4 +339,49 @@
     .ip-map {
         height: 400px;
     }
+}
+
+/* =======================================
+   3. TABS SECTION
+   ========================================= */
+.ip-tabs {
+    display: flex;
+    flex-direction: row;
+    border-bottom: 2px solid var(--color-border-subtle);
+    margin-bottom: var(--space-4);
+}
+
+.ip-tab-btn {
+    flex: 1;
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-md);
+    color: var(--text-details-label);
+    cursor: pointer;
+    transition: var(--transition-base);
+    text-align: center;
+    margin-bottom: -2px; /* Overlap đường viền của container */
+}
+
+.ip-tab-btn:hover {
+    color: var(--color-text-primary);
+}
+
+.ip-tab-btn.active {
+    color: var(--color-brand); /* Trả lại màu Brand theo ý user */
+    border-bottom-color: var(--color-brand); /* Dòng kẻ chuyển xuống đáy */
+    font-weight: var(--font-weight-bold);
+    background-color: transparent;
+}
+
+[data-theme="dark"] .ip-tab-btn:hover {
+    color: var(--white);
+}
+
+[data-theme="dark"] .ip-tab-btn.active {
+    color: var(--green-400); 
+    border-bottom-color: var(--green-400);
+    background-color: transparent;
 }

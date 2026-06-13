@@ -25,9 +25,16 @@ let currentIPs = { v4: null, v6: null };
 let watcherIntervalId = null;
 const WATCHER_INTERVAL_MS = 30000; // 30 giây
 
+// Data state cho 2 Tabs
+let globalV4Data = null;
+let globalV6Data = null;
+let currentActiveTab = "v4";
+let currentFetchSession = 0;
+
 function init() {
     initMyIP();
     setupEventListeners();
+    setupTabs();
     setupRefreshLogic();
     startSmartWatcher();
 }
@@ -73,7 +80,12 @@ async function checkIPChange() {
         if (isLocal) {
             const res = await fetch(`${API_BASE_URL}/ip-lookup/my-ip/check`);
             if (!res.ok) return;
-            const json = await res.json();
+            let json;
+            try {
+                json = await res.json();
+            } catch (e) {
+                return;
+            }
 
             if (json.ip && json.ip.includes(":")) {
                 newV6 = json.ip;
@@ -90,7 +102,7 @@ async function checkIPChange() {
                         const j = await r.json();
                         return j.ip;
                     }
-                } catch (e) {}
+                } catch (e) { }
                 return "N/A";
             };
 
@@ -180,13 +192,6 @@ function resetIPDisplayToLoading() {
     const v6El = $("#my-ip-v6");
     if (v6El) v6El.innerHTML = loadingHtml;
 
-    // Details Header
-    const targetEl = $("#detailIPTarget");
-    if (targetEl) {
-        targetEl.innerHTML = loadingHtml;
-        targetEl.classList.add("loading-text");
-    }
-
     // Disable nút Copy
     const btnCopyIpv4 = $("#btnCopyIpv4");
     if (btnCopyIpv4) btnCopyIpv4.disabled = true;
@@ -199,8 +204,8 @@ function resetIPDisplayToLoading() {
 
     // Grid details
     const detailIds = [
-        "decimal", "hostname", "asn", "timezone", "isp",
-        "services", "country", "region", "city",
+        "address", "decimal", "hostname", "asn", "timezone", "isp",
+        "services", "country", "region", "city", "postal",
         "latitude", "longitude", "os", "browser", "ua"
     ];
 
@@ -221,40 +226,45 @@ function resetIPDisplayToLoading() {
  */
 async function initMyIP(forceRefresh = false, retryCount = 0) {
     const MAX_RETRIES = 2;
+    const sessionId = ++currentFetchSession;
 
-    try {
-        const qs = forceRefresh ? "?refresh=true" : "";
+    const fetchIPData = async (mode) => {
         const isLocal = API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
+        let qs = forceRefresh ? "?refresh=true" : "?";
+        qs += (qs === "?" ? "" : "&") + `mode=${mode}`;
 
-        let mainResult;
+        const fetchJson = async (url) => {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            let json;
+            try {
+                json = await res.json();
+            } catch (e) {
+                throw new Error("Lỗi kết nối máy chủ (Invalid JSON)");
+            }
+            if (!json.success || !json.data) throw new Error(json.message || json.error || "Unknown error");
+            return json;
+        };
+
+        let nextV4Data = null;
+        let nextV6Data = null;
+        let nextMainResult = null;
 
         if (isLocal) {
             const url = `${API_BASE_URL}/ip-lookup/my-ip${qs}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            nextMainResult = await fetchJson(url);
 
-            mainResult = await response.json();
-            if (!mainResult.success || !mainResult.data) {
-                throw new Error(mainResult.message || mainResult.error || "Unknown error");
-            }
-
-            const isV4 = mainResult.data.version === "IPv4";
-            mainResult.data.ip_v4 = isV4 ? mainResult.data.ip : "N/A";
-            mainResult.data.ip_v6 = !isV4 ? mainResult.data.ip : "N/A";
+            const isV4 = nextMainResult.data.version === "IPv4";
+            nextV4Data = isV4 ? nextMainResult.data : null;
+            nextV6Data = !isV4 ? nextMainResult.data : null;
+            
+            nextMainResult.data.ip_v4 = isV4 ? nextMainResult.data.ip : "N/A";
+            nextMainResult.data.ip_v6 = !isV4 ? nextMainResult.data.ip : "N/A";
 
         } else {
             const url4 = `https://ipv4.bctechvibe.com/api/ip-lookup/my-ip${qs}`;
             const url6 = `https://ipv6.bctechvibe.com/api/ip-lookup/my-ip${qs}`;
 
-            const fetchJson = async (url) => {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-                const json = await res.json();
-                if (!json.success || !json.data) throw new Error(json.message || json.error || "Unknown error");
-                return json;
-            };
-
-            // Gọi song song 2 API ẩn để lấy cả 2 IP
             const results = await Promise.allSettled([
                 fetchJson(url4),
                 fetchJson(url6)
@@ -263,33 +273,47 @@ async function initMyIP(forceRefresh = false, retryCount = 0) {
             const res4 = results[0].status === "fulfilled" ? results[0].value : null;
             const res6 = results[1].status === "fulfilled" ? results[1].value : null;
 
-            // Nếu cả 2 đều lỗi thì ném lỗi
             if (!res4 && !res6) {
                 throw new Error(results[0].reason?.message || results[1].reason?.message || "Failed to fetch from both IPv4 and IPv6");
             }
 
-            // Ưu tiên dùng dữ liệu geo từ IPv4 (vì đa phần ổn định hơn), nếu rớt thì xài IPv6
-            mainResult = res4 || res6;
+            nextMainResult = res4 || res6;
 
-            const v4Data = res4?.data?.version === "IPv4" ? res4.data : null;
-            const v6Data = res6?.data?.version === "IPv6" ? res6.data : null;
+            nextV4Data = res4?.data?.version === "IPv4" ? res4.data : null;
+            nextV6Data = res6?.data?.version === "IPv6" ? res6.data : null;
 
-            // Gán thêm data để renderIPData biết đường show cả 2
-            mainResult.data.ip_v4 = v4Data ? v4Data.ip : "N/A";
-            mainResult.data.ip_v6 = v6Data ? v6Data.ip : "N/A";
+            nextMainResult.data.ip_v4 = nextV4Data ? nextV4Data.ip : "N/A";
+            nextMainResult.data.ip_v6 = nextV6Data ? nextV6Data.ip : "N/A";
         }
 
-        // Cập nhật mảng currentIPs cho Smart Watcher (chứa cả 2 IP để detect change)
+        // GUARD: Ngăn chặn stale request ghi đè state
+        if (currentFetchSession !== sessionId) return;
+
+        // Bắt đầu mutate global state an toàn
+        globalV4Data = nextV4Data;
+        globalV6Data = nextV6Data;
+        let mainResult = nextMainResult;
+
+        if (globalV4Data) globalV4Data.isFastMode = (mode === "fast");
+        if (globalV6Data) globalV6Data.isFastMode = (mode === "fast");
+
         currentIPs = {
             v4: mainResult.data.ip_v4,
             v6: mainResult.data.ip_v6
         };
 
-        renderIPData(mainResult.data, mainResult.meta);
-        initMap(mainResult.data.latitude, mainResult.data.longitude, mainResult.data.ip);
-        
+        renderSummary(mainResult.data, mainResult.meta);
+        switchTab(currentActiveTab);
+    };
+
+    try {
+        // BƯỚC 1: Gọi fast mode (Trả về MaxMind siêu nhanh trong 10ms)
+        await fetchIPData("fast");
+
+        // BƯỚC 2: Chạy ngầm deep mode để lấy các API chậm (chờ 10-15s), sẽ tự update UI khi xong
+        fetchIPData("deep").catch(e => console.warn("Lỗi khi fetch deep info:", e));
+
     } catch (error) {
-        // Retry logic
         if (retryCount < MAX_RETRIES) {
             const delay = 1000 * (retryCount + 1);
             await new Promise(resolve => setTimeout(resolve, delay));
@@ -310,15 +334,9 @@ function showFetchError(msg) {
     const v6El = $("#my-ip-v6");
     if (v6El) v6El.innerHTML = errorHtml;
 
-    const targetEl = $("#detailIPTarget");
-    if (targetEl) {
-        targetEl.innerHTML = errorHtml;
-        targetEl.classList.remove("loading-text");
-    }
-
     const detailIds = [
-        "decimal", "hostname", "asn", "timezone", "isp",
-        "services", "country", "region", "city",
+        "address", "decimal", "hostname", "asn", "timezone", "isp",
+        "services", "country", "region", "city", "postal",
         "latitude", "longitude", "os", "browser", "ua"
     ];
     detailIds.forEach(id => {
@@ -335,9 +353,9 @@ function showFetchError(msg) {
 }
 
 /**
- * Render dữ liệu vào giao diện
+ * Render dữ liệu vào giao diện (phần trên cùng)
  */
-function renderIPData(data, meta = null) {
+function renderSummary(data, meta = null) {
     // 1. Phần Summary (IPv4/IPv6)
     const v4El = $("#my-ip-v4");
     const v6El = $("#my-ip-v6");
@@ -347,22 +365,56 @@ function renderIPData(data, meta = null) {
     const btnCopyIpv4 = $("#btnCopyIpv4");
     const btnCopyIpv6 = $("#btnCopyIpv6");
 
-    const ip4 = data.ip_v4 || (data.version === "IPv4" ? data.ip : "N/A");
-    const ip6 = data.ip_v6 || (data.version === "IPv6" ? data.ip : "N/A");
+    const ip4 = data.ip_v4 || "N/A";
+    const ip6 = data.ip_v6 || "N/A";
 
-    if (v4El) v4El.textContent = ip4;
-    if (v6El) v6El.textContent = ip6;
+    if (v4El) {
+        if (ip4 === "N/A") {
+            v4El.innerHTML = `<span class="badge badge-warning">Not Detected</span>`;
+        } else {
+            v4El.innerHTML = `<span class="badge badge-success text-md">${ip4}</span>`;
+        }
+    }
+
+    if (v6El) {
+        if (ip6 === "N/A") {
+            v6El.innerHTML = `<span class="badge badge-warning">Not Detected</span>`;
+        } else {
+            v6El.innerHTML = `<span class="badge badge-success text-md">${ip6}</span>`;
+        }
+    }
 
     if (btnCopyIpv4) btnCopyIpv4.disabled = (ip4 === "N/A");
     if (btnCopyIpv6) btnCopyIpv6.disabled = (ip6 === "N/A");
 
-    const targetEl = $("#detailIPTarget");
-    if (targetEl) {
-        targetEl.classList.remove("loading-text");
-        targetEl.textContent = data.ip;
-    }
+    // Cập nhật timestamp tra cứu và thông báo cache
+    const cacheNotice = $("#cacheNotice");
+    if (cacheNotice && meta) {
+        setDisplay(cacheNotice, "flex");
+        cacheNotice.classList.remove("d-none");
+        const spanEl = cacheNotice.querySelector("span");
+        if (spanEl) {
+            const timeStr = meta.fetched_at
+                ? new Date(meta.fetched_at).toLocaleString('vi-VN')
+                : new Date().toLocaleString('vi-VN');
 
-    // 3. Các dòng chi tiết
+            if (meta.cached) {
+                spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+            } else {
+                spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+            }
+        }
+    }
+}
+
+/**
+ * Render chi tiết cho Tab được chọn
+ */
+function renderDetailsTab(data) {
+    if (!data) return;
+
+    // Các dòng chi tiết
+    updateDetailField("ip-detail-address", data.ip);
     updateDetailField("ip-detail-decimal", data.decimal);
     updateDetailField("ip-detail-hostname", data.hostname);
     updateDetailField("ip-detail-asn", data.asn);
@@ -371,22 +423,23 @@ function renderIPData(data, meta = null) {
     const servicesEl = document.getElementById("ip-detail-services");
     const rowServicesEl = document.getElementById("row-detail-services");
     if (servicesEl) {
-        servicesEl.classList.remove("loading-text");
         let tags = [];
         if (data.is_proxy) tags.push(`<span class="badge badge-warning">Proxy/VPN</span>`);
         if (data.is_hosting) tags.push(`<span class="badge badge-info">Hosting/DC</span>`);
         if (data.is_mobile) tags.push(`<span class="badge badge-success">Mobile</span>`);
 
         if (tags.length > 0) {
+            servicesEl.classList.remove("loading-text");
             servicesEl.innerHTML = tags.join(" ");
             if (rowServicesEl) rowServicesEl.classList.remove("d-none");
         } else if (!data.services || data.services === "N/A") {
-            if (rowServicesEl) {
-                rowServicesEl.classList.add("d-none");
-            } else {
+            if (!data.isFastMode) {
+                servicesEl.classList.remove("loading-text");
+                if (rowServicesEl) rowServicesEl.classList.remove("d-none");
                 servicesEl.innerHTML = `<span class="text-na">N/A</span>`;
             }
         } else {
+            servicesEl.classList.remove("loading-text");
             servicesEl.textContent = data.services;
             if (rowServicesEl) rowServicesEl.classList.remove("d-none");
         }
@@ -410,9 +463,10 @@ function renderIPData(data, meta = null) {
         }
     }
 
-    updateDetailField("ip-detail-region", data.region);
-    updateDetailField("ip-detail-city", data.city);
-    updateDetailField("ip-detail-timezone", data.timezone);
+    updateDetailField("ip-detail-region", data.region, data.isFastMode);
+    updateDetailField("ip-detail-city", data.city, data.isFastMode);
+    updateDetailField("ip-detail-postal", data.postal_code, data.isFastMode);
+    updateDetailField("ip-detail-timezone", data.timezone, data.isFastMode);
 
     // Xử lý định dạng tọa độ Decimal (DMS)
     const latEl = $("#ip-detail-latitude");
@@ -434,27 +488,61 @@ function renderIPData(data, meta = null) {
     // Kích hoạt lại nút Check Blacklist sau khi có IP
     const btnBlacklist = $("#btnCheckBlacklist");
     if (btnBlacklist) btnBlacklist.disabled = false;
+}
 
-    // Cập nhật timestamp tra cứu và thông báo cache
-    const cacheNotice = $("#cacheNotice");
-    if (cacheNotice && meta) {
-        setDisplay(cacheNotice, "flex");
-        cacheNotice.classList.remove("d-none");
-        const spanEl = cacheNotice.querySelector("span");
-        if (spanEl) {
-            const timeStr = meta.fetched_at
-                ? new Date(meta.fetched_at).toLocaleString('vi-VN')
-                : new Date().toLocaleString('vi-VN');
+/**
+ * Xử lý chuyển đổi Tab
+ */
+function switchTab(tabType) {
+    currentActiveTab = tabType;
+    
+    // Đổi CSS active cho các nút Tab
+    $$(".ip-tab-btn").forEach(btn => btn.classList.remove("active"));
+    const activeBtn = document.querySelector(`.ip-tab-btn[data-type="${tabType}"]`);
+    if (activeBtn) activeBtn.classList.add("active");
 
-            if (meta.cached) {
-                spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
-            } else {
-                spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
-            }
-        }
+    const data = tabType === "v4" ? globalV4Data : globalV6Data;
+    const contentList = $("#ip-details-content");
+    const mapContainer = $(".ip-details-map-container");
+    const notDetectedMsg = $("#ip-not-detected");
+
+    const btnBlacklist = $("#btnCheckBlacklist");
+
+    if (!data) {
+        // Tab này không có IP (vd: IPv6 Not Detected)
+        if (contentList) contentList.classList.add("d-none"); // Ẩn bảng chi tiết theo ý user
+        if (mapContainer) mapContainer.classList.remove("d-none"); // Vẫn giữ layout bản đồ
+        if (notDetectedMsg) notDetectedMsg.classList.remove("d-none"); // Hiện cảnh báo
+        
+        if (btnBlacklist) btnBlacklist.disabled = true; // Disable nút blacklist
+        
+        clearMap(); // Xóa mốc bản đồ
+    } else {
+        // Có dữ liệu
+        if (contentList) contentList.classList.remove("d-none");
+        if (mapContainer) mapContainer.classList.remove("d-none");
+        if (notDetectedMsg) notDetectedMsg.classList.add("d-none");
+        
+        if (btnBlacklist) btnBlacklist.disabled = false; // Bật lại nút
+        
+        renderDetailsTab(data);
+        initMap(data.latitude, data.longitude, data.ip);
     }
 }
 
+/**
+ * Cài đặt sự kiện cho Tabs
+ */
+function setupTabs() {
+    $$(".ip-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const type = btn.getAttribute("data-type");
+            if (type && type !== currentActiveTab) {
+                switchTab(type);
+            }
+        });
+    });
+}
 /**
  * Chuyển số thập phân vĩ độ/kinh độ sang định dạng DMS (Độ Phút Giây)
  * Ví dụ: 10.75 --> 10° 45′ 0.00″ N
@@ -479,18 +567,19 @@ function toDMS(decimal, isLat) {
 }
 
 /**
- * Cập nhật từng field chi tiết, nếu rỗng thì hiện N/A
+ * Cập nhật từng field chi tiết, nếu rỗng thì hiện N/A hoặc giữ Checking nếu đang fast mode
  */
-function updateDetailField(id, value) {
+function updateDetailField(id, value, isFastMode = false) {
     const el = document.getElementById(id);
     if (!el) return;
 
-    // Xóa class loading nếu có
-    el.classList.remove("loading-text");
-
     if (value === undefined || value === null || value === "") {
-        el.innerHTML = `<span class="text-na">N/A</span>`;
+        if (!isFastMode) {
+            el.classList.remove("loading-text");
+            el.innerHTML = `<span class="text-na">N/A</span>`;
+        }
     } else {
+        el.classList.remove("loading-text");
         el.textContent = value;
     }
 }
@@ -535,6 +624,19 @@ function initMap(lat, lon, ip, retryCount = 0) {
 }
 
 /**
+ * Xóa marker khỏi bản đồ và đưa về vị trí trống
+ */
+function clearMap() {
+    if (!ipMap) return;
+    if (mapMarker) {
+        mapMarker.remove();
+        mapMarker = null;
+    }
+    // Set view ra giữa đại dương hoặc zoom xa ra để trông như bản đồ trống
+    ipMap.setView([20, 0], 2);
+}
+
+/**
  * Thiết lập các event listener (Copy, v.v.)
  */
 function setupEventListeners() {
@@ -576,7 +678,7 @@ function setupEventListeners() {
 
     // Nút Check Blacklist (Hiện tại chỉ là placeholder hoặc redirect)
     $("#btnCheckBlacklist")?.addEventListener("click", () => {
-        const ip = $("#detailIPTarget")?.textContent;
+        const ip = $("#ip-detail-address")?.textContent;
         if (ip && ip !== "N/A" && ip !== "Checking...") {
             window.location.href = `../tools/dns.html?host=${encodeURIComponent(ip.trim())}&type=BLACKLIST`;
         }
