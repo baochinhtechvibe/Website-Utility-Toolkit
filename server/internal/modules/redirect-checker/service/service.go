@@ -52,10 +52,10 @@ var (
 func initClients() {
 	createTransport := func(insecure bool) *http.Transport {
 		return &http.Transport{
-			MaxIdleConns:          100,
-			MaxIdleConnsPerHost:   10,
-			IdleConnTimeout:       90 * time.Second,
-			TLSClientConfig:   &tls.Config{InsecureSkipVerify: insecure},
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: insecure},
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
@@ -138,11 +138,11 @@ func normalizeForLoop(rawURL string) string {
 	// Normalize query parameters order
 	query := p.Query()
 	p.RawQuery = query.Encode()
-	
+
 	host := strings.ToLower(p.Host)
-	path := strings.TrimRight(p.Path, "/")
+	path := p.Path
 	scheme := strings.ToLower(p.Scheme)
-	
+
 	result := fmt.Sprintf("%s://%s%s", scheme, host, path)
 	if p.RawQuery != "" {
 		result += "?" + p.RawQuery
@@ -156,7 +156,7 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 
 	// Create a per-request cookie jar to avoid data leakage between different users
 	jar, _ := cookiejar.New(nil)
-	
+
 	var base *http.Client
 	if req.IgnoreTLSErrors {
 		base = insecureClient
@@ -180,7 +180,7 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 	currentURL := req.URL
 	totalTimeStart := time.Now()
 	prevScheme := ""
-	
+
 	// Backend Loop Detection
 	visitedURLs := make(map[string]bool)
 
@@ -202,10 +202,10 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 		}
 
 		hop, nextURL, bodyHTML, err := performHop(ctx, client, currentURL, req.UserAgent, step)
-		
+
 		if hop != nil {
 			resp.Data.Chain = append(resp.Data.Chain, *hop)
-			
+
 			parsedURL, _ := url.Parse(currentURL)
 			if parsedURL != nil {
 				if prevScheme == "https" && parsedURL.Scheme == "http" {
@@ -223,6 +223,10 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 					Error: errutil.TranslateError(err),
 				})
 			}
+			// If context timed out, propagate to handler for proper 504 response
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			break
 		}
 
@@ -234,7 +238,9 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 				parsedCurr, _ := url.Parse(currentURL)
 				if parsedNext != nil && parsedCurr != nil {
 					nextURL = parsedCurr.ResolveReference(parsedNext).String()
-					hop.StatusText = statusText
+					// Update the slice element directly — *hop was copied by value into Chain,
+					// so modifying hop here would not update the chain.
+					resp.Data.Chain[len(resp.Data.Chain)-1].StatusText = statusText
 				}
 			}
 		}
@@ -255,7 +261,7 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 	}
 
 	resp.Data.Performance.TotalTime = time.Since(totalTimeStart).Milliseconds()
-	
+
 	redirectCount := 0
 	for _, hop := range resp.Data.Chain {
 		if (hop.StatusCode >= 300 && hop.StatusCode < 400) || strings.Contains(hop.StatusText, "Redirect") {
@@ -268,20 +274,24 @@ func AnalyzeRedirects(ctx context.Context, req models.RedirectAnalyzeRequest) (*
 	if len(resp.Data.Chain) > 1 {
 		firstHop := resp.Data.Chain[0]
 		lastHop := resp.Data.Chain[len(resp.Data.Chain)-1]
-		
+
 		fP, _ := url.Parse(firstHop.URL)
 		lP, _ := url.Parse(lastHop.URL)
-		
+
 		if fP != nil && lP != nil {
 			isExt := fP.Host != lP.Host && !strings.HasSuffix(lP.Host, "."+fP.Host)
 			suspiciousParams := []string{"url", "redirect", "next", "goto", "return", "to", "link"}
 			query := fP.Query()
-			
+
 			hasSuspicious := false
 			for _, p := range suspiciousParams {
 				val := query.Get(p)
-				if val == "" { continue }
-				if strings.HasPrefix(val, "//") { val = "https:" + val }
+				if val == "" {
+					continue
+				}
+				if strings.HasPrefix(val, "//") {
+					val = "https:" + val
+				}
 				pURL, _ := url.Parse(val)
 				if pURL != nil && pURL.Host != "" && (pURL.Host == lP.Host || strings.HasSuffix(lP.Host, "."+pURL.Host)) {
 					hasSuspicious = true
@@ -306,7 +316,9 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 
 	// Sanitize User-Agent
 	userAgent = strings.Map(func(r rune) rune {
-		if r == '\r' || r == '\n' { return -1 }
+		if r == '\r' || r == '\n' {
+			return -1
+		}
 		return r
 	}, userAgent)
 
@@ -323,7 +335,9 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 		DNSStart: func(_ httptrace.DNSStartInfo) { dnsStart = time.Now() },
 		DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
 			dnsDone = time.Now()
-			if len(dnsInfo.Addrs) > 0 { serverIP = dnsInfo.Addrs[0].IP.String() }
+			if len(dnsInfo.Addrs) > 0 {
+				serverIP = dnsInfo.Addrs[0].IP.String()
+			}
 		},
 		ConnectStart: func(_, _ string) { tcpStart = time.Now() },
 		ConnectDone: func(network, addr string, err error) {
@@ -333,15 +347,15 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 				serverIP = h
 			}
 		},
-		TLSHandshakeStart: func() { tlsStart = time.Now() },
-		TLSHandshakeDone:  func(_ tls.ConnectionState, _ error) { tlsDone = time.Now() },
+		TLSHandshakeStart:    func() { tlsStart = time.Now() },
+		TLSHandshakeDone:     func(_ tls.ConnectionState, _ error) { tlsDone = time.Now() },
 		GotFirstResponseByte: func() { ttfb = time.Now() },
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	start := time.Now()
 	resp, err := client.Do(req)
-	
+
 	displayURL := targetURL
 	if parsed, err := url.Parse(targetURL); err == nil {
 		parsed.User = nil
@@ -358,7 +372,9 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 	if resp != nil {
 		hop.Protocol = resp.Proto
 	} else {
-		if p, _ := url.Parse(targetURL); p != nil { hop.Protocol = strings.ToUpper(p.Scheme) }
+		if p, _ := url.Parse(targetURL); p != nil {
+			hop.Protocol = strings.ToUpper(p.Scheme)
+		}
 	}
 
 	if err != nil {
@@ -368,10 +384,30 @@ func performHop(ctx context.Context, client *http.Client, targetURL string, user
 	defer resp.Body.Close()
 
 	hop.Timings = models.RedirectTimings{
-		DNSLookup: func() int64 { if dnsDone.IsZero() { return 0 }; return dnsDone.Sub(dnsStart).Milliseconds() }(),
-		TCPConnection: func() int64 { if tcpDone.IsZero() { return 0 }; return tcpDone.Sub(tcpStart).Milliseconds() }(),
-		TLSHandshake: func() int64 { if tlsDone.IsZero() { return 0 }; return tlsDone.Sub(tlsStart).Milliseconds() }(),
-		TTFB: func() int64 { if ttfb.IsZero() { return 0 }; return ttfb.Sub(start).Milliseconds() }(),
+		DNSLookup: func() int64 {
+			if dnsDone.IsZero() {
+				return 0
+			}
+			return dnsDone.Sub(dnsStart).Milliseconds()
+		}(),
+		TCPConnection: func() int64 {
+			if tcpDone.IsZero() {
+				return 0
+			}
+			return tcpDone.Sub(tcpStart).Milliseconds()
+		}(),
+		TLSHandshake: func() int64 {
+			if tlsDone.IsZero() {
+				return 0
+			}
+			return tlsDone.Sub(tlsStart).Milliseconds()
+		}(),
+		TTFB: func() int64 {
+			if ttfb.IsZero() {
+				return 0
+			}
+			return ttfb.Sub(start).Milliseconds()
+		}(),
 		Total: time.Since(start).Milliseconds(),
 	}
 
@@ -416,27 +452,51 @@ func isRedirect(code int) bool {
 }
 
 func checkMetaRefresh(bodyHTML string) (string, string) {
-	if bodyHTML == "" { return "", "" }
-	if m := reMetaRefresh.FindStringSubmatch(bodyHTML); len(m) > 1 { return m[1], "200 OK (Meta Refresh)" }
-	if m := reJSRedirect.FindStringSubmatch(bodyHTML); len(m) > 1 { return m[1], "200 OK (JS Redirect)" }
+	if bodyHTML == "" {
+		return "", ""
+	}
+	if m := reMetaRefresh.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		return m[1], "200 OK (Meta Refresh)"
+	}
+	if m := reJSRedirect.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		return m[1], "200 OK (JS Redirect)"
+	}
 	return "", ""
 }
 
 func extractSEO(hop *models.RedirectHop, seo *models.SEOAudit, bodyHTML string) {
-	if bodyHTML == "" { return }
-	if m := reTitle.FindStringSubmatch(bodyHTML); len(m) > 1 { seo.Title = m[1] }
-	if m := reCanonical.FindStringSubmatch(bodyHTML); len(m) > 1 { seo.Canonical = m[1] }
-	if m := reOGTitle.FindStringSubmatch(bodyHTML); len(m) > 1 { seo.OGTitle = m[1] }
-	if m := reOGImage.FindStringSubmatch(bodyHTML); len(m) > 1 { seo.OGImage = m[1] }
-	if m := reRobots.FindStringSubmatch(bodyHTML); len(m) > 1 { seo.Robots = m[1] }
+	if bodyHTML == "" {
+		return
+	}
+	if m := reTitle.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		seo.Title = m[1]
+	}
+	if m := reCanonical.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		seo.Canonical = m[1]
+	}
+	if m := reOGTitle.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		seo.OGTitle = m[1]
+	}
+	if m := reOGImage.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		seo.OGImage = m[1]
+	}
+	if m := reRobots.FindStringSubmatch(bodyHTML); len(m) > 1 {
+		seo.Robots = m[1]
+	}
 }
 
 func ResolveHTTPStatus(err error, ctxErr error) int {
-	if ctxErr != nil { return http.StatusGatewayTimeout }
-	if errors.Is(err, ErrRateLimited) { return http.StatusTooManyRequests }
+	if ctxErr != nil {
+		return http.StatusGatewayTimeout
+	}
+	if errors.Is(err, ErrRateLimited) {
+		return http.StatusTooManyRequests
+	}
 	var netErr net.Error
 	if errors.As(err, &netErr) {
-		if netErr.Timeout() { return http.StatusGatewayTimeout }
+		if netErr.Timeout() {
+			return http.StatusGatewayTimeout
+		}
 		return http.StatusBadGateway
 	}
 	return http.StatusInternalServerError

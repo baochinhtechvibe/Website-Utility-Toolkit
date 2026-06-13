@@ -4,7 +4,7 @@
  * Refactored for Design System compliance
  */
 
-import { $, $$, createRealtimeDomainValidator, normalizeURLInput } from '../../utils/index.js';
+import { $, createRealtimeURLValidator, normalizeURLInput } from '../../utils/index.js';
 import { API_BASE_URL } from '../../config.js';
 
 // ==============================
@@ -18,7 +18,6 @@ let _abortController = null; // To cancel pending requests
  * Initialize the tool
  */
 function init() {
-    console.log("🚀 Redirect Analyzer Tool Initialized");
     setupEventListeners();
     
     // 🚨 IMPORTANT: normalizeInputUrl is called in loadFromURL()
@@ -60,7 +59,7 @@ function setupEventListeners() {
 
     // Real-time URL validation
     if (urlInput) {
-        createRealtimeDomainValidator(
+        createRealtimeURLValidator(
             urlInput,
             $('#urlValidationError'),
             $('#btnAnalyze')
@@ -106,6 +105,13 @@ function setupEventListeners() {
         copyText(text, $('#btnCopyLink'));
     });
 
+    // OG image error handler (replaces inline onerror for CSP compliance)
+    document.addEventListener("error", (e) => {
+        if (e.target.classList?.contains('redirect-og-preview')) {
+            e.target.parentElement.classList.add('d-none');
+        }
+    }, true); // useCapture = true because 'error' doesn't bubble
+
     // Code block copy handler
     document.addEventListener("click", async (e) => {
         const btn = e.target.closest(".js-copy-code");
@@ -130,9 +136,8 @@ function setupEventListeners() {
                 btn.innerHTML = originalHTML;
                 btn.disabled = false;
             }, 2000);
-        } catch (err) {
+        } catch {
             btn.disabled = false;
-            console.error("COPY FAIL:", err);
         }
     });
 }
@@ -185,6 +190,13 @@ async function handleAnalyze(bypassCache = false) {
     
     const url = urlInput?.value.trim();
 
+    // Check URL length first — before validator regex rejects it as "invalid"
+    if (url && url.length > 2048) {
+        hideResults();
+        showError('URL quá dài (vượt quá 2048 ký tự). Vui lòng rút gọn URL và thử lại.');
+        return;
+    }
+
     if (!url || !isValidURL(url)) {
         showURLValidationError();
         return;
@@ -194,12 +206,10 @@ async function handleAnalyze(bypassCache = false) {
         if (_abortController) {
             _abortController.abort();
         }
-        // Force reset so the new request can start immediately
-        isProcessing = false;
-        setLoading(false);
     }
 
-    _abortController = new AbortController();
+    const controller = new AbortController();
+    _abortController = controller;
     isProcessing = true;
 
     const ua = getEffectiveUA();
@@ -216,11 +226,14 @@ async function handleAnalyze(bypassCache = false) {
     if (cn) cn.classList.add('d-none');
 
     try {
-        const data = await fetchAnalysis(url, ua, deepScan, ignoreTlsErrors, bypassCache, _abortController.signal);
+        const data = await fetchAnalysis(url, ua, deepScan, ignoreTlsErrors, bypassCache, controller.signal);
+        
+        if (_abortController !== controller) return;
         renderResults(data.data, url, data.meta);
 
         if (compareMode) {
-            const compData = await fetchCompareUAs(url, _abortController.signal);
+            const compData = await fetchCompareUAs(url, controller.signal);
+            if (_abortController !== controller) return;
             renderCompare(compData);
         }
 
@@ -228,11 +241,14 @@ async function handleAnalyze(bypassCache = false) {
         updateURL(url);
     } catch (err) {
         if (err.name === 'AbortError') return; // Ignore cancelled requests
+        if (_abortController !== controller) return;
         showError(err.message || 'Không thể phân tích chuyển hướng. Vui lòng thử lại!');
     } finally {
-        isProcessing = false;
-        setLoading(false);
-        _abortController = null;
+        if (_abortController === controller) {
+            isProcessing = false;
+            setLoading(false);
+            _abortController = null;
+        }
     }
 }
 
@@ -262,7 +278,13 @@ async function fetchAnalysis(url, ua, deepScan, ignoreTlsErrors = false, bypassC
         throw new Error(errorMsg);
     }
 
-    return await response.json();
+    let json;
+    try {
+        json = await response.json();
+    } catch (_) {
+        throw new Error(`Lỗi từ máy chủ: ${response.status} ${response.statusText}`);
+    }
+    return json;
 }
 
 /**
@@ -326,7 +348,7 @@ function renderResults(res, url, meta) {
             titleEl.innerHTML = `<i class="fa-solid fa-circle-xmark text-error mr-2"></i> Phát hiện lỗi ${errCode} tại trang đích`;
             titleEl.classList.add('text-error');
         } else {
-            titleEl.innerHTML = `<i class="fa-solid fa-circle-check text-success mr-2"></i> Kết quả phân tích cho "${escHtml(url)}"`;
+            titleEl.innerHTML = `<i class="fa-solid fa-circle-check text-success mr-2"></i> Kết quả phân tích Redirect`;
             titleEl.classList.remove('text-error');
         }
     }
@@ -370,7 +392,7 @@ function renderResults(res, url, meta) {
         }
         
         // Detect loop
-        if (urlsInChain.has(s.url)) {
+        if (urlsInChain.has(s.url) || (s.error && s.error.toLowerCase().includes('vòng lặp'))) {
             hasLoop = true;
             s.isLoop = true;
         }
@@ -391,7 +413,6 @@ function renderResults(res, url, meta) {
     if (sec.isOpenRedirect) { score -= 40; issues.push({ type: 'deduct', label: 'Có dấu hiệu Open Redirect', value: 40 }); }
     if (hasLoop) { score -= 100; issues.push({ type: 'deduct', label: 'Vòng lặp (Redirect Loop)', value: 100 }); }
     
-    const totalHops = chain.length > 0 ? chain.length : 0;
     const actualRedirectHops = chain.filter(h => h.statusCode >= 300 && h.statusCode < 400).length;
     
     if (actualRedirectHops > 3) {
@@ -436,12 +457,12 @@ function renderScore(computed) {
     badge.innerHTML = `<span id="scoreValue">${score}</span><small>/100</small>`;
 
     if (issues.length === 0) {
-        breakdown.innerHTML = `<div class="redirect-score__item redirect-score__item--ok"><i class="fa-solid fa-circle-check"></i> Hoàn hảo - Không có vấn đề nào được phát hiện.</div>`;
+        breakdown.innerHTML = `<div class="redirect-score__item redirect-score__item--ok"><i class="fa-solid fa-circle-check"></i> <span class="redirect-score__label">Hoàn hảo - Không có vấn đề nào được phát hiện.</span></div>`;
     } else {
         breakdown.innerHTML = issues.map(i => `
             <div class="redirect-score__item redirect-score__item--deduct">
                 <i class="fa-solid fa-minus-circle"></i>
-                ${escHtml(i.label)} <strong>(-${i.value})</strong>
+                <span class="redirect-score__label">${escHtml(i.label)}</span>
             </div>
         `).join('');
     }
@@ -494,7 +515,10 @@ function renderChain(steps) {
             <div class="redirect-step__node ${nodeClass}">${step.statusCode || '?'}</div>
             <div class="redirect-step__content ${contentClass}">
                 <div class="redirect-step__header">
-                    <span class="redirect-step__url">${escHtml(step.url || '')}</span>
+                    <div class="redirect-step__info">
+                        <div class="redirect-step__url">${escHtml(step.url || '')}</div>
+                        ${location ? `<div class="redirect-step__badge--location">→ ${escHtml(location)}</div>` : ''}
+                    </div>
                     <div class="redirect-step__meta">
                         ${renderBadge(step.statusCode)}
                         ${isSlowest && steps.length > 1 ? '<span class="badge badge-warning">CHẬM NHẤT</span>' : ''}
@@ -502,7 +526,6 @@ function renderChain(steps) {
                         <span class="redirect-step__timing">${step.totalMs != null ? step.totalMs + 'ms' : ''}</span>
                     </div>
                 </div>
-                ${location ? `<span class="redirect-step__badge--location">→ ${escHtml(location)}</span>` : ''}
                 ${step.error ? `<div class="redirect-step__error mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${escHtml(step.error)}</div>` : ''}
             </div>
         </div>`;
@@ -602,13 +625,13 @@ function renderPerformance(steps) {
         const isSlow = (val) => (val != null && val > 400) ? 'perf-cell--slow' : '';
         return `
         <tr>
-            <td>${i + 1}</td>
-            <td class="font-mono break-all">${escHtml(s.url || '')}</td>
-            <td class="${isSlow(s.dnsMs)}">${s.dnsMs != null ? s.dnsMs + 'ms' : '-'}</td>
-            <td class="${isSlow(s.tcpMs)}">${s.tcpMs != null ? s.tcpMs + 'ms' : '-'}</td>
-            <td class="${isSlow(s.tlsMs)}">${s.tlsMs != null ? s.tlsMs + 'ms' : '-'}</td>
-            <td class="${isSlow(s.ttfbMs)}">${s.ttfbMs != null ? s.ttfbMs + 'ms' : '-'}</td>
-            <td class="${isSlow(s.totalMs)}"><strong>${s.totalMs != null ? s.totalMs + 'ms' : '-'}</strong></td>
+            <td data-label="Bước">${i + 1}</td>
+            <td data-label="URL" class="font-mono break-all">${escHtml(s.url || '')}</td>
+            <td data-label="DNS" class="${isSlow(s.dnsMs)}">${s.dnsMs != null ? s.dnsMs + 'ms' : '-'}</td>
+            <td data-label="TCP" class="${isSlow(s.tcpMs)}">${s.tcpMs != null ? s.tcpMs + 'ms' : '-'}</td>
+            <td data-label="TLS" class="${isSlow(s.tlsMs)}">${s.tlsMs != null ? s.tlsMs + 'ms' : '-'}</td>
+            <td data-label="TTFB" class="${isSlow(s.ttfbMs)}">${s.ttfbMs != null ? s.ttfbMs + 'ms' : '-'}</td>
+            <td data-label="Tổng thời gian" class="${isSlow(s.totalMs)}"><strong>${s.totalMs != null ? s.totalMs + 'ms' : '-'}</strong></td>
         </tr>`;
     }).join('');
 }
@@ -643,7 +666,7 @@ function renderSEO(seo, finalStatus) {
                 </div>
                 ${f.image && !missing && isSafeURL(f.value) ? `
                     <div class="mt-3">
-                        <img src="${escHtml(f.value)}" alt="OG Image Preview" class="img-fluid rounded border" style="max-height: 150px; object-fit: contain;" onerror="this.parentElement.style.display='none'">
+                        <img src="${escHtml(f.value)}" alt="OG Image Preview" class="redirect-og-preview">
                     </div>
                 ` : ''}
             </div>
@@ -692,10 +715,10 @@ function renderCompare(results) {
         const last = steps.length > 0 ? steps[steps.length - 1] : null;
         return `
         <tr>
-            <td class="text-sm">${escHtml(r.label)}</td>
-            <td>${steps.length} bước</td>
-            <td class="font-mono text-xs break-all">${escHtml(last?.url || '-')}</td>
-            <td>${renderBadge(last?.statusCode)}</td>
+            <td data-label="User-Agent" class="text-sm">${escHtml(r.label)}</td>
+            <td data-label="Bước">${steps.length} bước</td>
+            <td data-label="URL Cuối" class="font-mono text-xs break-all">${escHtml(last?.url || '-')}</td>
+            <td data-label="Status Cuối">${renderBadge(last?.statusCode)}</td>
         </tr>`;
     }).join('');
 
@@ -714,14 +737,27 @@ function setLoading(loading) {
     const icon = $('#analyzeIcon');
     const spin = $('#analyzeLoading');
     const btn = $('#btnAnalyze');
+    
+    // Select all inputs to disable/enable
+    const controls = [
+        btn,
+        $('#redirectUrl'),
+        $('#userAgent'),
+        $('#customUserAgent'),
+        $('#deepScan'),
+        $('#ignoreTLSErrors'),
+        $('#compareUAs'),
+        $('#btnBypassCache')
+    ];
+
     if (loading) {
         icon?.classList.add('d-none');
         spin?.classList.remove('d-none');
-        if (btn) btn.disabled = true;
+        controls.forEach(c => { if (c) c.disabled = true; });
     } else {
         icon?.classList.remove('d-none');
         spin?.classList.add('d-none');
-        if (btn) btn.disabled = false;
+        controls.forEach(c => { if (c) c.disabled = false; });
     }
 }
 
@@ -803,7 +839,7 @@ async function copyText(text, btn) {
         const original = btn.innerHTML;
         btn.innerHTML = '<i class="fa-solid fa-check"></i>';
         setTimeout(() => { btn.innerHTML = original; }, 2000);
-    } catch (e) {
-        console.error("Copy failed", e);
+    } catch {
+        // Silent fail for clipboard errors
     }
 }

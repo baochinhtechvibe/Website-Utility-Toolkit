@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
     <link rel="shortcut icon" href="../../public/favicon.ico" />
@@ -14,13 +13,35 @@
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
 
-    <title>Redirect Analyzer | Website Utility Toolkit - Phân tích chuỗi chuyển hướng</title>
+    <title>Redirect Checker | Phân tích chuỗi chuyển hướng</title>
     <meta name="description"
         content="Công cụ phân tích chuỗi chuyển hướng (Redirect Chain) chuyên sâu. Kiểm tra mã trạng thái HTTP, đo lường hiệu suất và phát hiện rủi ro bảo mật cho website của bạn.">
 </head>
 
 <body>
     <div class="wrapper page--redirect">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--redirect py-10 mb-4 text-center">
             <div class="container">
@@ -31,10 +52,10 @@
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">
-                                REDIRECT ANALYZER
+                                redirect.bctechvibe.com
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                Comprehensive Redirect Analyzer
+                                Redirects Analyzer
                             </p>
                         </div>
                     </div>
@@ -81,7 +102,8 @@
                                     </h4>
                                 </div>
                                 <div class="message-card__body">
-                                    <p class="message-card__message">Vui lòng nhập URL hợp lệ hoặc tên miền (ví dụ: <code>https://google.com</code> hoặc <code>google.com</code>).
+                                    <p class="message-card__message">Vui lòng nhập URL hợp lệ hoặc tên miền (ví dụ:
+                                        <code>https://google.com</code> hoặc <code>google.com</code>).
                                     </p>
                                 </div>
                             </div>
@@ -180,6 +202,22 @@
                                 </label>
                             </div>
                         </form>
+
+                        <!-- Error Card (placed OUTSIDE result-card so hideResults() doesn't hide it) -->
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Phân tích thất bại
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message">
+                                    Không thể kết nối tới URL. Vui lòng kiểm tra lại địa chỉ và thử lại.
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- ===================== UNIFIED RESULT CARD ===================== -->
                         <div id="resultSection" class="result-card mt-6 d-none">
                             <div class="result-card__header d-flex flex-row justify-between items-center">
@@ -401,20 +439,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Error Card -->
-                                <div id="errorCard" class="message-card message-card--error mt-6 d-none">
-                                    <div class="message-card__header">
-                                        <h4 class="message-card__title">
-                                            <i class="fa-solid fa-triangle-exclamation"></i>
-                                            Phân tích thất bại
-                                        </h4>
-                                    </div>
-                                    <div class="message-card__body">
-                                        <p id="errorMessage" class="message-card__message">
-                                            Không thể kết nối tới URL. Vui lòng kiểm tra lại địa chỉ và thử lại.
-                                        </p>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         <!-- End: Unified Result Card -->
@@ -424,15 +448,21 @@
             </div>
         </main>
 
-        <footer id="footer" class="footer mt-4">
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
                     <div class="footer__stat footer__stat--total">
-                        <span class="footer__stat-label">Tổng lượt truy cập:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
                         <span id="visit-total" class="footer__stat-value">0</span>
                     </div>
                     <div class="footer__stat footer__stat--today">
-                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
                         <span id="visit-today" class="footer__stat-value">0</span>
                     </div>
                 </div>

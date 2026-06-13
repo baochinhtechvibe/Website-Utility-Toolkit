@@ -10,18 +10,18 @@ type RedirectAnalyzeRequest struct {
 
 // RedirectHop represents a single step in the redirect chain.
 type RedirectHop struct {
-	Step       int                 `json:"step"`
-	URL        string              `json:"url"`
-	IP         string              `json:"ip"`
-	StatusCode int                 `json:"statusCode"`
-	StatusText string              `json:"statusText"`
-	Protocol   string              `json:"protocol"`
-	Method     string              `json:"method"`
-	Timings    RedirectTimings     `json:"timings"`
-	// Headers contains the response headers for this hop. 
+	Step       int             `json:"step"`
+	URL        string          `json:"url"`
+	IP         string          `json:"ip"`
+	StatusCode int             `json:"statusCode"`
+	StatusText string          `json:"statusText"`
+	Protocol   string          `json:"protocol"`
+	Method     string          `json:"method"`
+	Timings    RedirectTimings `json:"timings"`
+	// Headers contains the response headers for this hop.
 	// Sensitive headers like 'Server' or 'X-Powered-By' are filtered in the service layer for security.
-	Headers    map[string][]string `json:"headers"`
-	Error      string              `json:"error,omitempty"`
+	Headers map[string][]string `json:"headers"`
+	Error   string              `json:"error,omitempty"`
 }
 
 // RedirectTimings holds the timing breakdown for a single HTTP request.

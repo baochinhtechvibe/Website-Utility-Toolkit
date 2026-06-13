@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -27,6 +28,9 @@ var redirectCache = cache.New[string, cachedRedirect](5000, 15*time.Minute)
 
 // HandleAnalyze processes the incoming request to analyze URL redirects.
 func HandleAnalyze(c *gin.Context) {
+	// Limit request body size to prevent memory abuse from oversized payloads
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)
+
 	var req models.RedirectAnalyzeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		responseAPI.Error(c, http.StatusBadRequest, "Dữ liệu yêu cầu không hợp lệ")
@@ -41,9 +45,23 @@ func HandleAnalyze(c *gin.Context) {
 
 	// Sanitize URL for parsing and logging
 	targetURL := strings.TrimSpace(req.URL)
+
+	// Normalize bare domain (e.g. "google.com") → "https://google.com"
+	// Frontend already does this, but backend must also handle direct API calls
+	if !strings.Contains(targetURL, "://") {
+		targetURL = "https://" + targetURL
+	}
+
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil || parsedURL.Hostname() == "" {
 		responseAPI.Error(c, http.StatusBadRequest, "URL không hợp lệ. Vui lòng kiểm tra lại địa chỉ website.")
+		return
+	}
+
+	// Restrict scheme to http/https only — reject ftp://, file://, etc.
+	scheme := strings.ToLower(parsedURL.Scheme)
+	if scheme != "http" && scheme != "https" {
+		responseAPI.Error(c, http.StatusBadRequest, "Chỉ hỗ trợ URL có giao thức HTTP hoặc HTTPS")
 		return
 	}
 
@@ -53,9 +71,14 @@ func HandleAnalyze(c *gin.Context) {
 		return
 	}
 
+	// Sync normalized URL back to request so service receives the full URL
+	req.URL = targetURL
+
 	// Point #1 (Round 4): Sanitize first, Truncate later to avoid orphaned control characters
 	sanitizedURL := strings.Map(func(r rune) rune {
-		if r == '\r' || r == '\n' { return -1 }
+		if r == '\r' || r == '\n' {
+			return -1
+		}
 		return r
 	}, targetURL)
 
@@ -67,12 +90,19 @@ func HandleAnalyze(c *gin.Context) {
 		logURL = sanitizedURL
 	}
 
+	// Normalize only Scheme and Host for case-insensitivity, keep Path/Query intact
+	normalizedHostURL := fmt.Sprintf("%s://%s%s",
+		strings.ToLower(parsedURL.Scheme),
+		strings.ToLower(parsedURL.Host),
+		parsedURL.RequestURI(),
+	)
+
 	// 2. Secure Cache Key (using SHA256 to prevent injection via UserAgent)
-	rawKey := fmt.Sprintf("%s|%s|%v|%v", strings.ToLower(targetURL), req.UserAgent, req.DeepScan, req.IgnoreTLSErrors)
+	rawKey := fmt.Sprintf("%s|%s|%v|%v", normalizedHostURL, req.UserAgent, req.DeepScan, req.IgnoreTLSErrors)
 	cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(rawKey)))
 
 	bypassCache := c.Query("bypassCache") == "true"
-	
+
 	if bypassCache {
 		// Rate limit for bypass cache
 		if err := service.CheckRateLimit(c.ClientIP()); err != nil {
@@ -97,9 +127,13 @@ func HandleAnalyze(c *gin.Context) {
 		Str("ip", c.ClientIP()).
 		Msg("Starting redirect analysis")
 
-	resp, err := service.AnalyzeRedirects(c.Request.Context(), req)
+	// Enforce a total timeout for the entire analysis (max 10 hops × ~10s each)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
+	defer cancel()
+
+	resp, err := service.AnalyzeRedirects(ctx, req)
 	if err != nil {
-		status := service.ResolveHTTPStatus(err, c.Request.Context().Err())
+		status := service.ResolveHTTPStatus(err, ctx.Err())
 		log.Error().Err(err).Str("url", logURL).Int("status", status).Msg("Failed to analyze redirects")
 		responseAPI.Error(c, status, errutil.TranslateError(err))
 		return
