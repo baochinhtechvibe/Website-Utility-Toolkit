@@ -3,6 +3,14 @@
     Bot Simulator – Indexability Analyzer
    ======================================= */
 
+/* ─── Header Customization (Domain Name Scale) ───────── */
+@media (max-width: 640px) {
+    .header--bot-sim .header__brand {
+        font-size: clamp(1rem, 4.5vw, var(--text-h2));
+        white-space: nowrap;
+    }
+}
+
 /* ─── Verdict Banner ─────────────────────────────────────────── */
 .bs-verdict-banner {
     display: flex;
