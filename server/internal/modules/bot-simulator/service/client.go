@@ -70,16 +70,17 @@ func init() {
 
 // HTTPResult chứa kết quả raw của một request HTTP.
 type HTTPResult struct {
-	FinalURL        string
-	StatusCode      int
-	StatusText      string
-	ContentType     string
-	PayloadBytes    int64
-	Headers         map[string]string
-	Body            string // full body tối đa MaxBodyBytes
-	BodySnippet     string // snippet giới hạn MaxSnippetBytes
-	RedirectChain   []HopSummary
-	Error           string
+	FinalURL      string
+	StatusCode    int
+	StatusText    string
+	ContentType   string
+	PayloadBytes  int64
+	Headers       map[string]string
+	Body          string // full body tối đa MaxBodyBytes
+	BodySnippet   string // snippet giới hạn MaxSnippetBytes
+	BodyTruncated bool   // Đánh dấu xem body có bị cắt bớt do quá dung lượng không
+	RedirectChain []HopSummary
+	Error         string
 }
 
 // HopSummary mô tả một bước redirect gọn nhẹ.
@@ -96,6 +97,7 @@ type FetchOptions struct {
 	ExtraHeaders    map[string]string
 	IgnoreTLSErrors bool
 	FollowRedirects bool // nếu false sẽ dừng ở redirect đầu tiên
+	MaxBodyBytes    int64 // Giới hạn kích thước tải về tuỳ chỉnh
 }
 
 // getClient trả về singleton client phù hợp.
@@ -200,8 +202,17 @@ func FetchPage(ctx context.Context, rawURL string, opts FetchOptions) (*HTTPResu
 			result.Headers = filteredHeaders(resp.Header)
 
 			// Đọc body với giới hạn (Rule #57)
-			bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, MaxBodyBytes))
+			limit := opts.MaxBodyBytes
+			if limit <= 0 {
+				limit = MaxBodyBytes
+			}
+			bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 			resp.Body.Close()
+
+			if int64(len(bodyBytes)) > limit {
+				result.BodyTruncated = true
+				bodyBytes = bodyBytes[:limit]
+			}
 			result.PayloadBytes = int64(len(bodyBytes))
 
 			ct := strings.ToLower(result.ContentType)
@@ -284,7 +295,14 @@ func FetchRaw(ctx context.Context, rawURL string, ua string, ignoreTLS bool) (in
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, MaxBodyBytes))
+	limit := opts.MaxBodyBytes
+	if limit <= 0 {
+		limit = MaxBodyBytes
+	}
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	if int64(len(body)) > limit {
+		body = body[:limit]
+	}
 	return resp.StatusCode, body, nil
 }
 

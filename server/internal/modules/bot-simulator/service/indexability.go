@@ -19,18 +19,18 @@ const (
 
 // IndexabilityStatus cho từng dimension
 const (
-	IndexStatusAllowed              = "allowed"
-	IndexStatusBlocked              = "blocked"
+	IndexStatusAllowed                = "allowed"
+	IndexStatusBlocked                = "blocked"
 	IndexStatusUnknownDueToCrawlBlock = "unknown_due_to_crawl_block"
 )
 
 // CrawlStatus cho crawl_access
 const (
-	CrawlAllowed    = "allowed"
-	CrawlBlocked    = "blocked"
-	CrawlTimeout    = "timeout"
-	CrawlError      = "error"
-	CrawlDeferred   = "deferred" // 5xx → bot nên hoãn
+	CrawlAllowed     = "allowed"
+	CrawlBlocked     = "blocked"
+	CrawlTimeout     = "timeout"
+	CrawlError       = "error"
+	CrawlDeferred    = "deferred" // 5xx → bot nên hoãn
 	CrawlUnreachable = "unreachable"
 )
 
@@ -41,6 +41,7 @@ func EvaluateAccess(
 	robotsResult *RobotsParseResult,
 	meta *MetaParseResult,
 	serving *models.Serving,
+	botToken string,
 	botFamily string,
 ) (models.CrawlAccess, models.Indexability, models.Verdict) {
 
@@ -105,6 +106,11 @@ func EvaluateAccess(
 	} else if crawlAccess.Status == CrawlError || crawlAccess.Status == CrawlUnreachable || crawlAccess.Status == CrawlTimeout {
 		indexability.Status = IndexStatusUnknownDueToCrawlBlock
 		indexability.Note = "Không thể lấy nội dung trang để đánh giá tín hiệu indexability."
+		// Set CanonicalMissing=true để frontend không render sai "Khác (không phải self)"
+		// vì chúng ta không lấy được dữ liệu gì cả.
+		indexability.CanonicalMissing = true
+		// Thêm suggestion phù hợp với tình trạng lỗi kết nối
+		suggestions = append(suggestions, "Không thể kết nối tới trang. Vui lòng kiểm tra server còn hoạt động, cấu hình firewall, và DNS có đúng không.")
 	} else {
 		// Crawl OK → đọc meta signals
 		indexability.MetaRobots = meta.MetaRobots
@@ -113,15 +119,15 @@ func EvaluateAccess(
 		indexability.CanonicalSelf = meta.CanonicalSelf
 		indexability.CanonicalMissing = meta.CanonicalMissing
 
-		isNoindex := HasNoindex(meta.MetaRobots) || HasNoindex(meta.XRobotsTag)
+		isNoindex := HasNoindex(meta.MetaRobots, botToken) || HasNoindex(meta.XRobotsTag, botToken)
 
 		if isNoindex {
 			indexability.Status = IndexStatusBlocked
-			if HasNoindex(meta.MetaRobots) {
+			if HasNoindex(meta.MetaRobots, botToken) {
 				reasons = append(reasons, "META_NOINDEX")
 				suggestions = append(suggestions, "Xoá 'noindex' khỏi <meta name=\"robots\"> để cho phép indexing.")
 			}
-			if HasNoindex(meta.XRobotsTag) {
+			if HasNoindex(meta.XRobotsTag, botToken) {
 				reasons = append(reasons, "XROBOTS_NOINDEX")
 				suggestions = append(suggestions, "Xoá 'noindex' khỏi X-Robots-Tag header.")
 			}

@@ -47,7 +47,7 @@ func HandleAnalyze(c *gin.Context) {
 	}
 
 	// Build cache key
-	cacheKey := service.BuildCacheKey(normalizedURL, req.Bot, req.CheckSitemap, req.CompareMode, req.CompareBots)
+	cacheKey := service.BuildCacheKey(normalizedURL, req.Bot, req.CheckSitemap, req.CompareMode, req.CompareBots, req.IgnoreTLSErrors)
 
 	// Lấy Request ID để log (Rule #58)
 	requestID := c.GetString("request_id")
@@ -80,12 +80,7 @@ func HandleAnalyze(c *gin.Context) {
 		resChan <- analyzeResult{data, err}
 	}()
 
-	select {
-	case <-ctx.Done():
-		l.Warn().Msg("analyze timeout or cancelled")
-		response.Error(c, http.StatusGatewayTimeout, "Yêu cầu xử lý quá lâu hoặc đã bị hủy")
-		return
-	case res := <-resChan:
+	handleResult := func(res analyzeResult) {
 		if res.err != nil {
 			l.Error().Err(res.err).Msg("analyze failed")
 			response.Error(c, http.StatusInternalServerError, "Không thể phân tích. Vui lòng thử lại sau.")
@@ -95,6 +90,31 @@ func HandleAnalyze(c *gin.Context) {
 		service.CacheSet(cacheKey, res.data)
 		l.Info().Msg("analyze success")
 		response.Success(c, res.data, false, time.Now())
+	}
+
+	// Double-select: Ưu tiên check kết quả có sẵn
+	select {
+	case res := <-resChan:
+		handleResult(res)
+		return
+	default:
+	}
+
+	// Chờ kết quả hoặc timeout
+	select {
+	case <-ctx.Done():
+		// Re-check resChan in case of race
+		select {
+		case res := <-resChan:
+			handleResult(res)
+			return
+		default:
+		}
+		l.Warn().Msg("analyze timeout or cancelled")
+		response.Error(c, http.StatusGatewayTimeout, "Yêu cầu xử lý quá lâu hoặc đã bị hủy")
+		return
+	case res := <-resChan:
+		handleResult(res)
 	}
 }
 
@@ -132,7 +152,7 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 	if httpResult.Headers != nil {
 		xRobotsTag = service.ParseXRobotsTag(httpResult.Headers)
 	}
-	meta := service.ParseMeta(httpResult.Body, xRobotsTag, targetURL)
+	meta := service.ParseMeta(httpResult.Body, xRobotsTag, targetURL, profile.RobotsToken)
 
 	// ─── Bước 4: Chuẩn bị Serving data ───────────────────────────────
 	redirectChain := []models.RedirectHopSummary{}
@@ -156,13 +176,14 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 		ResponseHeaders:      httpResult.Headers,
 		BodySnippet:          httpResult.BodySnippet,
 		Title:                meta.Title,
+		Error:                httpResult.Error,
 	}
 	if len(redirectChain) > 0 {
 		serving.RedirectCount = len(redirectChain) - 1
 	}
 
 	// ─── Bước 5: Đánh giá verdict ────────────────────────────────────
-	crawlAccess, indexability, verdict := service.EvaluateAccess(decision, robotsResult, &meta, &serving, profile.Family)
+	crawlAccess, indexability, verdict := service.EvaluateAccess(decision, robotsResult, &meta, &serving, profile.RobotsToken, profile.Family)
 	data.CrawlAccess = crawlAccess
 	data.Indexability = indexability
 	data.Serving = serving
@@ -202,7 +223,6 @@ func runAnalysis(ctx context.Context, req models.AnalyzeRequest, targetURL strin
 			TargetURL:       targetURL,
 			CheckSitemap:    req.CheckSitemap,
 			IgnoreTLSErrors: req.IgnoreTLSErrors,
-			SharedRobots:    robotsResult,
 		})
 		data.Compare = compareResults
 	}

@@ -8,7 +8,7 @@
         content="Kiểm tra khả năng crawl và index của Googlebot, AI bots, và social preview bots. Phân tích robots.txt, meta robots, X-Robots-Tag, canonical và đưa ra phán quyết Indexable / Blocked / Risky.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
     <link rel="shortcut icon" href="../../public/favicon.ico" />
@@ -16,11 +16,33 @@
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
 
-    <title>Bot Simulator – Indexability Analyzer | Website Utility Toolkit</title>
+    <title>Bot Simulator | Phân tích khả năng Crawl và Index</title>
 </head>
 
 <body>
     <div class="wrapper page--bot-simulator">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header -->
         <header id="header" class="header header--bot-sim py-10 mb-4 text-center">
             <div class="container">
@@ -148,7 +170,8 @@
                                 </h4>
                             </div>
                             <div class="message-card__body">
-                                <p id="errorMessage" class="message-card__message">Không thể kết nối tới URL. Vui lòng kiểm tra và thử lại.</p>
+                                <p id="errorMessage" class="message-card__message">Không thể kết nối tới URL. Vui lòng
+                                    kiểm tra và thử lại.</p>
                             </div>
                         </div>
 
@@ -161,223 +184,254 @@
                                 </h3>
                             </div>
 
-                    <!-- CACHE BANNER -->
-                    <div id="cacheNotice" class="cache-card mb-4 d-none">
-                        <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b
-                                id="cacheTime"></b></span>
-                        <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn"><i
-                                class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
-                    </div>
+                            <!-- CACHE BANNER -->
+                            <div id="cacheNotice" class="cache-card mt-2 mb-4 d-none">
+                                <span><i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc
+                                    <b id="cacheTime"></b></span>
+                                <button type="button" id="btnBypassCache"
+                                    class="btn btn-sm btn-outline cache-card__btn"><i
+                                        class="fa-solid fa-arrows-rotate"></i> Làm mới</button>
+                            </div>
 
-                    <!-- Verdict Banner (live, thay thế nội dung bằng JS) -->
-                    <div id="verdictBanner" class="bs-verdict-banner mb-4">
-                        <div class="bs-verdict-banner__icon">
-                            <i id="verdictIcon" class="fa-solid fa-circle-check"></i>
-                        </div>
-                        <div class="bs-verdict-banner__content">
-                            <div class="d-flex flex-row gap-2 items-center flex-wrap">
-                                <span id="verdictLabel" class="bs-verdict-label"></span>
-                                <span id="verdictConfidence" class="badge badge-sm badge-default"></span>
-                                <span id="cachedBadge" class="badge badge-sm badge-info d-none"><i
-                                        class="fa-solid fa-database"></i> Cached</span>
-                            </div>
-                            <p id="verdictSummary" class="bs-verdict-summary mt-1"></p>
-                        </div>
-                        <div class="bs-verdict-banner__bot">
-                            <span id="activeBotLabel" class="badge badge-default"></span>
-                        </div>
-                    </div>
 
-                    <!-- Summary Strip: 3 ô Crawl / Index / Serving -->
-                    <div class="bs-summary-strip mb-4 d-flex flex-row gap-4 flex-wrap">
-                        <div class="card card--flat bs-summary-cell">
-                            <div class="card__body">
-                                <p class="bs-summary-cell__label"><i class="fa-solid fa-robot"></i> Crawl Access</p>
-                                <p id="crawlStatus" class="bs-summary-cell__value">–</p>
-                            </div>
-                        </div>
-                        <div class="card card--flat bs-summary-cell">
-                            <div class="card__body">
-                                <p class="bs-summary-cell__label"><i class="fa-solid fa-eye"></i> Indexability</p>
-                                <p id="indexStatus" class="bs-summary-cell__value">–</p>
-                            </div>
-                        </div>
-                        <div class="card card--flat bs-summary-cell">
-                            <div class="card__body">
-                                <p class="bs-summary-cell__label"><i class="fa-solid fa-server"></i> HTTP Status</p>
-                                <p id="httpStatus" class="bs-summary-cell__value">–</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Evidence Cards: Grid 2 cột -->
-                    <div class="bs-evidence-grid mb-4">
-
-                        <!-- Robots.txt Card -->
-                        <div class="card">
-                            <div class="card__header">
-                                <h3 class="card__title font-bold">
-                                    <i class="fa-solid fa-shield-halved"></i> Robots.txt
-                                </h3>
-                            </div>
-                            <div class="card__body">
-                                <div id="robotsContent">
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Trạng thái fetch</span>
-                                        <span id="robotsFetchStatus" class="badge badge-default">–</span>
+                            <!-- Summary Strip: 3 ô Crawl / Index / Serving -->
+                            <div class="bs-summary-strip mb-4">
+                                <div class="card card--flat bs-summary-cell">
+                                    <div class="card__body">
+                                        <p class="bs-summary-cell__label">Crawl Access</p>
+                                        <div class="bs-summary-cell__icon bs-summary-cell__icon--crawl">
+                                            <i class="fa-solid fa-robot"></i>
+                                        </div>
+                                        <p id="crawlStatus" class="bs-summary-cell__value text-uppercase">–</p>
+                                        <p class="bs-summary-cell__desc">Quyền truy cập của Bot</p>
                                     </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Group match</span>
-                                        <span id="robotsMatchedGroup" class="bs-evidence-value">–</span>
+                                </div>
+                                <div class="card card--flat bs-summary-cell">
+                                    <div class="card__body">
+                                        <p class="bs-summary-cell__label">Indexability</p>
+                                        <div class="bs-summary-cell__icon bs-summary-cell__icon--index">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </div>
+                                        <p id="indexStatus" class="bs-summary-cell__value text-uppercase">–</p>
+                                        <p class="bs-summary-cell__desc">Khả năng lập chỉ mục</p>
                                     </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Rule match</span>
-                                        <code id="robotsMatchedRule" class="bs-evidence-code">–</code>
-                                    </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Quyết định</span>
-                                        <span id="robotsDecision" class="badge">–</span>
+                                </div>
+                                <div class="card card--flat bs-summary-cell">
+                                    <div class="card__body">
+                                        <p class="bs-summary-cell__label">HTTP Status</p>
+                                        <p id="httpStatus" class="bs-summary-cell__value bs-summary-cell__value--large">–</p>
+                                        <p class="bs-summary-cell__desc">Mã phản hồi từ máy chủ</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Meta Signals Card -->
-                        <div class="card">
-                            <div class="card__header">
-                                <h3 class="card__title font-bold">
-                                    <i class="fa-solid fa-code"></i> Tín hiệu Indexability
-                                </h3>
-                            </div>
-                            <div class="card__body">
-                                <div id="metaContent">
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Meta robots</span>
-                                        <code id="metaRobotsVal" class="bs-evidence-code">–</code>
+                            <!-- Evidence Cards: Grid 2 cột -->
+                            <div class="bs-evidence-grid mb-4">
+
+                                <!-- Robots.txt Card -->
+                                <div class="card">
+                                    <div class="card__header">
+                                        <h3 class="card__title font-bold">
+                                            <i class="fa-solid fa-shield-halved"></i> Robots.txt
+                                        </h3>
                                     </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">X-Robots-Tag</span>
-                                        <code id="xRobotsVal" class="bs-evidence-code">–</code>
+                                    <div class="card__body">
+                                        <div id="robotsContent">
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Trạng thái fetch</span>
+                                                <span id="robotsFetchStatus" class="badge badge-default">–</span>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Group match</span>
+                                                <span id="robotsMatchedGroup" class="bs-evidence-value">–</span>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Rule match</span>
+                                                <code id="robotsMatchedRule" class="badge badge-default">–</code>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Quyết định</span>
+                                                <span id="robotsDecision" class="badge">–</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Canonical</span>
-                                        <span id="canonicalVal" class="bs-evidence-value text-truncate-url">–</span>
+                                </div>
+
+                                <!-- Meta Signals Card -->
+                                <div class="card">
+                                    <div class="card__header">
+                                        <h3 class="card__title font-bold">
+                                            <i class="fa-solid fa-code"></i> Tín hiệu Indexability
+                                        </h3>
                                     </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Canonical self?</span>
-                                        <span id="canonicalSelf" class="badge">–</span>
+                                    <div class="card__body">
+                                        <div id="metaContent">
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Meta robots</span>
+                                                <code id="metaRobotsVal" class="badge badge-default">–</code>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">X-Robots-Tag</span>
+                                                <code id="xRobotsVal" class="badge badge-default">–</code>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Canonical</span>
+                                                <span id="canonicalVal"
+                                                    class="bs-evidence-value text-truncate-url">–</span>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Canonical self?</span>
+                                                <span id="canonicalSelf" class="badge">–</span>
+                                            </div>
+                                            <div class="bs-evidence-row">
+                                                <span class="bs-evidence-label">Index status</span>
+                                                <span id="indexDetail" class="badge">–</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="bs-evidence-row">
-                                        <span class="bs-evidence-label">Index status</span>
-                                        <span id="indexDetail" class="badge">–</span>
+                                </div>
+
+                                <!-- Serving Card -->
+                                <div class="card">
+                                    <div class="card__header">
+                                        <h3 class="card__title font-bold">
+                                            <i class="fa-solid fa-arrows-rotate"></i> HTTP Serving
+                                        </h3>
+                                    </div>
+                                    <div class="card__body">
+                                        <div class="bs-evidence-row">
+                                            <span class="bs-evidence-label">Final URL</span>
+                                            <span id="servingFinalUrl"
+                                                class="bs-evidence-value text-truncate-url">–</span>
+                                        </div>
+                                        <div class="bs-evidence-row">
+                                            <span class="bs-evidence-label">HTTP Status</span>
+                                            <span id="servingStatus" class="badge">–</span>
+                                        </div>
+                                        <div class="bs-evidence-row">
+                                            <span class="bs-evidence-label">Content-Type</span>
+                                            <span id="servingContentType" class="bs-evidence-value">–</span>
+                                        </div>
+                                        <div class="bs-evidence-row">
+                                            <span class="bs-evidence-label">Payload</span>
+                                            <span id="servingPayload" class="bs-evidence-value">–</span>
+                                        </div>
+                                        <div class="bs-evidence-row">
+                                            <span class="bs-evidence-label">Redirects</span>
+                                            <span id="servingRedirects" class="bs-evidence-value">–</span>
+                                        </div>
+                                        <div id="redirectChainWrap" class="mt-2 d-none">
+                                            <div class="bs-redirect-chain" id="redirectChainList"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sitemap Card -->
+                                <div class="card" id="sitemapCard">
+                                    <div class="card__header">
+                                        <h3 class="card__title font-bold">
+                                            <i class="fa-solid fa-sitemap"></i> Sitemap
+                                        </h3>
+                                    </div>
+                                    <div class="card__body">
+                                        <div id="sitemapContent">
+                                            <p class="bs-evidence-value text-center">Chưa kiểm tra sitemap.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- End: Evidence Grid -->
+
+                            <!-- Advanced Details Grid -->
+                            <div class="bs-evidence-grid mb-4">
+                                <!-- Headers Card -->
+                                <div class="card" id="headersCard">
+                                    <div class="card__header">
+                                        <h3 class="card__title font-bold">
+                                            <i class="fa-solid fa-right-left"></i> Tiêu đề Phản hồi (Headers)
+                                        </h3>
+                                    </div>
+                                    <div class="card__body">
+                                        <div class="code-block mt-2">
+                                            <div class="code-block__body" style="max-height: 300px; overflow-y: auto;">
+                                                <code id="responseHeadersVal" class="code-block__text text-sm"></code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- HTML Snippet Card -->
+                                <div class="card" id="snippetCard">
+                                    <div class="card__header">
+                                        <h3 class="card__title font-bold">
+                                            <i class="fa-solid fa-code"></i> Đoạn mã HTML đầu tiên (Snippet)
+                                        </h3>
+                                    </div>
+                                    <div class="card__body">
+                                        <div class="code-block mt-2">
+                                            <div class="code-block__body" style="max-height: 300px; overflow-y: auto;">
+                                                <code id="htmlSnippetVal" class="code-block__text text-sm"></code>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            <!-- End: Advanced Details Grid -->
 
-                        <!-- Serving Card -->
-                        <div class="card">
-                            <div class="card__header">
-                                <h3 class="card__title font-bold">
-                                    <i class="fa-solid fa-arrows-rotate"></i> HTTP Serving
-                                </h3>
-                            </div>
-                            <div class="card__body">
-                                <div class="bs-evidence-row">
-                                    <span class="bs-evidence-label">Final URL</span>
-                                    <span id="servingFinalUrl" class="bs-evidence-value text-truncate-url">–</span>
+                            <!-- Reason Codes & Suggestions -->
+                            <div class="card mb-4" id="reasonCard">
+                                <div class="card__header">
+                                    <h3 class="card__title font-bold">
+                                        <i class="fa-solid fa-lightbulb"></i> Nhận xét & Đề xuất
+                                    </h3>
                                 </div>
-                                <div class="bs-evidence-row">
-                                    <span class="bs-evidence-label">HTTP Status</span>
-                                    <span id="servingStatus" class="badge">–</span>
-                                </div>
-                                <div class="bs-evidence-row">
-                                    <span class="bs-evidence-label">Content-Type</span>
-                                    <span id="servingContentType" class="bs-evidence-value">–</span>
-                                </div>
-                                <div class="bs-evidence-row">
-                                    <span class="bs-evidence-label">Payload</span>
-                                    <span id="servingPayload" class="bs-evidence-value">–</span>
-                                </div>
-                                <div class="bs-evidence-row">
-                                    <span class="bs-evidence-label">Redirects</span>
-                                    <span id="servingRedirects" class="bs-evidence-value">–</span>
-                                </div>
-                                <div id="redirectChainWrap" class="mt-2 d-none">
-                                    <div class="bs-redirect-chain" id="redirectChainList"></div>
+                                <div class="card__body">
+                                    <div id="reasonCodes" class="bs-reason-codes d-flex flex-row gap-2 flex-wrap mb-3">
+                                    </div>
+                                    <div id="suggestionList"></div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Sitemap Card -->
-                        <div class="card" id="sitemapCard">
-                            <div class="card__header">
-                                <h3 class="card__title font-bold">
-                                    <i class="fa-solid fa-sitemap"></i> Sitemap
-                                </h3>
-                            </div>
-                            <div class="card__body">
-                                <div id="sitemapContent">
-                                    <p class="bs-evidence-value text-center">Chưa kiểm tra sitemap.</p>
+                            <!-- Compare Table -->
+                            <div class="card mb-4 d-none" id="compareCard">
+                                <div class="card__header">
+                                    <h3 class="card__title font-bold">
+                                        <i class="fa-solid fa-code-compare"></i> So sánh Bot Profiles
+                                    </h3>
+                                </div>
+                                <div class="card__body">
+                                    <div class="table-wrapper">
+                                        <table class="results-table bs-compare-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Bot</th>
+                                                    <th>Crawl</th>
+                                                    <th>Index</th>
+                                                    <th>HTTP</th>
+                                                    <th>Final URL</th>
+                                                    <th>Title</th>
+                                                    <th>Diff</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="compareTableBody"></tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                    </div>
-                    <!-- End: Evidence Grid -->
-
-                    <!-- Reason Codes & Suggestions -->
-                    <div class="card mb-4" id="reasonCard">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-lightbulb"></i> Nhận xét & Đề xuất
-                            </h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="reasonCodes" class="bs-reason-codes d-flex flex-row gap-2 flex-wrap mb-3"></div>
-                            <div id="suggestionList"></div>
-                        </div>
-                    </div>
-
-                    <!-- Compare Table -->
-                    <div class="card mb-4 d-none" id="compareCard">
-                        <div class="card__header">
-                            <h3 class="card__title font-bold">
-                                <i class="fa-solid fa-code-compare"></i> So sánh Bot Profiles
-                            </h3>
-                        </div>
-                        <div class="card__body p-0">
-                            <div class="table-wrapper w-full overflow-x-auto">
-                                <table class="results-table w-full bs-compare-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Bot</th>
-                                            <th>Crawl</th>
-                                            <th>Index</th>
-                                            <th>HTTP</th>
-                                            <th>Final URL</th>
-                                            <th>Title</th>
-                                            <th>Diff</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="compareTableBody"></tbody>
-                                </table>
+                            <!-- Limitations Card -->
+                            <div id="limitationsCard" class="message-card message-card--warning mt-4">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        Giới hạn của công cụ (UA Simulation)
+                                    </h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <ul id="limitationsList" class="bs-limitation-list"></ul>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Limitations Card -->
-                    <div id="limitationsCard" class="message-card message-card--warning mt-4">
-                        <div class="message-card__header">
-                            <h4 class="message-card__title">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                                Giới hạn của công cụ (UA Simulation)
-                            </h4>
-                        </div>
-                        <div class="message-card__body">
-                            <ul id="limitationsList" class="bs-limitation-list"></ul>
-                        </div>
-                    </div>
 
                         </div>
                         <!-- End: Result Card -->
@@ -393,7 +447,7 @@
                             <div class="share-card__body d-flex flex-row items-stretch mt-2">
                                 <input type="text" id="shareLink" readonly class="share-card__input" value="">
                                 <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
-                                    <i class="fas fa-copy"></i>
+                                    <i class="fa-solid fa-copy"></i>
                                     <span>Copy</span>
                                 </button>
                             </div>
@@ -409,11 +463,17 @@
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
                     <div class="footer__stat footer__stat--total">
-                        <span class="footer__stat-label">Tổng lượt truy cập:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
                         <span id="visit-total" class="footer__stat-value">0</span>
                     </div>
                     <div class="footer__stat footer__stat--today">
-                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
                         <span id="visit-today" class="footer__stat-value">0</span>
                     </div>
                 </div>

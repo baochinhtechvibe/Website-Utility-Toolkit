@@ -43,16 +43,17 @@ type Indexability struct {
 
 // Serving mô tả cách server phản hồi (HTTP, redirect chain, content type).
 type Serving struct {
-	FinalURL              string               `json:"final_url"`
-	InitialStatusCode     int                  `json:"initial_status_code"`
-	InitialStatusText     string               `json:"initial_status_text"`
-	ContentType           string               `json:"content_type,omitempty"`
-	PayloadBytes          int64                `json:"payload_bytes"`
-	RedirectCount         int                  `json:"redirect_count"`
-	RedirectChainSummary  []RedirectHopSummary `json:"redirect_chain_summary"`
-	ResponseHeaders       map[string]string    `json:"response_headers,omitempty"`
-	BodySnippet           string               `json:"body_snippet,omitempty"`
-	Title                 string               `json:"title,omitempty"`
+	FinalURL             string               `json:"final_url"`
+	InitialStatusCode    int                  `json:"initial_status_code"`
+	InitialStatusText    string               `json:"initial_status_text"`
+	ContentType          string               `json:"content_type,omitempty"`
+	PayloadBytes         int64                `json:"payload_bytes"`
+	RedirectCount        int                  `json:"redirect_count"`
+	RedirectChainSummary []RedirectHopSummary `json:"redirect_chain_summary"`
+	ResponseHeaders      map[string]string    `json:"response_headers,omitempty"`
+	BodySnippet          string               `json:"body_snippet,omitempty"`
+	Title                string               `json:"title,omitempty"`
+	Error                string               `json:"error,omitempty"`
 }
 
 // SitemapResult chứa kết quả kiểm tra sitemap.
@@ -70,11 +71,11 @@ type SitemapResult struct {
 
 // Verdict là phán quyết cuối cùng của engine.
 type Verdict struct {
-	Result      string       `json:"result"`       // Indexable | Blocked | Risky | Unknown
-	Confidence  string       `json:"confidence"`   // high | medium | low
-	ReasonCodes []string     `json:"reason_codes"` // DS_ROBOTS_BLOCK, DS_NOINDEX_META, etc.
-	Summary     string       `json:"summary"`
-	Suggestions []string     `json:"suggestions,omitempty"`
+	Result      string   `json:"result"`       // Indexable | Blocked | Risky | Unknown
+	Confidence  string   `json:"confidence"`   // high | medium | low
+	ReasonCodes []string `json:"reason_codes"` // DS_ROBOTS_BLOCK, DS_NOINDEX_META, etc.
+	Summary     string   `json:"summary"`
+	Suggestions []string `json:"suggestions,omitempty"`
 }
 
 // Limitation mô tả giới hạn của công cụ này là UA Simulation.
@@ -85,18 +86,18 @@ type Limitation struct {
 
 // BotCompareResult chứa kết quả so sánh của một bot profile.
 type BotCompareResult struct {
-	Bot         string      `json:"bot"`
-	BotLabel    string      `json:"bot_label"`
-	CrawlStatus string      `json:"crawl_status"` // allowed | blocked | ...
-	IndexStatus string      `json:"index_status"` // allowed | blocked | unknown_due_to_crawl_block
-	FinalURL    string      `json:"final_url"`
-	StatusCode  int         `json:"status_code"`
-	ContentHash string      `json:"content_hash,omitempty"`
-	Title       string      `json:"title,omitempty"`
-	Canonical   string      `json:"canonical,omitempty"`
-	MetaRobots  string      `json:"meta_robots,omitempty"`
-	Diff        []string    `json:"diff,omitempty"` // các điểm khác biệt với bot đầu tiên
-	Error       string      `json:"error,omitempty"`
+	Bot         string   `json:"bot"`
+	BotLabel    string   `json:"bot_label"`
+	CrawlStatus string   `json:"crawl_status"` // allowed | blocked | ...
+	IndexStatus string   `json:"index_status"` // allowed | blocked | unknown_due_to_crawl_block
+	FinalURL    string   `json:"final_url"`
+	StatusCode  int      `json:"status_code"`
+	ContentHash string   `json:"content_hash,omitempty"`
+	Title       string   `json:"title,omitempty"`
+	Canonical   string   `json:"canonical,omitempty"`
+	MetaRobots  string   `json:"meta_robots,omitempty"`
+	Diff        []string `json:"diff,omitempty"` // các điểm khác biệt với bot đầu tiên
+	Error       string   `json:"error,omitempty"`
 }
 
 // AnalyzeData là struct payload chính được bọc bởi response envelope của repo.

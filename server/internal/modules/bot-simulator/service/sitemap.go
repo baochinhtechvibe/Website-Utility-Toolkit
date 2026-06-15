@@ -19,7 +19,7 @@ const (
 
 // SitemapCheckResult chứa kết quả kiểm tra sitemap.
 type SitemapCheckResult struct {
-	DiscoveryPath string   // "robots.txt" | "/sitemap.xml"
+	DiscoveryPath string // "robots.txt" | "/sitemap.xml"
 	Found         bool
 	SitemapURL    string
 	URLInSitemap  bool
@@ -80,8 +80,8 @@ func CheckSitemap(ctx context.Context, targetURL string, robotsResult *RobotsPar
 	}
 
 	// Bước 3: Scan sitemap với giới hạn depth và file count
-	targetNorm := normalizeURLForCompare(strings.TrimRight(targetURL, "/"))
-	
+	targetNorm := normalizeURLForCompare(targetURL)
+
 	accessible, inSitemap, foundURL := scanSitemapURLs(ctx, sitemapURLs, targetNorm, ua, ignoreTLS, visited, result, 0)
 
 	result.Found = accessible
@@ -136,7 +136,7 @@ func scanSitemapURLs(
 					break
 				}
 				result.URLsChecked++
-				norm := normalizeURLForCompare(strings.TrimRight(u.Loc, "/"))
+				norm := normalizeURLForCompare(u.Loc)
 				if norm == targetNorm {
 					inSitemap = true
 					return true, true, sUrl
@@ -176,6 +176,7 @@ func fetchSitemapFile(ctx context.Context, sitemapURL string, ua string, ignoreT
 		UserAgent:       ua,
 		IgnoreTLSErrors: ignoreTLS,
 		FollowRedirects: true,
+		MaxBodyBytes:    MaxSitemapXMLBytes,
 	}
 
 	res, err := FetchPage(ctx, sitemapURL, opts)
@@ -193,7 +194,10 @@ func fetchSitemapFile(ctx context.Context, sitemapURL string, ua string, ignoreT
 		return nil, fmt.Errorf("content-type không phải XML: %s", ct)
 	}
 
-	// FetchPage đã giới hạn body bằng MaxBodyBytes (10MB), sitemap limit là 5MB.
+	// FetchPage đã cấu hình giới hạn đọc Body bằng MaxSitemapXMLBytes.
+	if res.BodyTruncated {
+		return nil, fmt.Errorf("sitemap vượt quá dung lượng cho phép (5MB)")
+	}
 	// Trả về byte slice từ Body string.
 	return []byte(res.Body), nil
 }

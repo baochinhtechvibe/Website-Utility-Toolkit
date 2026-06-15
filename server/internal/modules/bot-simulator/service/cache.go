@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -37,25 +36,29 @@ func CacheSet(key string, value *models.AnalyzeData) {
 }
 
 // BuildCacheKey xây dựng cache key an toàn bằng SHA256 (Rule #56 & #304).
-func BuildCacheKey(targetURL string, botKey string, checkSitemap bool, compareMode bool, compareBots []string) string {
+func BuildCacheKey(targetURL string, botKey string, checkSitemap bool, compareMode bool, compareBots []string, ignoreTLSErrors bool) string {
 	normURL, _ := NormalizeURL(targetURL)
 	if normURL == "" {
 		normURL = targetURL
 	}
 
+	// Sửa lỗi P2 từ review: Không sort danh sách compareBots vì thứ tự ảnh hưởng tới Reference/Diff logic
 	sortedBots := make([]string, len(compareBots))
 	copy(sortedBots, compareBots)
-	sort.Strings(sortedBots)
 	compareStr := strings.Join(sortedBots, ",")
-	
+
 	sitemapStr := "0"
 	if checkSitemap {
 		sitemapStr = "1"
 	}
+	tlsStr := "0"
+	if ignoreTLSErrors {
+		tlsStr = "1"
+	}
 
 	// Tạo chuỗi raw chứa toàn bộ tham số định danh request
-	rawKey := fmt.Sprintf("bot-sim:v3:%s:%s:sitemap=%s:compareMode=%v:compare=%s", 
-		normURL, botKey, sitemapStr, compareMode, compareStr)
+	rawKey := fmt.Sprintf("bot-sim:v3:%s:%s:sitemap=%s:tls=%s:compareMode=%v:compare=%s",
+		normURL, botKey, sitemapStr, tlsStr, compareMode, compareStr)
 
 	// Băm SHA256 để có key an toàn và độ dài cố định
 	hash := sha256.Sum256([]byte(rawKey))

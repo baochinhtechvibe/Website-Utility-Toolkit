@@ -15,7 +15,7 @@
     transition: border-color var(--transition-base), background-color var(--transition-base);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639px) {
     .bs-verdict-banner {
         flex-direction: column;
         text-align: center;
@@ -108,7 +108,7 @@
     gap: var(--gap-2);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639px) {
     .bs-summary-strip {
         grid-template-columns: 1fr;
     }
@@ -116,15 +116,29 @@
 
 .bs-summary-cell {
     text-align: center;
+    height: 100%;
 }
 
 .bs-summary-cell .card__body {
-    padding: var(--space-4);
+    padding: var(--space-6) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
 }
 
 .bs-summary-cell__label {
+    font-size: var(--text-base);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold, 700);
+    margin-bottom: auto;
+}
+
+.bs-summary-cell__icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-3);
     color: var(--color-text-muted);
-    margin-bottom: var(--space-2);
 }
 
 .bs-summary-cell__value {
@@ -134,11 +148,24 @@
     margin: 0;
 }
 
-.bs-summary-cell__value.status--allowed   { color: var(--color-success-text); }
-.bs-summary-cell__value.status--blocked   { color: var(--color-error-text); }
-.bs-summary-cell__value.status--risky,
-.bs-summary-cell__value.status--deferred  { color: var(--color-warning-text); }
-.bs-summary-cell__value.status--unknown   { color: var(--color-text-muted); }
+.bs-summary-cell__value--large {
+    font-size: 3.5rem;
+    line-height: 1;
+    margin-bottom: var(--space-2);
+}
+
+.bs-summary-cell__desc {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-top: auto;
+    margin-bottom: 0;
+}
+
+.bs-summary-cell__value.status--allowed, .bs-summary-cell__icon.status--allowed     { color: var(--color-success-text); }
+.bs-summary-cell__value.status--blocked, .bs-summary-cell__icon.status--blocked     { color: var(--color-error-text); }
+.bs-summary-cell__value.status--risky,   .bs-summary-cell__icon.status--risky       { color: var(--color-warning-text); }
+.bs-summary-cell__value.status--deferred,.bs-summary-cell__icon.status--deferred    { color: var(--color-warning-text); }
+.bs-summary-cell__value.status--unknown, .bs-summary-cell__icon.status--unknown     { color: var(--color-text-muted); }
 
 
 /* ─── Evidence Grid (2 cột) ──────────────────────────────────── */
@@ -186,15 +213,7 @@
     text-align: right;
 }
 
-.bs-evidence-code {
-    background: var(--code-bg, var(--gray-100));
-    color: var(--code-text, var(--gray-700));
-    border: var(--border-width-1) solid var(--code-border, var(--gray-200));
-    padding: var(--space-half) var(--space-1);
-    border-radius: var(--radius-xs, 0.25rem);
-    word-break: break-all;
-    max-width: 100%;
-}
+
 
 .text-truncate-url {
     overflow: hidden;
@@ -205,7 +224,7 @@
 }
 
 /* ─── Evidence Row: Mobile (Rule #68) ────────────────────────── */
-@media (max-width: 576px) {
+@media (max-width: 639px) {
     .bs-evidence-row {
         flex-direction: column;
         gap: var(--space-1);
@@ -218,11 +237,6 @@
     .bs-evidence-value {
         text-align: left;
         max-width: 100%;
-    }
-
-    .bs-evidence-code {
-        max-width: 100%;
-        overflow-x: auto;
     }
 
     .text-truncate-url {
@@ -258,7 +272,7 @@
     background-color: var(--color-surface-muted);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639px) {
     .bs-redirect-hop {
         flex-wrap: wrap;
         padding: var(--space-2);
@@ -337,7 +351,7 @@
     color: var(--color-warning-text);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639px) {
     .bs-limitation-list li {
         display: block; /* Chuyển sang block để tự do xuống dòng */
     }
@@ -354,25 +368,93 @@
 }
 
 /* ─── Compare Table ──────────────────────────────────────────── */
-.bs-compare-table th,
-.bs-compare-table td {
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+table.bs-compare-table {
+    width: 100%;
+}
+
+table.bs-compare-table th,
+table.bs-compare-table td {
     padding: var(--space-2) var(--space-3);
     white-space: nowrap;
 }
 
-.bs-compare-table td.has-diff {
+table.bs-compare-table td.has-diff {
     background-color: var(--color-warning-bg);
 }
 
-.bs-diff-badge {
-    display: inline-block;
-    font-weight: var(--font-weight-bold);
-    padding: var(--space-half) var(--space-1);
-    border-radius: var(--radius-xs);
-    background-color: var(--color-warning-bg);
-    color: var(--color-warning-text);
-    border: var(--border-width-1) solid var(--color-warning-border);
-    margin-inline: var(--space-half);
+
+
+@media (max-width: 639px) {
+    .page--bot-simulator table.bs-compare-table {
+        min-width: 0;
+        display: block;
+    }
+
+    .page--bot-simulator table.bs-compare-table tbody {
+        display: block;
+    }
+
+    .page--bot-simulator table.bs-compare-table thead {
+        display: none;
+    }
+
+    .page--bot-simulator .table-wrapper {
+        max-height: none;
+        overflow-y: visible;
+        overflow-x: hidden;
+    }
+
+    .page--bot-simulator table.bs-compare-table tbody tr {
+        display: block;
+        margin-bottom: var(--space-4);
+        border: var(--border-width-1) solid var(--color-border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-1);
+        overflow: hidden;
+    }
+
+    .page--bot-simulator table.bs-compare-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .page--bot-simulator table.bs-compare-table tbody td {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        padding: var(--space-3);
+        text-align: left;
+        border-bottom: var(--border-width-1) solid var(--color-border);
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        white-space: normal;
+        word-break: break-all;
+        overflow-wrap: anywhere;
+    }
+
+    .page--bot-simulator table.bs-compare-table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    .page--bot-simulator table.bs-compare-table tbody td::before {
+        content: attr(data-label);
+        font-weight: var(--font-weight-bold);
+        color: var(--color-text-secondary);
+        font-family: var(--font-family-sans);
+        font-size: var(--text-sm);
+        flex-shrink: 0;
+        width: 38%;
+        margin-right: var(--space-2);
+        text-align: left;
+    }
+
+
 }
 
 /* ─── Loading States ─────────────────────────────────────────── */

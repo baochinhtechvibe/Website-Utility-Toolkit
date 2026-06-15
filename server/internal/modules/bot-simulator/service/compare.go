@@ -13,7 +13,6 @@ type CompareOptions struct {
 	TargetURL       string
 	CheckSitemap    bool
 	IgnoreTLSErrors bool
-	SharedRobots    *RobotsParseResult // Optional: robots result đã fetch sẵn từ handler
 }
 
 // RunCompare chạy phân tích đồng thời cho nhiều bot profile.
@@ -32,20 +31,8 @@ func RunCompare(ctx context.Context, opts CompareOptions) []models.BotCompareRes
 		}
 	}
 
-	// Tối ưu: Sử dụng robots.txt đã fetch sẵn nếu có (từ handler)
-	// Tránh fetch lại robots.txt cho cùng một target URL khi bật compare mode.
-	sharedRobots := opts.SharedRobots
-	if sharedRobots == nil {
-		// Dùng User-Agent của bot đầu tiên làm proxy để fetch robots.txt dùng chung.
-		// Trade-off: Giả định server trả về robots.txt giống nhau cho mọi bot (thông lệ phổ biến).
-		sharedUA := "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-		if len(keys) > 0 {
-			if p, ok := GetProfile(keys[0]); ok {
-				sharedUA = p.UserAgent
-			}
-		}
-		sharedRobots, _ = FetchAndParseRobots(ctx, opts.TargetURL, sharedUA, opts.IgnoreTLSErrors)
-	}
+	// Sửa lỗi P1 từ review: Không dùng sharedRobots nữa vì robots.txt có thể vary theo User-Agent.
+	// Mỗi bot profile phải tự fetch robots.txt bằng chính User-Agent của nó.
 
 	results := make([]models.BotCompareResult, len(keys))
 	sem := make(chan struct{}, MaxCompareProfiles) // semaphore kiểm soát concurrency
@@ -77,9 +64,9 @@ func RunCompare(ctx context.Context, opts CompareOptions) []models.BotCompareRes
 				return
 			}
 
-			result := analyzeSingleBot(ctx, profile, opts.TargetURL, opts.CheckSitemap, opts.IgnoreTLSErrors, sharedRobots)
-			
-			// Safety: Mỗi goroutine ghi vào một index kết quả (idx) độc lập, 
+			result := analyzeSingleBot(ctx, profile, opts.TargetURL, opts.CheckSitemap, opts.IgnoreTLSErrors)
+
+			// Safety: Mỗi goroutine ghi vào một index kết quả (idx) độc lập,
 			// đồng bộ hóa sau wg.Wait() nên không cần Mutex.
 			results[idx] = result
 		}(i, key)
@@ -99,7 +86,7 @@ func RunCompare(ctx context.Context, opts CompareOptions) []models.BotCompareRes
 }
 
 // analyzeSingleBot chạy phân tích đầy đủ cho một bot, dùng trong compare mode.
-func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string, checkSitemap bool, ignoreTLS bool, sharedRobots *RobotsParseResult) models.BotCompareResult {
+func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string, checkSitemap bool, ignoreTLS bool) models.BotCompareResult {
 	result := models.BotCompareResult{
 		Bot:      profile.Key,
 		BotLabel: profile.Label,
@@ -129,18 +116,13 @@ func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string,
 
 	// Parse meta
 	xRobots := ParseXRobotsTag(httpResult.Headers)
-	meta := ParseMeta(httpResult.Body, xRobots, targetURL)
+	meta := ParseMeta(httpResult.Body, xRobots, targetURL, profile.RobotsToken)
 	result.Title = meta.Title
 	result.Canonical = meta.Canonical
 	result.MetaRobots = meta.MetaRobots
 
-	// Kiểm tra robots.txt - Sử dụng shared results nếu có
-	var robotsResult *RobotsParseResult
-	if sharedRobots != nil {
-		robotsResult = sharedRobots
-	} else {
-		robotsResult, _ = FetchAndParseRobots(ctx, targetURL, profile.UserAgent, ignoreTLS)
-	}
+	// Kiểm tra robots.txt - Tự fetch riêng bằng UA của bot này
+	robotsResult, _ := FetchAndParseRobots(ctx, targetURL, profile.UserAgent, ignoreTLS)
 	decision := CheckRobotsAccess(robotsResult, profile.RobotsToken, targetURL)
 
 	// Đánh giá
@@ -148,14 +130,13 @@ func analyzeSingleBot(ctx context.Context, profile BotProfile, targetURL string,
 		FinalURL:          httpResult.FinalURL,
 		InitialStatusCode: httpResult.StatusCode,
 	}
-	crawlAccess, indexability, _ := EvaluateAccess(decision, robotsResult, &meta, serving, profile.Family)
+	crawlAccess, indexability, _ := EvaluateAccess(decision, robotsResult, &meta, serving, profile.RobotsToken, profile.Family)
 
 	result.CrawlStatus = crawlAccess.Status
 	result.IndexStatus = indexability.Status
 
 	return result
 }
-
 
 // diffResults so sánh 2 kết quả bot và trả về danh sách điểm khác biệt.
 func diffResults(ref *models.BotCompareResult, curr *models.BotCompareResult) []string {

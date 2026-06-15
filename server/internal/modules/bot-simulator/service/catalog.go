@@ -72,7 +72,7 @@ var BotCatalog = map[string]BotProfile{
 	"oai-searchbot": {
 		Key:         "oai-searchbot",
 		Label:       "OAI-SearchBot (OpenAI)",
-		UserAgent:   "OAI-SearchBot/1.0; +https://openai.com/searchbot",
+		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.3; +https://openai.com/searchbot",
 		RobotsToken: "oai-searchbot",
 		Family:      "ai_search",
 		DocsURL:     "https://platform.openai.com/docs/bots",
@@ -83,7 +83,7 @@ var BotCatalog = map[string]BotProfile{
 	"perplexitybot": {
 		Key:         "perplexitybot",
 		Label:       "PerplexityBot",
-		UserAgent:   "PerplexityBot/1.0 (+https://docs.perplexity.ai/docs/perplexitybot)",
+		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
 		RobotsToken: "perplexitybot",
 		Family:      "ai_search",
 		DocsURL:     "https://docs.perplexity.ai/docs/resources/perplexity-crawlers",
@@ -96,7 +96,7 @@ var BotCatalog = map[string]BotProfile{
 	"gptbot": {
 		Key:         "gptbot",
 		Label:       "GPTBot (OpenAI Training)",
-		UserAgent:   "GPTBot/1.2 (+https://openai.com/gptbot)",
+		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.3; +https://openai.com/gptbot",
 		RobotsToken: "gptbot",
 		Family:      "ai_training",
 		DocsURL:     "https://platform.openai.com/docs/bots",
@@ -133,7 +133,7 @@ var BotCatalog = map[string]BotProfile{
 	"chatgpt-user": {
 		Key:         "chatgpt-user",
 		Label:       "ChatGPT-User (User-Triggered)",
-		UserAgent:   "Mozilla/5.0 (compatible; ChatGPT-User/1.0; +https://openai.com/bot) AppleWebKit/537.36 (KHTML, like Gecko)",
+		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
 		RobotsToken: "chatgpt-user",
 		Family:      "user_fetcher",
 		DocsURL:     "https://platform.openai.com/docs/bots",
@@ -144,7 +144,7 @@ var BotCatalog = map[string]BotProfile{
 	"perplexity-user": {
 		Key:         "perplexity-user",
 		Label:       "Perplexity-User (User-Triggered)",
-		UserAgent:   "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot) AppleWebKit/537.36 (KHTML, like Gecko)",
+		UserAgent:   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://www.perplexity.ai/perplexity-user)",
 		RobotsToken: "perplexity-user",
 		Family:      "user_fetcher",
 		DocsURL:     "https://docs.perplexity.ai/docs/resources/perplexity-crawlers",

@@ -11,24 +11,25 @@ import (
 	"time"
 )
 
-// RobotsAccessStatus biểu diễn kết quả fetch /robots.txt theo RFC 9309.
+// RobotsAccessStatus biểu diễn kết quả fetch /robots.txt.
+// Lưu ý: Kết hợp giữa tiêu chuẩn RFC 9309 và Simulator Policy bảo thủ (như Googlebot).
 type RobotsAccessStatus string
 
 const (
-	RobotsStatus2xx       RobotsAccessStatus = "2xx"        // Tìm thấy, đọc được
-	RobotsStatus3xx       RobotsAccessStatus = "3xx"        // Redirect (xử lý nhưng cẩn thận)
-	RobotsStatus4xx       RobotsAccessStatus = "4xx_allow"  // Không có robots.txt → tất cả được phép crawl
-	RobotsStatus5xx       RobotsAccessStatus = "5xx_block"  // Server lỗi → bot nên hoãn lại
-	RobotsStatusTimeout   RobotsAccessStatus = "timeout"    // Timeout → bot nên hoãn lại
+	RobotsStatus2xx         RobotsAccessStatus = "2xx"         // Tìm thấy, đọc được (RFC)
+	RobotsStatus3xx         RobotsAccessStatus = "3xx"         // Redirect nhưng không thành công cuối cùng
+	RobotsStatus4xx         RobotsAccessStatus = "4xx_allow"   // 4xx (trừ 429) → Cho phép crawl (RFC & Google)
+	RobotsStatus5xx         RobotsAccessStatus = "5xx_block"   // 5xx hoặc 429 → Hoãn crawl (RFC & Google)
+	RobotsStatusTimeout     RobotsAccessStatus = "timeout"     // Timeout → Hoãn crawl (RFC)
 	RobotsStatusUnreachable RobotsAccessStatus = "unreachable" // Không kết nối được
-	RobotsStatusNone      RobotsAccessStatus = "none"       // Không check (lý do khác)
+	RobotsStatusNone        RobotsAccessStatus = "none"        // Không check
 )
 
 // RobotsRule là một cặp rule allow/disallow cho một path.
 type RobotsRule struct {
-	Path    string
-	Allow   bool
-	Length  int // độ dài path để tính longest-match
+	Path   string
+	Allow  bool
+	Length int // độ dài path để tính longest-match
 }
 
 // RobotsGroup là group user-agent trong robots.txt.
@@ -83,8 +84,9 @@ func FetchAndParseRobots(ctx context.Context, targetURL string, botUA string, ig
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		if TimeoutError(err) {
-			// RFC 9309: timeout → treat như 5xx → hoãn crawl
-			result.FetchStatus = RobotsStatus5xx
+			// Sửa lỗi P2: Timeout thì gán đúng status timeout để UI map ra label chính xác,
+			// indexability engine vẫn treat timeout như deferred/unknown crawl block.
+			result.FetchStatus = RobotsStatusTimeout
 		} else {
 			result.FetchStatus = RobotsStatusUnreachable
 		}
@@ -96,14 +98,14 @@ func FetchAndParseRobots(ctx context.Context, targetURL string, botUA string, ig
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		// 2xx: đọc và parse
 		result.FetchStatus = RobotsStatus2xx
-		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 512*1024)) // max 512KB robots.txt
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 500*1024)) // max 500KB robots.txt theo chuẩn RFC và Google
 		// Lưu raw content giới hạn để debug
 		if len(bodyBytes) > 10*1024 {
 			result.RawContent = string(bodyBytes[:10*1024]) + "\n... (truncated)"
 		} else {
 			result.RawContent = string(bodyBytes)
 		}
-		
+
 		parsed := ParseRobotsContent(string(bodyBytes))
 		result.Groups = parsed.Groups
 		result.SitemapURLs = parsed.SitemapURLs
@@ -122,6 +124,7 @@ func FetchAndParseRobots(ctx context.Context, targetURL string, botUA string, ig
 					result.Groups = result2.Groups
 					result.SitemapURLs = result2.SitemapURLs
 					result.RawContent = result2.RawContent
+					result.FetchStatus = result2.FetchStatus
 				}
 				_ = err2
 			}
@@ -130,8 +133,14 @@ func FetchAndParseRobots(ctx context.Context, targetURL string, botUA string, ig
 		}
 
 	case resp.StatusCode >= 400 && resp.StatusCode < 500:
-		// 4xx (bao gồm 404): theo RFC 9309 §2.3.1.4 → tất cả path đều được phép
-		result.FetchStatus = RobotsStatus4xx
+		// Sửa theo review (P1): Theo RFC 9309 và Google Search Central:
+		// Mọi lỗi 4xx (bao gồm 401/403) trừ 429 đều được hiểu là "Unavailable" -> Full Allow.
+		// Mã 429 (Too Many Requests) được xử lý tương đương 5xx -> Crawler hoãn lại.
+		if resp.StatusCode == 429 {
+			result.FetchStatus = RobotsStatus5xx
+		} else {
+			result.FetchStatus = RobotsStatus4xx
+		}
 
 	case resp.StatusCode >= 500:
 		// 5xx: theo RFC 9309 §2.3.1.5 → bot nên hoãn crawl, treat như full block tạm thời
@@ -150,8 +159,10 @@ func fetchRobotsWithRedirects(ctx context.Context, targetURL string, ua string, 
 		SitemapURLs: []string{},
 		Groups:      []RobotsGroup{},
 	}
-	
+
 	if depth > 5 {
+		// Sửa lỗi P1 từ review: Quá 5 hop redirect thì treat như không có robots.txt (Full Allow)
+		result.FetchStatus = RobotsStatus4xx
 		return result, fmt.Errorf("robots.txt redirect vượt giới hạn (5)")
 	}
 
@@ -176,6 +187,7 @@ func fetchRobotsWithRedirects(ctx context.Context, targetURL string, ua string, 
 		parsed := ParseRobotsContent(content)
 		result.Groups = parsed.Groups
 		result.SitemapURLs = parsed.SitemapURLs
+		result.FetchStatus = RobotsStatus2xx
 	} else if res.StatusCode >= 300 && res.StatusCode < 400 {
 		loc := res.Headers["Location"]
 		if loc != "" {
@@ -186,8 +198,19 @@ func fetchRobotsWithRedirects(ctx context.Context, targetURL string, ua string, 
 				return fetchRobotsWithRedirects(ctx, nextURL, ua, ignoreTLS, depth+1)
 			}
 		}
+		result.FetchStatus = RobotsStatus3xx
+	} else if res.StatusCode >= 400 && res.StatusCode < 500 {
+		if res.StatusCode == 429 {
+			result.FetchStatus = RobotsStatus5xx
+		} else {
+			result.FetchStatus = RobotsStatus4xx
+		}
+	} else if res.StatusCode >= 500 {
+		result.FetchStatus = RobotsStatus5xx
+	} else {
+		result.FetchStatus = RobotsStatusUnreachable
 	}
-	
+
 	return result, nil
 }
 
@@ -296,7 +319,7 @@ func ParseRobotsContent(content string) *RobotsParseResult {
 // CheckRobotsAccess quyết định một bot có được phép crawl một path không.
 // Áp dụng lookup theo RFC 9309: specific UA match trước, fallback *, longest-match wins.
 func CheckRobotsAccess(result *RobotsParseResult, botToken string, targetURL string) RobotsDecision {
-	// Nếu 4xx → tất cả đều được phép
+	// Nếu 4xx (401, 403, 404,...) → RFC 9309 & Google: tất cả đều được phép
 	if result.FetchStatus == RobotsStatus4xx {
 		return RobotsDecision{
 			Allowed:  true,

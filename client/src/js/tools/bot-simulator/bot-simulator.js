@@ -29,14 +29,14 @@ function init() {
     const resultSection   = $('#resultSection');
     const shareLink       = $('#shareLink');
     const btnCopyLink     = $('#btnCopyLink');
+    const shareCard       = $('#shareCard');
     
-    // Verdict Banner
-    const verdictBanner     = $('#verdictBanner');
-    const verdictIcon       = $('#verdictIcon');
-    const verdictLabel      = $('#verdictLabel');
-    const verdictConfidence = $('#verdictConfidence');
-    const verdictSummary    = $('#verdictSummary');
-    const activeBotLabel    = $('#activeBotLabel');
+    // Config Options
+    const ignoreTLSErrors = $('#ignoreTLSErrors');
+    const checkSitemapOpt = $('#checkSitemap');
+    const compareModeOpt  = $('#compareMode');
+    
+
 
     // Cache Banner
     const cacheNotice    = $('#cacheNotice');
@@ -66,6 +66,11 @@ function init() {
     const servingRedirects   = $('#servingRedirects');
     const redirectChainWrap  = $('#redirectChainWrap');
     const redirectChainList  = $('#redirectChainList');
+    
+    const headersCard        = $('#headersCard');
+    const responseHeadersVal = $('#responseHeadersVal');
+    const snippetCard        = $('#snippetCard');
+    const htmlSnippetVal     = $('#htmlSnippetVal');
 
     const sitemapContent  = $('#sitemapContent');
     const reasonCodes     = $('#reasonCodes');
@@ -75,6 +80,7 @@ function init() {
     const limitationsList = $('#limitationsList');
 
     let isProcessing = false;
+    let currentAbortController = null;
 
     // ─── State Management ───────────────────────────────────────────
     const updateButtonStates = () => {
@@ -104,6 +110,10 @@ function init() {
         if (isProcessing) return;
         
         isProcessing = true;
+        if (currentAbortController) currentAbortController.abort();
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
+
         setLoading(true);
         hideError();
         hideResult();
@@ -116,9 +126,9 @@ function init() {
         }
 
         const bot          = botSelect?.value || 'googlebot-desktop';
-        const ignoreTLS    = $('#ignoreTLSErrors')?.checked;
-        const checkSitemap = $('#checkSitemap')?.checked;
-        const compareMode  = $('#compareMode')?.checked;
+        const ignoreTLS    = ignoreTLSErrors?.checked;
+        const checkSitemap = checkSitemapOpt?.checked;
+        const compareMode  = compareModeOpt?.checked;
 
         const payload = {
             url: target,
@@ -134,23 +144,37 @@ function init() {
             const response = await fetch(API_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: signal
             });
 
-            const result = await response.json();
+            let result;
+            try {
+                result = await response.json();
+            } catch (err) {
+                if (signal.aborted || currentAbortController?.signal !== signal) return;
+                showError(`Lỗi phản hồi từ máy chủ (${response.status}). Vui lòng thử lại.`);
+                return;
+            }
 
-            if (!result.success) {
-                showError(result.message || result.error || 'Phân tích thất bại.');
+            if (signal.aborted || currentAbortController?.signal !== signal) return;
+
+            if (!response.ok || !result.success) {
+                showError(result?.message || result?.error || `Phân tích thất bại (${response.status}).`);
                 return;
             }
             renderResult(result);
         } catch (err) {
+            if (err.name === 'AbortError') return;
             showError('Không thể kết nối tới server. Vui lòng thử lại sau.');
             console.error(err);
         } finally {
-            setLoading(false);
-            isProcessing = false;
-            updateButtonStates();
+            if (!signal.aborted) {
+                setLoading(false);
+                isProcessing = false;
+                currentAbortController = null;
+                updateButtonStates();
+            }
         }
     }
 
@@ -174,8 +198,6 @@ function init() {
             setDisplay(cacheNotice, 'none');
         }
 
-        // Verdict Banner
-        renderVerdictBanner(data.verdict, data.bot_profile);
 
         // Summary Strip
         renderSummaryStrip(data);
@@ -210,46 +232,46 @@ function init() {
         const shareUrl = new URL(window.location.href);
         shareUrl.searchParams.set('url', data.target);
         shareUrl.searchParams.set('bot', data.bot_profile.key);
+        const isCompare = data.compare && data.compare.length > 0;
+        const isSitemap = $('#checkSitemap') ? $('#checkSitemap').checked : false;
+        const isIgnoreTLS = $('#ignoreTLSErrors') ? $('#ignoreTLSErrors').checked : false;
+
+        if (isCompare) shareUrl.searchParams.set('compare', 'true');
+        else shareUrl.searchParams.delete('compare');
+
+        if (isSitemap) shareUrl.searchParams.set('sitemap', 'true');
+        else shareUrl.searchParams.delete('sitemap');
+
+        if (isIgnoreTLS) shareUrl.searchParams.set('ignore_tls', 'true');
+        else shareUrl.searchParams.delete('ignore_tls');
         shareLink.value = shareUrl.toString();
+        shareLink.title = shareUrl.toString();
 
         // Sync History / URL Bar
-        updateURL(data.target, data.bot_profile.key);
+        updateURL(data.target, data.bot_profile.key, isCompare, isSitemap, isIgnoreTLS);
 
         showResult();
     }
 
-    function updateURL(url, bot) {
+    function updateURL(url, bot, isCompare, isSitemap, isIgnoreTLS) {
         try {
             const params = new URLSearchParams(window.location.search);
             params.set('url', url);
             params.set('bot', bot);
+            if (isCompare) params.set('compare', 'true'); else params.delete('compare');
+            if (isSitemap) params.set('sitemap', 'true'); else params.delete('sitemap');
+            if (isIgnoreTLS) params.set('ignore_tls', 'true'); else params.delete('ignore_tls');
+
             const newSearch = `?${params.toString()}`;
             const newURL = `${window.location.pathname}${newSearch}`;
             if (window.location.search !== newSearch) {
-                window.history.pushState({ url, bot }, '', newURL);
+                window.history.pushState({ url, bot, compare: isCompare, sitemap: isSitemap, ignore_tls: isIgnoreTLS }, '', newURL);
             }
         } catch (err) {
             console.warn("Lỗi cập nhật URL:", err);
         }
     }
 
-    function renderVerdictBanner(verdict, botProfile) {
-        verdictBanner.className = 'bs-verdict-banner mb-4';
-        const icons = {
-            Indexable: 'fa-circle-check',
-            Blocked:   'fa-circle-xmark',
-            Risky:     'fa-triangle-exclamation',
-            Unknown:   'fa-circle-question',
-        };
-        const verdictKey = verdict.result || 'Unknown';
-        verdictBanner.classList.add(`bs-verdict--${verdictKey.toLowerCase()}`);
-        verdictIcon.className = `fa-solid ${icons[verdictKey] || 'fa-circle-question'}`;
-        verdictLabel.textContent = verdictKey;
-        const confMap = { high: 'Độ tin cậy cao', medium: 'Độ tin cậy trung bình', low: 'Độ tin cậy thấp' };
-        verdictConfidence.textContent = confMap[verdict.confidence] || verdict.confidence || '';
-        verdictSummary.textContent = verdict.summary || '';
-        activeBotLabel.textContent = botProfile?.label || '';
-    }
 
     function renderSummaryStrip(data) {
         const crawl = data.crawl_access;
@@ -268,8 +290,14 @@ function init() {
         setStatusCell(indexStatus, index.status, statusLabels[index.status] || index.status);
         const code = serving.initial_status_code;
         const statusClass = code >= 500 ? 'risky' : (code >= 400 ? 'blocked' : (code >= 300 ? 'risky' : (code >= 200 ? 'allowed' : 'unknown')));
-        httpStatus.textContent = code ? `${code} ${serving.initial_status_text || ''}` : '–';
-        httpStatus.className = `bs-summary-cell__value status--${statusClass}`;
+        httpStatus.textContent = code ? `${code}` : '–';
+        httpStatus.className = `bs-summary-cell__value bs-summary-cell__value--large status--${statusClass}`;
+        const httpDesc = httpStatus.parentElement.querySelector('.bs-summary-cell__desc');
+        if (httpDesc && code) {
+            httpDesc.textContent = serving.initial_status_text || 'Mã phản hồi từ máy chủ';
+        } else if (httpDesc) {
+            httpDesc.textContent = 'Mã phản hồi từ máy chủ';
+        }
     }
 
     function setStatusCell(el, status, label) {
@@ -279,7 +307,12 @@ function init() {
             risky: 'risky', timeout: 'risky', error: 'blocked', unreachable: 'blocked',
             unknown_due_to_crawl_block: 'unknown',
         };
-        el.className = `bs-summary-cell__value status--${classSuffix[status] || 'unknown'}`;
+        const mappedClass = classSuffix[status] || 'unknown';
+        el.className = `bs-summary-cell__value text-uppercase status--${mappedClass}`;
+        const iconEl = el.parentElement.querySelector('.bs-summary-cell__icon');
+        if (iconEl) {
+            iconEl.className = `bs-summary-cell__icon status--${mappedClass}`;
+        }
     }
 
     function renderRobots(crawl) {
@@ -287,7 +320,7 @@ function init() {
             '2xx': ['badge-success', 'Tìm thấy (2xx)'],
             '3xx': ['badge-info', 'Redirect (3xx)'],
             '4xx_allow': ['badge-warning', '4xx → Cho phép tất cả'],
-            '5xx_block': ['badge-error', '5xx → Hoãn crawl'],
+            '5xx_block': ['badge-error', '5xx/429 → Hoãn crawl'],
             timeout: ['badge-error', 'Timeout'],
             unreachable: ['badge-error', 'Không kết nối được'],
             none: ['badge-default', 'Không check'],
@@ -317,13 +350,19 @@ function init() {
             canonicalVal.textContent = indexability.canonical_url || '–';
             canonicalVal.title = indexability.canonical_url || '';
         }
-        if (indexability.canonical_missing) {
+
+        // Guard: khi không lấy được nội dung trang, hiện '–' thay vì suy luận sai
+        if (indexability.status === 'unknown_due_to_crawl_block') {
+            canonicalSelf.textContent = '–';
+            canonicalSelf.className = 'badge badge-default';
+        } else if (indexability.canonical_missing) {
             canonicalSelf.textContent = '–';
             canonicalSelf.className = 'badge badge-warning';
         } else {
             canonicalSelf.textContent = indexability.canonical_self ? 'Đúng (self)' : 'Khác (không phải self)';
             canonicalSelf.className = indexability.canonical_self ? 'badge badge-success' : 'badge badge-warning';
         }
+
         const indexMap = {
             allowed: ['badge-success', 'Cho phép index'],
             blocked: ['badge-error', 'Bị chặn index'],
@@ -334,13 +373,21 @@ function init() {
         indexDetail.className = `badge ${iCls}`;
     }
 
+
     function renderServing(serving) {
         servingFinalUrl.textContent = serving.final_url || '–';
         servingFinalUrl.title = serving.final_url || '';
         const code = serving.initial_status_code;
-        const codeCls = code >= 500 ? 'badge-error' : (code >= 400 ? 'badge-error' : (code >= 300 ? 'badge-warning' : (code >= 200 ? 'badge-success' : 'badge-default')));
-        servingStatus.textContent = code ? `${code} ${serving.initial_status_text || ''}` : '–';
-        servingStatus.className = `badge ${codeCls}`;
+        if (!code) {
+            // Sửa lỗi P1 từ review: Hiển thị lỗi mạng thay vì chỉ N/A
+            servingStatus.textContent = serving.error ? escapeHTML(serving.error) : 'N/A (Lỗi kết nối)';
+            servingStatus.className = 'badge badge-error';
+        } else {
+            const codeCls = code >= 500 ? 'badge-error' : (code >= 400 ? 'badge-error' : (code >= 300 ? 'badge-warning' : (code >= 200 ? 'badge-success' : 'badge-default')));
+            servingStatus.textContent = `${code} ${serving.initial_status_text || ''}`;
+            servingStatus.className = `badge ${codeCls}`;
+        }
+
         servingContentType.textContent = serving.content_type || '–';
         servingPayload.textContent = serving.payload_bytes > 0 ? formatBytes(serving.payload_bytes) : '–';
         servingRedirects.textContent = String(serving.redirect_count || 0);
@@ -362,6 +409,39 @@ function init() {
             setDisplay(redirectChainWrap, 'block');
         } else {
             setDisplay(redirectChainWrap, 'none');
+        }
+
+        // Headers Card
+        if (serving.response_headers && Object.keys(serving.response_headers).length > 0) {
+            let headerStr = '';
+            if (code) {
+                headerStr += `<span class="code-keyword">HTTP/1.1</span> <span class="code-value">${code}</span> <span class="code-string">${escapeHTML(serving.initial_status_text || '')}</span>\n`;
+            }
+            for (const [k, v] of Object.entries(serving.response_headers)) {
+                headerStr += `<span class="code-parameter">${escapeHTML(k)}</span>: <span class="code-text">${escapeHTML(v)}</span>\n`;
+            }
+            if (responseHeadersVal) responseHeadersVal.innerHTML = headerStr.trim();
+            if (headersCard) setDisplay(headersCard, 'block');
+        } else {
+            if (headersCard) setDisplay(headersCard, 'none');
+        }
+
+        // Snippet Card
+        if (serving.body_snippet && serving.body_snippet.trim() !== '') {
+            let safeSnippet = escapeHTML(serving.body_snippet);
+            // Highlight Doctype
+            safeSnippet = safeSnippet.replace(/&lt;!(DOCTYPE|doctype)(.*?)&gt;/g, '<span class="code-keyword">&lt;!$1$2&gt;</span>');
+            // Highlight HTML Comments
+            safeSnippet = safeSnippet.replace(/&lt;!--([\s\S]*?)--&gt;/g, '<span class="code-comment">&lt;!--$1--&gt;</span>');
+            // Highlight HTML Tags
+            safeSnippet = safeSnippet.replace(/&lt;(\/?)([a-zA-Z0-9-]+)/g, '&lt;$1<span class="code-keyword">$2</span>');
+            // Highlight Attributes
+            safeSnippet = safeSnippet.replace(/([a-zA-Z0-9-]+)=&quot;(.*?)&quot;/g, '<span class="code-parameter">$1</span>=<span class="code-string">&quot;$2&quot;</span>');
+
+            if (htmlSnippetVal) htmlSnippetVal.innerHTML = safeSnippet;
+            if (snippetCard) setDisplay(snippetCard, 'block');
+        } else {
+            if (snippetCard) setDisplay(snippetCard, 'none');
         }
     }
 
@@ -406,9 +486,17 @@ function init() {
         suggestionList.innerHTML = '';
         if (suggestions.length === 0) {
             const card = document.createElement('div');
-            card.className = 'message-card message-card--suggestion';
-            card.innerHTML = `<div class="message-card__body"><p class="message-card__message"><i class="fa-solid fa-circle-check mr-1"></i> Không có đề xuất nào – cấu hình đang tốt!</p></div>`;
+            // Không hiện "Cấu hình tốt!" khi verdict là Unknown hoặc Blocked
+            const isNegativeVerdict = verdict.result === 'Unknown' || verdict.result === 'Blocked';
+            if (isNegativeVerdict) {
+                card.className = 'message-card message-card--warning';
+                card.innerHTML = `<div class="message-card__body"><p class="message-card__message"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Không đủ dữ liệu để đưa ra đề xuất cụ thể.</p></div>`;
+            } else {
+                card.className = 'message-card message-card--suggestion';
+                card.innerHTML = `<div class="message-card__body"><p class="message-card__message"><i class="fa-solid fa-circle-check mr-1"></i> Không có đề xuất nào – cấu hình đang tốt!</p></div>`;
+            }
             suggestionList.appendChild(card);
+
         } else {
             suggestions.forEach(s => {
                 const card = document.createElement('div');
@@ -436,10 +524,17 @@ function init() {
             const indexBadge = statusBadge(r.index_status, { allowed: 'badge-success', blocked: 'badge-error', unknown_due_to_crawl_block: 'badge-warning' });
             const codeCls = r.status_code >= 500 ? 'badge-error' : r.status_code >= 400 ? 'badge-error' : r.status_code >= 300 ? 'badge-warning' : 'badge-success';
             const httpBadge = r.status_code ? `<span class="badge badge-sm ${codeCls}">${r.status_code}</span>` : '–';
-            const diffBadges = (r.diff || []).map(d => `<span class="bs-diff-badge" title="Khác: ${escapeHTML(d)}">${escapeHTML(d)}</span>`).join('');
-            tr.innerHTML = `<td><strong>${escapeHTML(r.bot_label || r.bot)}</strong></td><td>${crawlBadge}</td><td>${indexBadge}</td><td>${httpBadge}</td><td>${escapeHTML(r.final_url || '')}</td><td>${escapeHTML(r.title || '')}</td><td>${diffBadges || (idx === 0 ? '<span class="badge badge-sm badge-default">Tham chiếu</span>' : '<span class="badge badge-sm badge-success">Giống</span>')}</td>`;
+            const diffBadges = (r.diff || []).map(d => `<span class="badge badge-sm badge-warning" title="Khác: ${escapeHTML(d)}">${escapeHTML(d)}</span>`).join('');
+            
+            let botLabel = escapeHTML(r.bot_label || r.bot);
+            // Tách phần trong ngoặc xuống dòng với CSS nhẹ nhàng
+            if (botLabel.includes(' (')) {
+                botLabel = botLabel.replace(' (', '<br><span class="text-sm text-secondary" style="font-weight: normal;">(') + '</span>';
+            }
+
+            tr.innerHTML = `<td data-label="Bot"><strong>${botLabel}</strong></td><td data-label="Crawl">${crawlBadge}</td><td data-label="Index">${indexBadge}</td><td data-label="HTTP">${httpBadge}</td><td data-label="Final URL">${escapeHTML(r.final_url || '')}</td><td data-label="Title">${escapeHTML(r.title || '')}</td><td data-label="Diff"><div class="d-flex flex-wrap gap-1 items-center">${diffBadges || (idx === 0 ? '<span class="badge badge-sm badge-default">Tham chiếu</span>' : '<span class="badge badge-sm badge-success">Giống</span>')}</div></td>`;
             if (r.error) {
-                tr.innerHTML = `<td><strong>${escapeHTML(r.bot_label || r.bot)}</strong></td><td colspan="6"><span class="badge badge-error">Lỗi: ${escapeHTML(r.error)}</span></td>`;
+                tr.innerHTML = `<td data-label="Bot"><strong>${botLabel}</strong></td><td colspan="6" data-label="Lỗi"><span class="badge badge-error">Lỗi: ${escapeHTML(r.error)}</span></td>`;
             }
             compareTableBody.appendChild(tr);
         });
@@ -474,7 +569,15 @@ function init() {
 
     function setLoading(on) {
         toggleLoading(btnAnalyze, analyzeIcon, analyzeLoading, on);
-        setElementsEnabled([urlInput, btnAnalyze], !on);
+        setElementsEnabled([
+            urlInput, 
+            btnAnalyze, 
+            botSelect, 
+            btnBypassCache, 
+            ignoreTLSErrors, 
+            checkSitemapOpt, 
+            compareModeOpt
+        ], !on);
     }
 
     function showError(msg) {
@@ -488,10 +591,12 @@ function init() {
 
     function showResult() {
         setDisplay(resultSection, 'block');
+        if (shareCard) setDisplay(shareCard, 'block');
     }
 
     function hideResult() {
         setDisplay(resultSection, 'none');
+        if (shareCard) setDisplay(shareCard, 'none');
     }
 
     function formatBytes(bytes) {
@@ -515,6 +620,9 @@ function init() {
         const params = new URLSearchParams(window.location.search);
         const pUrl = params.get('url');
         const pBot = params.get('bot');
+        const pCompare = params.get('compare');
+        const pSitemap = params.get('sitemap');
+        const pIgnoreTLS = params.get('ignore_tls');
 
         if (pUrl && urlInput) {
             urlInput.value = decodeURIComponent(pUrl);
@@ -522,6 +630,21 @@ function init() {
             if (pBot && botSelect) {
                 const opt = botSelect.querySelector(`option[value="${pBot}"]`);
                 if (opt) botSelect.value = pBot;
+            }
+            const cmpMode = $('#compareMode');
+            if (cmpMode) {
+                cmpMode.checked = (pCompare === 'true' || pCompare === '1');
+            }
+            const chkSitemap = $('#checkSitemap');
+            if (chkSitemap) {
+                chkSitemap.checked = (pSitemap === 'true' || pSitemap === '1');
+            }
+            const chkTLS = $('#ignoreTLSErrors');
+            if (chkTLS) {
+                chkTLS.checked = (pIgnoreTLS === 'true' || pIgnoreTLS === '1');
+            }
+            if (currentAbortController) {
+                currentAbortController.abort();
             }
             isProcessing = false;
             updateButtonStates();
@@ -547,7 +670,7 @@ function init() {
             shareLink.setSelectionRange(0, 99999);
             await navigator.clipboard.writeText(shareLink.value);
             const original = btnCopyLink.innerHTML;
-            btnCopyLink.innerHTML = '<i class="fas fa-check"></i> <span>Đã copy!</span>';
+            btnCopyLink.innerHTML = '<i class="fa-solid fa-check"></i> <span>Đã copy!</span>';
             setTimeout(() => { btnCopyLink.innerHTML = original; }, 2000);
         } catch (err) {
             console.error("Copy failed:", err);
