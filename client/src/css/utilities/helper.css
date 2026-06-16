@@ -164,6 +164,7 @@
 
 .overflow-hidden  { overflow: hidden !important; }
 .overflow-auto    { overflow: auto !important; }
+.overflow-x-auto  { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
 .overflow-visible { overflow: visible !important; }
 
 .opacity-0   { opacity: 0 !important; }

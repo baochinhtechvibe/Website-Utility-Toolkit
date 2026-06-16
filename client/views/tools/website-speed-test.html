@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../../src/css/main.css">
+
+    <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
+    <link rel="shortcut icon" href="../../public/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../public/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Website" />
+    <link rel="manifest" href="../../public/site.webmanifest" />
+
+    <meta name="description"
+        content="Công cụ Website Speed Test: Kiểm tra tốc độ tải trang, phân tích biểu đồ Waterfall và đề xuất tối ưu hóa (Pingdom Clone)." />
+    <title>Website Speed Test - Phân tích tốc độ tải trang chuyên sâu</title>
+</head>
+
+<body>
+    <div class="wrapper page--speed-test">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
+        <!-- Begin: Header Content -->
+        <header id="header" class="header header--speed-test py-10 mb-4 text-center">
+            <div class="container">
+                <div class="header__wrapper relative d-flex flex-col justify-center items-center">
+                    <div class="header__main d-flex flex-row gap-2 justify-center items-center mb-4">
+                        <div class="header__icon">
+                            <img src="../../public/assets/images/layout/header/latency.png" alt="tools.bctechvibe.com">
+                        </div>
+                        <div class="header__text text-left">
+                            <h1 class="header__brand uppercase">
+                                speedtest.bctechvibe.com
+                            </h1>
+                            <p class="header__subtitle uppercase font-bold">
+                                Website Speed Test
+                            </p>
+                        </div>
+                    </div>
+                    <p class="header__meta text-center justify-center">
+                        Phân tích toàn diện tốc độ tải trang, kích thước tài nguyên và biểu đồ Waterfall chuyên sâu.
+                    </p>
+                    <div class="header__theme-toggle">
+                        <input type="checkbox" id="theme-toggle" class="header__theme-input">
+                        <label for="theme-toggle" class="header__theme-switch"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End: Header Content -->
+        <main id="main" class="main pt-6 pb-6 mt-4 mb-4">
+            <div class="container">
+                <div class="card">
+                    <!-- Header Card -->
+                    <div class="card__header">
+                        <h2 class="card__title text-center">
+                            <i class="fa-solid fa-rocket"></i>
+                            Phân tích tốc độ website
+                        </h2>
+                    </div>
+
+                    <div class="card__body pt-4">
+                        <form id="speedTestForm" class="form">
+                            <div class="form-inline mt-2">
+                                <div class="form-field form-field--wide">
+                                    <label class="form-label" for="url">URL (Đường dẫn trang web)</label>
+                                    <input type="text" id="url" name="url" class="form-input"
+                                        placeholder="Ví dụ: https://bctechvibe.com">
+                                </div>
+
+                                <div class="form-field form-field--button">
+                                    <button type="submit" class="btn btn-action btn-block" id="btnAnalyze">
+                                        <i class="fa-solid fa-rocket mr-2" id="speedTestIcon"></i>
+                                        <i class="fa-solid fa-spinner fa-spin d-none mr-2" id="speedTestLoading"></i>
+                                        Start Test
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div id="urlValidationError" class="message-card message-card--error mt-4 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Định dạng không hợp lệ
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p class="message-card__message">Vui lòng nhập đúng định dạng URL (ví dụ:
+                                    <code>https://bctechvibe.com</code>)!
+                                </p>
+                            </div>
+                        </div>
+
+
+                        <!-- Skeleton Loaders -->
+                        <div id="skeletonLoader" class="d-none mt-8">
+                            <h3 class="text-xl font-bold mb-4 text-center text-muted">Đang phân tích hệ thống...</h3>
+                            <div class="speed-summary-strip d-flex gap-4 mb-6">
+                                <div class="skeleton-box flex-1"
+                                    style="height: 120px; border-radius: var(--radius-md);"></div>
+                                <div class="skeleton-box flex-1"
+                                    style="height: 120px; border-radius: var(--radius-md);"></div>
+                                <div class="skeleton-box flex-1"
+                                    style="height: 120px; border-radius: var(--radius-md);"></div>
+                                <div class="skeleton-box flex-1"
+                                    style="height: 120px; border-radius: var(--radius-md);"></div>
+                            </div>
+                            <div class="skeleton-box w-full mb-6"
+                                style="height: 200px; border-radius: var(--radius-md);"></div>
+                            <div class="skeleton-box w-full" style="height: 400px; border-radius: var(--radius-md);">
+                            </div>
+                        </div>
+
+                        <!-- Error Card -->
+                        <div id="errorCard" class="message-card message-card--error mt-6 d-none">
+                            <div class="message-card__header">
+                                <h4 class="message-card__title text-lg font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    Lỗi kiểm tra
+                                </h4>
+                            </div>
+                            <div class="message-card__body">
+                                <p id="errorMessage" class="message-card__message">
+                                    Không thể phân tích trang web. Vui lòng thử lại sau!
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- ===================== UNIFIED RESULT CARD ===================== -->
+                        <div id="resultSection" class="result-card mt-6 d-none">
+                            <div class="result-card__header d-flex flex-row justify-between items-center">
+                                <h3 id="resultsTitle" class="result-card__title">
+                                    <i class="fa-solid fa-circle-check mr-2"></i>
+                                    Kết quả phân tích tốc độ tải trang
+                                </h3>
+                                <div class="result-card__actions d-flex gap-2">
+                                    <button id="btnExportJson" type="button" class="btn btn-sm btn-action">
+                                        <i class="fa-solid fa-file-code"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="result-card__body">
+                                <!-- CACHE NOTICE -->
+                                <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
+                                    <div class="cache-card__content">
+                                        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                                        <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất lúc</span> <b id="cacheTime"></b>.</span>
+                                    </div>
+                                    <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn" aria-label="Làm mới thông tin tra cứu">
+                                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
+                                    </button>
+                                </div>
+
+                                <!-- Summary Strip -->
+                                <div class="speed-summary-strip mb-6">
+                                    <div class="card card--flat speed-summary-cell">
+                                        <div class="card__body text-center">
+                                            <p class="speed-summary-cell__label">Performance Grade</p>
+                                            <div class="speed-summary-cell__icon text-success" id="gradeIcon">
+                                                <i class="fa-solid fa-ranking-star"></i>
+                                            </div>
+                                            <p id="gradeScore" class="speed-summary-cell__value speed-summary-cell__value--large">A</p>
+                                            <p id="gradeNumber" class="speed-summary-cell__desc font-bold">100</p>
+                                        </div>
+                                    </div>
+                                    <div class="card card--flat speed-summary-cell">
+                                        <div class="card__body text-center">
+                                            <p class="speed-summary-cell__label">Page Size</p>
+                                            <div class="speed-summary-cell__icon text-info">
+                                                <i class="fa-solid fa-file-zipper"></i>
+                                            </div>
+                                            <p id="pageSize" class="speed-summary-cell__value speed-summary-cell__value--large text-info">0 MB</p>
+                                            <p class="speed-summary-cell__desc font-bold">Kích thước trang</p>
+                                        </div>
+                                    </div>
+                                    <div class="card card--flat speed-summary-cell">
+                                        <div class="card__body text-center">
+                                            <p class="speed-summary-cell__label">Load Time</p>
+                                            <div class="speed-summary-cell__icon text-warning">
+                                                <i class="fa-solid fa-stopwatch"></i>
+                                            </div>
+                                            <p id="loadTime" class="speed-summary-cell__value speed-summary-cell__value--large text-warning">0 s</p>
+                                            <p class="speed-summary-cell__desc font-bold">Thời gian tải</p>
+                                        </div>
+                                    </div>
+                                    <div class="card card--flat speed-summary-cell">
+                                        <div class="card__body text-center">
+                                            <p class="speed-summary-cell__label">Requests</p>
+                                            <div class="speed-summary-cell__icon text-purple-500">
+                                                <i class="fa-solid fa-network-wired"></i>
+                                            </div>
+                                            <p id="totalRequests" class="speed-summary-cell__value speed-summary-cell__value--large text-purple-500">0</p>
+                                            <p class="speed-summary-cell__desc font-bold">Tổng số yêu cầu</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Improve Page Performance (Accordion) -->
+                                <div class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-wrench mr-2"></i>
+                                            Cải thiện hiệu suất trang
+                                        </h4>
+                                    </div>
+                                    <div class="card__body p-4">
+                                        <div id="performanceAccordion" class="performance-accordion">
+                                            <!-- Items generated by JS -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Content Analysis -->
+                                <div class="d-flex gap-6 mb-6 content-analysis-grid">
+                                    <!-- Content size by content type -->
+                                    <div class="card card--flat flex-1 min-w-0">
+                                        <div class="card__header">
+                                            <h4 class="card__title font-bold">
+                                                <i class="fa-solid fa-chart-pie mr-2"></i> Kích thước theo loại nội dung
+                                            </h4>
+                                        </div>
+                                        <div class="card__body p-0 overflow-x-auto">
+                                            <table class="speed-table w-full text-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Loại nội dung</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Kích thước</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="contentSizeBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Requests by content type -->
+                                    <div class="card card--flat flex-1 min-w-0">
+                                        <div class="card__header">
+                                            <h4 class="card__title font-bold">
+                                                <i class="fa-solid fa-list-ul mr-2"></i> Số lượng yêu cầu theo loại nội dung
+                                            </h4>
+                                        </div>
+                                        <div class="card__body p-0 overflow-x-auto">
+                                            <table class="speed-table w-full text-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Loại nội dung</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Yêu cầu</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="contentRequestsBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Domain Analysis -->
+                                <div class="d-flex gap-6 mb-6 content-analysis-grid">
+                                    <!-- Content size by domain -->
+                                    <div class="card card--flat flex-1 min-w-0">
+                                        <div class="card__header">
+                                            <h4 class="card__title font-bold">
+                                                <i class="fa-solid fa-globe mr-2"></i> Kích thước theo tên miền
+                                            </h4>
+                                        </div>
+                                        <div class="card__body p-0 overflow-x-auto">
+                                            <table class="speed-table w-full text-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Tên miền</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Kích thước</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="domainSizeBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Requests by domain -->
+                                    <div class="card card--flat flex-1 min-w-0">
+                                        <div class="card__header">
+                                            <h4 class="card__title font-bold">
+                                                <i class="fa-solid fa-server mr-2"></i> Số lượng yêu cầu theo tên miền
+                                            </h4>
+                                        </div>
+                                        <div class="card__body p-0 overflow-x-auto">
+                                            <table class="speed-table w-full text-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Tên miền</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
+                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Yêu cầu</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="domainRequestsBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Response Codes Analysis -->
+                                <div class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-reply-all mr-2"></i> Mã phản hồi (Response codes)
+                                        </h4>
+                                    </div>
+                                    <div class="card__body p-0 overflow-x-auto">
+                                        <table class="speed-table w-full text-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th class="p-3 text-muted font-bold text-xs uppercase text-left" style="width: 25%;">Mã phản hồi</th>
+                                                    <th class="p-3 text-right text-muted font-bold text-xs uppercase" style="width: 50%;">Phần trăm</th>
+                                                    <th class="p-3 text-right text-muted font-bold text-xs uppercase" style="width: 25%;">Yêu cầu</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="responseCodesBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Waterfall Chart -->
+                                <div class="card card--flat mb-6">
+                                    <div class="card__header">
+                                        <h4 class="card__title font-bold">
+                                            <i class="fa-solid fa-water mr-2"></i>
+                                            Chi tiết các tệp tải xuống (Waterfall)
+                                        </h4>
+                                    </div>
+                                    <div class="card__body p-0">
+                                        <!-- Toolbar -->
+                                        <div class="waterfall-toolbar d-flex flex-wrap items-center justify-between px-4 py-4 border-b border-border bg-surface gap-4">
+                                            <div class="d-flex flex-wrap items-center gap-4">
+                                                <div class="wf-toolbar-group">
+                                                    <span class="wf-toolbar-label">Sắp xếp theo</span>
+                                                    <select id="wfSortBy" class="wf-toolbar-input wf-toolbar-select">
+                                                        <option value="load_order">Thứ tự tải (Load Order)</option>
+                                                        <option value="load_time">Thời gian tải (Load Time)</option>
+                                                        <option value="header_size">Kích thước Headers</option>
+                                                        <option value="body_size">Kích thước Body</option>
+                                                        <option value="total_size">Tổng kích thước</option>
+                                                        <option value="status_code">Mã trạng thái (Status Code)</option>
+                                                        <option value="connect_time">Connect Time</option>
+                                                        <option value="dns_time">DNS Time</option>
+                                                        <option value="receive_time">Receive Time</option>
+                                                        <option value="ssl_time">SSL Time</option>
+                                                        <option value="wait_time">Wait Time</option>
+                                                        <option value="content_type">Loại nội dung (Content Type)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="wf-toolbar-group items-center">
+                                                    <span class="wf-toolbar-label">Tăng dần</span>
+                                                    <div class="wf-toolbar-checkbox-wrap cursor-pointer" onclick="document.getElementById('wfSortRising').click()" title="Đánh dấu để sắp xếp tăng dần">
+                                                        <input type="checkbox" id="wfSortRising" class="form-checkbox m-0 cursor-pointer" checked>
+                                                    </div>
+                                                </div>
+                                                <div class="wf-toolbar-group ml-2 border-l border-border pl-4">
+                                                    <span class="wf-toolbar-label">Tìm kiếm</span>
+                                                    <div class="relative">
+                                                        <i class="fa-solid fa-magnifying-glass wf-toolbar-search-icon"></i>
+                                                        <input type="text" id="wfFilter" class="wf-toolbar-input wf-toolbar-filter" placeholder="...">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="wf-toolbar-group items-end">
+                                                <span class="wf-toolbar-label pr-2">Chú giải</span>
+                                                <div class="waterfall-legend d-flex flex-wrap gap-2 text-xs text-muted wf-toolbar-legend-wrap">
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--gray-400);"></span> Blocked</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--pink-500);"></span> DNS</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--cyan-500);"></span> Connect</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--purple-500);"></span> SSL</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--orange-400);"></span> Send</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--yellow-400);"></span> Wait</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--green-500);"></span> Receive</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="waterfall-container">
+                                            <!-- Header row -->
+                                            <div class="waterfall-header text-xs text-muted font-bold uppercase">
+                                                <div class="wf-col-file">File</div>
+                                                <div class="wf-col-size text-right">Size</div>
+                                                <div class="wf-col-timeline">
+                                                    <div class="wf-timeline-grid" id="wfTimelineGrid">
+                                                        <!-- Generated by JS: 0.0s, 0.3s, 0.6s... -->
+                                                    </div>
+                                                </div>
+                                                <div class="wf-col-action"></div>
+                                            </div>
+                                            <!-- Waterfall items will be generated here by JS -->
+                                            <div id="waterfallBody" class="waterfall-body"></div>
+                                            
+                                            <!-- Pagination Toolbar -->
+                                            <div class="waterfall-pagination d-flex flex-wrap items-center justify-between gap-4 px-4 py-4 border-t border-border bg-surface">
+                                                <div class="text-sm text-muted font-bold" id="wfTotalEntries">0 requests</div>
+                                                <div class="d-flex items-center gap-2">
+                                                    <button type="button" class="btn btn-sm btn-outline px-2" id="wfBtnPrev"><i class="fa-solid fa-chevron-left"></i></button>
+                                                    <span class="text-sm font-bold mx-2" id="wfPageInfo">1/1</span>
+                                                    <button type="button" class="btn btn-sm btn-outline px-2" id="wfBtnNext"><i class="fa-solid fa-chevron-right"></i></button>
+                                                </div>
+                                                <div class="d-flex items-center gap-2">
+                                                    <span class="text-sm text-muted">Entries per page:</span>
+                                                    <select id="wfPerPage" class="wf-toolbar-input wf-toolbar-select-sm">
+                                                        <option value="10">10</option>
+                                                        <option value="25">25</option>
+                                                        <option value="50">50</option>
+                                                        <option value="100">100</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SHARE CARD -->
+                                <div id="shareCard" class="share-card border-top-subtle d-none">
+                                    <div class="share-card__header">
+                                        <h4 class="share-card__title">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                            Chia sẻ kết quả:
+                                        </h4>
+                                    </div>
+                                    <div class="share-card__body d-flex flex-row items-stretch mt-2">
+                                        <input type="text" id="shareLink" readonly class="share-card__input" />
+                                        <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                            <i class="fa-solid fa-copy"></i>
+                                            <span>Copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <!-- End: Unified Result Card -->
+
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Begin: Footer Content -->
+        <footer id="footer" class="footer pt-6 pb-6 mt-4">
+            <div class="container">
+                <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
+
+                    <div class="footer__stat footer__stat--total">
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
+                        <span id="visit-total" class="footer__stat-value">0</span>
+                    </div>
+
+                    <div class="footer__stat footer__stat--today">
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
+                        <span id="visit-today" class="footer__stat-value">0</span>
+                    </div>
+
+                </div>
+
+                <div class="footer__copyright text-center">
+                    <p>
+                        © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
+                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <!-- End: Footer Content -->
+        
+        <!-- Image Preview Modal -->
+        <div id="imagePreviewModal" class="wf-image-modal d-none">
+            <div class="wf-image-modal__content">
+                <button type="button" id="wfBtnCloseImage" class="wf-image-modal__close"><i class="fa-solid fa-xmark"></i></button>
+                <div class="wf-image-modal__body">
+                    <img id="wfPreviewImageFull" src="" alt="Image Preview">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="../../src/js/main.js"></script>
+    <script type="module" src="../../src/js/tools/website-speed-test/website-speed-test.js"></script>
+</body>
+
+</html>

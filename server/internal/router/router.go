@@ -16,11 +16,10 @@ import (
 	redirectchecker "tools.bctechvibe.com/server/internal/modules/redirect-checker"
 	securityheaders "tools.bctechvibe.com/server/internal/modules/security-headers"
 	"tools.bctechvibe.com/server/internal/modules/ssl"
-	"tools.bctechvibe.com/server/internal/modules/visits"
-	weblatency "tools.bctechvibe.com/server/internal/modules/web-latency"
+	visits "tools.bctechvibe.com/server/internal/modules/visits"
+	websitespeedtest "tools.bctechvibe.com/server/internal/modules/website-speed-test"
 	"tools.bctechvibe.com/server/internal/modules/whois"
 )
-
 
 func SetupRouter() *gin.Engine {
 	// Disable Gin's default logger and recovery because we're managing them with zerolog and custom recovery
@@ -42,7 +41,7 @@ func SetupRouter() *gin.Engine {
 	r.Use(middleware.LoggerMiddleware())
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.CORSMiddleware())
-	
+
 	api := r.Group("/api")
 
 	// Global Rate limit: 5 requests per second per IP across the standard API
@@ -57,10 +56,12 @@ func SetupRouter() *gin.Engine {
 		ssl.RegisterRoutes(standardApi)
 		botsimulator.RegisterRoutes(standardApi)
 		securityheaders.RegisterRoutes(standardApi)
-		weblatency.RegisterRoutes(standardApi)
 		jsontools.RegisterRoutes(standardApi)
 		whois.RegisterRoutes(standardApi)
 	}
+
+	// Tách riêng website speed test ra khỏi standardApi để cache không bị giới hạn 5 req/s
+	websitespeedtest.RegisterRoutes(api)
 
 	// IMAP Migrator handles its own rate limits internally
 	imapmigrator.RegisterRoutes(api)
