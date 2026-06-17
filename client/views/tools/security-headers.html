@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="../../src/css/main.css">
-    <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
+
     <link rel="icon" type="image/png" href="../../public/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="../../public/favicon.svg" />
     <link rel="shortcut icon" href="../../public/favicon.ico" />
@@ -19,6 +19,28 @@
 
 <body>
     <div class="wrapper page--security-headers">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--security-headers py-10 mb-4 text-center">
             <div class="container">
@@ -30,15 +52,16 @@
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">
-                                HTTP SECURITY HEADERS
+                                securityheaders.bctechvibe.com
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                Analyzer & Fix Generator
+                                Network Security Analyzer
                             </p>
                         </div>
                     </div>
                     <p class="header__meta text-center justify-center">
-                        Phân tích bảo mật tầng Network. Chấm điểm rủi ro và tự động sinh mã cấu hình bảo mật cho Nginx/Apache.
+                        Phân tích bảo mật tầng Network. Chấm điểm rủi ro và tự động sinh mã cấu hình bảo mật cho
+                        Nginx/Apache.
                     </p>
                     <div class="header__theme-toggle">
                         <input type="checkbox" id="theme-toggle" class="header__theme-input">
@@ -74,12 +97,20 @@
                                     </button>
                                 </div>
                             </div>
+                            <div class="form-inline mt-4 mb-4">
+                                <label class="form-label d-flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="followRedirects" class="form-checkbox" checked>
+                                    <span>Tự động chuyển hướng (Follow Redirects)</span>
+                                </label>
+                            </div>
                             <div id="urlError" class="message-card message-card--error mt-4 d-none">
                                 <div class="message-card__header">
-                                    <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i> Định dạng không hợp lệ</h4>
+                                    <h4 class="message-card__title"><i class="fa-solid fa-triangle-exclamation"></i>
+                                        Định dạng không hợp lệ</h4>
                                 </div>
                                 <div class="message-card__body">
-                                    <p id="urlErrorMessage" class="message-card__message">Vui lòng nhập đúng định dạng URL (ví dụ: <code>https://bctechvibe.com</code>).</p>
+                                    <p id="urlErrorMessage" class="message-card__message">Vui lòng nhập đúng định dạng
+                                        URL (ví dụ: <code>https://bctechvibe.com</code>).</p>
                                 </div>
                             </div>
                         </form>
@@ -104,6 +135,26 @@
                                 </h3>
                             </div>
 
+                            <div id="cacheNotice" class="cache-card mt-2 d-none">
+                                <span>
+                                    <i class="fa-solid fa-clock"></i>
+                                    Kết quả tra cứu lấy từ bộ nhớ đệm
+                                </span>
+                                <button type="button" id="btnBypassCache"
+                                    class="btn btn-sm btn-outline cache-card__btn">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+                                </button>
+                            </div>
+
+                            <!-- Redirect Chain -->
+                            <div id="redirectChainWrapper" class="mt-6 mb-6 d-none">
+                                <h4 class="font-bold mb-3"><i class="fa-solid fa-route mr-2"></i>Chuỗi chuyển hướng
+                                    (Redirect Chain)</h4>
+                                <div id="redirectChainNodes"
+                                    class="d-flex flex-col gap-2 relative pl-6 border-l-2 border-border ml-2">
+                                </div>
+                            </div>
+
                             <!-- Score Display -->
                             <div class="score-board d-flex flex-col items-center justify-center p-6 mb-6 mt-4">
                                 <div class="score-circle d-flex flex-col items-center justify-center" id="scoreCircle">
@@ -115,16 +166,24 @@
 
                             <!-- Tabs for results view -->
                             <div class="tabs mt-6">
-                                <div class="tabs-header d-flex flex-row border-b">
-                                    <button class="tab-btn active px-4 py-2 font-bold" data-tab="headersTab">HTTP Headers</button>
-                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="cookiesTab">Cookie Security (<span id="cookieCount">0</span>)</button>
+                                <div class="tabs-header d-flex flex-row">
+                                    <button class="tab-btn active px-4 py-2 font-bold" data-tab="headersTab">HTTP
+                                        Headers</button>
+                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="cookiesTab">Cookie Security
+                                        (<span id="cookieCount">0</span>)</button>
                                     <button class="tab-btn px-4 py-2 font-bold" data-tab="leaksTab">Info Leaks</button>
+                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="corsTab">CORS
+                                        Analysis</button>
+                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="cspTab">CSP
+                                        Visualizer</button>
+                                    <button class="tab-btn px-4 py-2 font-bold" data-tab="rawHeadersTab"><i
+                                            class="fa-solid fa-code mr-1"></i>Raw Headers</button>
                                 </div>
-                                
-                                <div class="tabs-content p-4">
+
+                                <div class="tabs-content mt-2">
                                     <!-- HTTP Headers Tab -->
                                     <div id="headersTab" class="tab-pane active">
-                                        <div class="table-wrapper w-full overflow-x-auto">
+                                        <div class="table-wrapper w-full">
                                             <table class="results-table w-full text-left">
                                                 <thead>
                                                     <tr>
@@ -142,10 +201,11 @@
                                     <!-- Cookies Tab -->
                                     <div id="cookiesTab" class="tab-pane d-none">
                                         <div id="noCookieMsg" class="text-center p-4 d-none">
-                                            <p><i class="fa-solid fa-cookie-bite mr-2"></i> Website không thiết lập Cookie (Không có Set-Cookie trong Response).</p>
+                                            <p><i class="fa-solid fa-cookie-bite mr-2"></i> Website không thiết lập
+                                                Cookie (Không có Set-Cookie trong Response).</p>
                                         </div>
-                                        <div id="cookieWrapper" class="table-wrapper w-full overflow-x-auto d-none">
-                                             <table class="results-table w-full text-left">
+                                        <div id="cookieWrapper" class="table-wrapper w-full d-none">
+                                            <table class="results-table w-full text-left">
                                                 <thead>
                                                     <tr>
                                                         <th>Cookie Name</th>
@@ -163,10 +223,11 @@
                                     <!-- Information Leaks Tab -->
                                     <div id="leaksTab" class="tab-pane d-none">
                                         <div id="noLeakMsg" class="text-center p-4 d-none">
-                                            <p class="text-success"><i class="fa-solid fa-check-circle mr-2"></i> An toàn! Không phát hiện rò rỉ thông tin Server Stack.</p>
+                                            <p class="text-success"><i class="fa-solid fa-check-circle mr-2"></i> An
+                                                toàn! Không phát hiện rò rỉ thông tin Server Stack.</p>
                                         </div>
-                                        <div id="leakWrapper" class="table-wrapper w-full overflow-x-auto d-none">
-                                             <table class="results-table w-full text-left">
+                                        <div id="leakWrapper" class="table-wrapper w-full d-none">
+                                            <table class="results-table w-full text-left">
                                                 <thead>
                                                     <tr>
                                                         <th>Header</th>
@@ -179,6 +240,98 @@
                                             </table>
                                         </div>
                                     </div>
+
+                                    <!-- CORS Analysis Tab -->
+                                    <div id="corsTab" class="tab-pane d-none">
+                                        <div id="corsStatusMsg" class="text-center p-4"></div>
+                                        <div id="corsWrapper" class="table-wrapper w-full d-none">
+                                            <table class="results-table w-full text-left">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Trạng thái</th>
+                                                        <th>Mô tả</th>
+                                                        <th>Nguy cơ</th>
+                                                        <th>Cách xử lý</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="corsTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- CSP Visualizer Tab -->
+                                    <div id="cspTab" class="tab-pane d-none">
+                                        <div id="noCspMsg" class="text-center p-4">
+                                            <p class="text-secondary"><i class="fa-solid fa-shield-halved mr-2"></i>
+                                                Website không có Content-Security-Policy.</p>
+                                        </div>
+                                        <div id="cspWrapper" class="d-none">
+                                            <div class="mb-4">
+                                                <h4 class="font-bold mb-2">Original CSP String:</h4>
+                                                <code id="cspOriginalString"
+                                                    class="d-block p-2 bg-surface text-sm break-all rounded-sm"></code>
+                                            </div>
+                                            <div class="table-wrapper w-full">
+                                                <table class="results-table w-full text-left">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Chỉ thị (Directive)</th>
+                                                            <th>Các giá trị (Values)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="cspTableBody"></tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- CSP Validation Issues -->
+                                            <div id="cspIssuesWrapper" class="mt-6 d-none">
+                                                <h4 class="font-bold mb-3"><i
+                                                        class="fa-solid fa-triangle-exclamation mr-2 text-warning"></i>Phân
+                                                    tích rủi ro CSP</h4>
+                                                <div id="cspIssuesList" class="d-flex flex-col gap-2">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Raw Headers Tab -->
+                                    <div id="rawHeadersTab" class="tab-pane d-none">
+                                        <div class="table-wrapper w-full">
+                                            <table class="results-table w-full text-left">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Header</th>
+                                                        <th>Giá trị</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="rawHeadersTableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Information Section -->
+                            <div class="card card--flat mt-6" id="additionalInfoSection">
+                                <div class="card__header">
+                                    <h4 class="card__title font-bold">
+                                        <i class="fa-solid fa-circle-info mr-2"></i>Thông tin bổ sung
+                                    </h4>
+                                </div>
+                                <div class="card__body">
+                                    <div class="table-wrapper w-full">
+                                        <table class="results-table w-full text-left">
+                                            <thead>
+                                                <tr>
+                                                    <th>Header</th>
+                                                    <th>Trạng thái</th>
+                                                    <th>Giá trị</th>
+                                                    <th>Mô tả</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="additionalInfoTableBody"></tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
 
@@ -187,38 +340,45 @@
                                 <h3 class="font-bold mb-4">
                                     <i class="fa-solid fa-code"></i> Mã cấu hình tự động
                                 </h3>
-                                <p class="mb-4 text-secondary font-medium">Copy toàn bộ block dưới đây dán vào file cấu hình Server của bạn để fix khắc phục lỗi bảo mật.</p>
-                                
-                                <div class="config-tabs d-flex flex-row gap-2 mb-4">
-                                    <button class="btn btn-sm btn-action config-tab-btn active" data-target="nginxCodeBlock">Nginx</button>
-                                    <button class="btn btn-sm btn-outline config-tab-btn" data-target="apacheCodeBlock">Apache</button>
+                                <p class="mb-4 text-secondary font-medium">Copy toàn bộ block dưới đây dán vào file cấu
+                                    hình Server của bạn để fix khắc phục lỗi bảo mật.</p>
+
+                                <div id="configTabsContainer" class="config-tabs d-flex flex-row gap-2 mb-4 flex-wrap">
+                                    <button class="btn btn-sm btn-action config-tab-btn active"
+                                        data-target="nginxCodeBlock">Nginx</button>
+                                    <button class="btn btn-sm btn-outline config-tab-btn"
+                                        data-target="apacheCodeBlock">Apache</button>
                                 </div>
-                                
-                                <div id="nginxCodeBlock" class="code-block mb-4 config-box d-block">
-                                    <div class="code-block__header">
-                                        <span class="code-block__lang">
-                                            <i class="fa-solid fa-file-code"></i> Nginx
-                                        </span>
-                                        <button class="code-block__btn-copy copy-config-btn" data-copy-target="nginxConfigBox">
-                                            <i class="fa-regular fa-clone"></i>
-                                        </button>
+
+                                <div id="configBlocksContainer">
+                                    <div id="nginxCodeBlock" class="code-block mb-4 config-box d-block">
+                                        <div class="code-block__header">
+                                            <span class="code-block__lang">
+                                                <i class="fa-solid fa-file-code"></i> Nginx
+                                            </span>
+                                            <button class="code-block__btn-copy copy-config-btn"
+                                                data-copy-target="nginxConfigBox">
+                                                <i class="fa-regular fa-clone"></i>
+                                            </button>
+                                        </div>
+                                        <div class="code-block__body">
+                                            <code id="nginxConfigBox" class="code-block__text d-block"></code>
+                                        </div>
                                     </div>
-                                    <div class="code-block__body">
-                                        <code id="nginxConfigBox" class="code-block__text d-block"></code>
-                                    </div>
-                                </div>
-                                
-                                <div id="apacheCodeBlock" class="code-block mb-4 config-box d-none">
-                                    <div class="code-block__header">
-                                        <span class="code-block__lang">
-                                            <i class="fa-solid fa-file-code"></i> Apache
-                                        </span>
-                                        <button class="code-block__btn-copy copy-config-btn" data-copy-target="apacheConfigBox">
-                                            <i class="fa-regular fa-clone"></i>
-                                        </button>
-                                    </div>
-                                    <div class="code-block__body">
-                                        <code id="apacheConfigBox" class="code-block__text d-block"></code>
+
+                                    <div id="apacheCodeBlock" class="code-block mb-4 config-box d-none">
+                                        <div class="code-block__header">
+                                            <span class="code-block__lang">
+                                                <i class="fa-solid fa-file-code"></i> Apache
+                                            </span>
+                                            <button class="code-block__btn-copy copy-config-btn"
+                                                data-copy-target="apacheConfigBox">
+                                                <i class="fa-regular fa-clone"></i>
+                                            </button>
+                                        </div>
+                                        <div class="code-block__body">
+                                            <code id="apacheConfigBox" class="code-block__text d-block"></code>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -233,7 +393,7 @@
                                 </h4>
                             </div>
                             <div class="share-card__body d-flex flex-row items-stretch mt-2">
-                                <input type="text" id="shareLink" readonly class="share-card__input" value=""/>
+                                <input type="text" id="shareLink" readonly class="share-card__input" value="" />
                                 <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
                                     <i class="fas fa-copy"></i>
                                     <span>Copy</span>
@@ -245,7 +405,7 @@
                 </div>
             </div>
         </main>
-        
+
         <footer id="footer" class="footer pt-6 pb-6 mt-4">
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
@@ -278,6 +438,7 @@
         </footer>
     </div>
     <script type="module" src="../../src/js/main.js"></script>
-    <script type="module" src="../../src/js/tools/security-headers/analyzer.js"></script>
+    <script type="module" src="../../src/js/tools/security-headers/security-headers.js"></script>
 </body>
+
 </html>

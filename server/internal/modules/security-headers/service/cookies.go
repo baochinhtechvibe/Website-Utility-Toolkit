@@ -72,6 +72,7 @@ func analyzeCookies(resp *http.Response, finalScheme string) CookieAnalysisResul
 		httpOnly := false
 		secure := false
 		sameSite := ""
+		hasSameSite := false
 
 		for _, part := range parts[1:] {
 			attr := strings.TrimSpace(strings.ToLower(part))
@@ -80,20 +81,27 @@ func analyzeCookies(resp *http.Response, finalScheme string) CookieAnalysisResul
 				httpOnly = true
 			case attr == "secure":
 				secure = true
-			case strings.HasPrefix(attr, "samesite="):
-				sameSite = strings.TrimSpace(strings.TrimPrefix(attr, "samesite="))
+			case strings.HasPrefix(attr, "samesite"):
+				hasSameSite = true
+				if strings.HasPrefix(attr, "samesite=") {
+					sameSite = strings.TrimSpace(strings.TrimPrefix(attr, "samesite="))
+				}
 			}
 		}
 
 		// Normalize SameSite display value
-		sameSiteDisplay := "None"
-		switch strings.ToLower(sameSite) {
-		case "lax":
-			sameSiteDisplay = "Lax"
-		case "strict":
-			sameSiteDisplay = "Strict"
-		case "none":
-			sameSiteDisplay = "None"
+		sameSiteDisplay := "Missing"
+		if hasSameSite {
+			switch strings.ToLower(sameSite) {
+			case "lax":
+				sameSiteDisplay = "Lax"
+			case "strict":
+				sameSiteDisplay = "Strict"
+			case "none":
+				sameSiteDisplay = "None"
+			default:
+				sameSiteDisplay = "Invalid"
+			}
 		}
 
 		// Bug #3 FIX: Tính severity dùng worst-case ranking
@@ -109,11 +117,18 @@ func analyzeCookies(resp *http.Response, finalScheme string) CookieAnalysisResul
 			cookiePenalty += 5
 			severity = worstSeverity(severity, models.SeverityHigh)
 		}
-		if sameSiteDisplay == "None" {
+		
+		if sameSiteDisplay == "Missing" {
+			// Missing default to Lax on modern browsers, but still worth a warning.
+			severity = worstSeverity(severity, models.SeverityMedium)
+		} else if sameSiteDisplay == "Invalid" {
+			cookiePenalty += 2
+			severity = worstSeverity(severity, models.SeverityHigh)
+		} else if sameSiteDisplay == "None" {
 			if !secure {
 				// Không có Secure → sai spec, browser reject
 				cookiePenalty += 3
-				severity = worstSeverity(severity, models.SeverityMedium)
+				severity = worstSeverity(severity, models.SeverityHigh)
 			} else {
 				// Có Secure → valid spec, nhưng vẫn là cross-site cookie
 				// Chỉ warn nhẹ, không penalty score

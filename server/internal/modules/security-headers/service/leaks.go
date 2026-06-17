@@ -15,14 +15,16 @@ package service
 
 import (
 	"net/http"
+	"strings"
 
 	"tools.bctechvibe.com/server/internal/modules/security-headers/models"
 )
 
 // LeakAnalysisResult chứa output phân tích information leak
 type LeakAnalysisResult struct {
-	Leaks   []models.LeakResult
-	Penalty int
+	Leaks     []models.LeakResult
+	Penalty   int
+	TechStack []models.DetectedStack
 }
 
 // leakHeaderDef định nghĩa một header cần check leak
@@ -79,8 +81,73 @@ func analyzeLeaks(resp *http.Response) LeakAnalysisResult {
 		}
 	}
 
+	var techStack []models.DetectedStack
+
+	server := strings.ToLower(resp.Header.Get("Server"))
+	if strings.Contains(server, "nginx") {
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "nginx",
+			Confidence: "high",
+			Evidence:   []string{"Server: " + resp.Header.Get("Server")},
+		})
+	} else if strings.Contains(server, "apache") {
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "apache",
+			Confidence: "high",
+			Evidence:   []string{"Server: " + resp.Header.Get("Server")},
+		})
+	} else if strings.Contains(server, "cloudflare") {
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "cloudflare",
+			Confidence: "high",
+			Evidence:   []string{"Server: " + resp.Header.Get("Server")},
+		})
+	}
+
+	xPoweredBy := strings.ToLower(resp.Header.Get("X-Powered-By"))
+	if strings.Contains(xPoweredBy, "express") {
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "express",
+			Confidence: "high",
+			Evidence:   []string{"X-Powered-By: " + resp.Header.Get("X-Powered-By")},
+		})
+	} else if strings.Contains(xPoweredBy, "php") {
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "php",
+			Confidence: "high",
+			Evidence:   []string{"X-Powered-By: " + resp.Header.Get("X-Powered-By")},
+		})
+	} else if strings.Contains(xPoweredBy, "asp.net") || resp.Header.Get("X-AspNet-Version") != "" {
+		evidence := []string{}
+		if resp.Header.Get("X-Powered-By") != "" {
+			evidence = append(evidence, "X-Powered-By: "+resp.Header.Get("X-Powered-By"))
+		}
+		if resp.Header.Get("X-AspNet-Version") != "" {
+			evidence = append(evidence, "X-AspNet-Version: "+resp.Header.Get("X-AspNet-Version"))
+		}
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "asp.net",
+			Confidence: "high",
+			Evidence:   evidence,
+		})
+	}
+
+	xGenerator := strings.ToLower(resp.Header.Get("X-Generator"))
+	if strings.Contains(xGenerator, "wordpress") || strings.Contains(strings.ToLower(resp.Header.Get("Link")), "wp-json") {
+		evidence := []string{}
+		if resp.Header.Get("X-Generator") != "" {
+			evidence = append(evidence, "X-Generator: "+resp.Header.Get("X-Generator"))
+		}
+		techStack = append(techStack, models.DetectedStack{
+			Name:       "wordpress",
+			Confidence: "high",
+			Evidence:   evidence,
+		})
+	}
+
 	return LeakAnalysisResult{
-		Leaks:   leaks,
-		Penalty: penalty,
+		Leaks:     leaks,
+		Penalty:   penalty,
+		TechStack: techStack,
 	}
 }
