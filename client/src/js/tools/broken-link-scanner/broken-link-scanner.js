@@ -11,16 +11,23 @@ const resolveApiBase = () => {
 };
 
 const BASE_API = resolveApiBase();
-const SCAN_ENDPOINT = `${BASE_API}/broken-link-scanner/scan`;
+const SCAN_ENDPOINT   = `${BASE_API}/broken-link-scanner/scan`;        // legacy sync (kept)
+const SUBMIT_ENDPOINT = `${BASE_API}/broken-link-scanner/scan/submit`;
+const STATUS_ENDPOINT = `${BASE_API}/broken-link-scanner/scan/status`;
 
 const state = {
     currentResults: [],
+    filteredResults: [],
     abortController: null,
     currentFilter: "all",
+    currentScope: "all",
+    currentKind: "all",
+    searchQuery: "",
     currentPage: 1,
     pageSize: 10,
     isScanning: false,
-    scannedUrl: ""
+    scannedUrl: "",
+    originHost: ""
 };
 
 function init() {
@@ -60,6 +67,10 @@ function init() {
     const optIgnoreTls = $("#bls-ignore-tls");
     const workersInput = $("#bls-workers-input");
     const workersVal = $("#bls-worker-val");
+    
+    const maxDepthInput = $("#bls-max-depth");
+    const maxPagesInput = $("#bls-max-pages");
+    const maxLinksInput = $("#bls-max-links");
 
     const scanIcon = $("#bls-scan-icon");
     const scanLoadingState = $("#bls-scan-loading");
@@ -152,94 +163,42 @@ function init() {
 
         try {
             btnExportXlsx?.setAttribute("disabled", "true");
-            const response = await fetch(SCAN_ENDPOINT, {
+
+            // ── Step 1: Submit job, returns {job_id} immediately ──────────────
+            const submitRes = await fetch(SUBMIT_ENDPOINT, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     url: rawUrl,
                     scope: optSameHost?.checked ? "same-host" : "all",
                     maxWorkers: parseInt(workersInput?.value || "50", 10),
+                    maxDepth: parseInt(maxDepthInput?.value || "2", 10),
+                    maxPages: parseInt(maxPagesInput?.value || "50", 10),
+                    maxLinks: parseInt(maxLinksInput?.value || "1000", 10),
                     ignoreTlsErrors: optIgnoreTls?.checked || false,
+                    respectRobots: $("#bls-respect-robots")?.checked ?? true,
                     bypassCache: isBypassCache
                 }),
                 signal: state.abortController.signal
             });
 
-            const data = await response.json();
-            if (!response.ok || !data.success) throw new Error(data.message || `HTTP ${response.status}`);
-
-            const scanData = data.data;
-
-            // Update Result Title
-            if (resultsTitle) {
-                resultsTitle.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart mr-2"></i> Báo cáo quét trên <span class="text-success">"${escapeHTML(rawUrl)}"</span>`;
+            if (!submitRes.ok) {
+                const errData = await submitRes.json();
+                throw new Error(errData.message || `HTTP ${submitRes.status}`);
             }
 
-            if (statTotal) statTotal.textContent = scanData.summary?.total || 0;
-            if (statOk) statOk.textContent = scanData.summary?.ok || 0;
-            if (statRedirect) statRedirect.textContent = scanData.summary?.redirect || 0;
-            if (statBroken) statBroken.textContent = scanData.summary?.broken || 0;
-            if (statBlocked) statBlocked.textContent = scanData.summary?.blocked || 0;
-            if (statTimeout) statTimeout.textContent = scanData.summary?.timeout || 0;
+            const submitData = await submitRes.json();
 
-            state.currentResults = scanData.results || [];
-            state.currentPage = 1;
-
-            // Handle Skipped Links Warning (GEMINI Rule #30 & Issue #5)
-            const skippedWarning = $("#bls-skipped-warning");
-            const hasOverLimit = scanData.summary?.skipped_over_limit > 0;
-            const hasOutOfScope = scanData.summary?.skipped_out_of_scope > 0;
-
-            if (skippedWarning && (hasOverLimit || hasOutOfScope)) {
-                skippedWarning.classList.remove("d-none");
-                
-                const overLimitRow = $("#bls-skipped-over-limit-row");
-                const overLimitCount = $("#bls-skipped-count");
-                if (hasOverLimit && overLimitRow && overLimitCount) {
-                    overLimitCount.textContent = scanData.summary.skipped_over_limit;
-                    overLimitRow.classList.remove("d-none");
-                } else {
-                    overLimitRow?.classList.add("d-none");
-                }
-
-                const outScopeRow = $("#bls-skipped-out-scope-row");
-                const outScopeCount = $("#bls-skipped-scope-count");
-                if (hasOutOfScope && outScopeRow && outScopeCount) {
-                    outScopeCount.textContent = scanData.summary.skipped_out_of_scope;
-                    outScopeRow.classList.remove("d-none");
-                } else {
-                    outScopeRow?.classList.add("d-none");
-                }
-            } else {
-                skippedWarning?.classList.add("d-none");
+            // ── Cache hit: server returned full data immediately ──────────────
+            if (submitData.cached && submitData.data) {
+                await handleScanData(submitData, rawUrl, { cached: true, fetched_at: submitData.fetched_at });
+                return;
             }
 
-            renderTable("all");
+            // ── Step 2: Open SSE stream for live progress ─────────────────────
+            const jobId = submitData.job_id;
+            await listenJobSSE(jobId, rawUrl);
 
-            // Cache Banner
-            const cacheNotice = $("#cacheNotice");
-            if (cacheNotice && data.meta?.fetched_at) {
-                const timeStr = new Date(data.meta.fetched_at).toLocaleString('vi-VN');
-                const spanEl = cacheNotice.querySelector("span");
-                if (spanEl) {
-                    if (data.meta.cached) {
-                        spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
-                    } else {
-                        spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
-                    }
-                }
-                cacheNotice.classList.remove('d-none');
-                cacheNotice.classList.add('d-flex');
-            } else {
-                cacheNotice?.classList.add('d-none');
-                cacheNotice?.classList.remove('d-flex');
-            }
-
-            resultsSection?.classList.remove("d-none");
-            if (shareCard) {
-                shareCard.classList.remove("d-none");
-                if (shareLink) shareLink.value = window.location.href;
-            }
         } catch (err) {
             if (err.name !== 'AbortError') {
                 if (errorMessage) errorMessage.textContent = err.message;
@@ -260,26 +219,239 @@ function init() {
         }
     }
 
+    // ── SSE listener: streams progress events then final result ───────────
+    function listenJobSSE(jobId, rawUrl) {
+        return new Promise((resolve, reject) => {
+            const url = `${STATUS_ENDPOINT}?job_id=${encodeURIComponent(jobId)}`;
+            const es = new EventSource(url);
+
+            // Allow cancel button to kill the stream AND notify server
+            const prevAbort = state.abortController;
+            if (prevAbort) {
+                prevAbort.signal.addEventListener('abort', () => {
+                    es.close();
+                    fetch(`${BASE_API}/broken-link-scanner/scan/cancel`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ job_id: jobId }),
+                        keepalive: true
+                    }).catch(() => {}); // ignore errors on cancel
+                    reject(new DOMException('Aborted', 'AbortError'));
+                });
+            }
+
+            // Show progress bar
+            if (progressBlock) {
+                progressBlock.querySelector(".bls-progress-bar-track")?.classList.remove("d-none");
+                progressBlock.querySelector(".bls-progress-meta")?.classList.remove("d-none");
+            }
+
+            es.addEventListener('progress', (e) => {
+                try {
+                    const ev = JSON.parse(e.data);
+                    const done = ev.links_found || 0;
+                    const label = progressBlock?.querySelector("span.font-bold");
+                    if (label) label.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang quét... <strong>${ev.pages_crawled || 0}</strong> trang / <strong>${done}</strong> links tìm thấy`;
+
+                    const pctEl = $("#bls-progress-pct");
+                    const doneEl = $("#bls-progress-done");
+                    if (pctEl) pctEl.textContent = `${done} links`;
+                    if (doneEl) doneEl.textContent = done;
+                } catch { /* ignore parse errors */ }
+            });
+
+            es.addEventListener('done', async (e) => {
+                es.close();
+                try {
+                    const result = JSON.parse(e.data);
+                    await handleScanData(result, rawUrl, { cached: false, fetched_at: new Date().toISOString() });
+                    resolve();
+                } catch (err) {
+                    reject(err);
+                }
+            });
+
+            es.addEventListener('scan_error', (e) => {
+                es.close();
+                try {
+                    const errData = JSON.parse(e.data || '{}');
+                    reject(new Error(errData.message || 'Quét thất bại. Vui lòng thử lại.'));
+                } catch {
+                    reject(new Error('Quét thất bại. Vui lòng thử lại.'));
+                }
+            });
+
+            es.onerror = (e) => {
+                if (es.readyState === EventSource.CLOSED) return; // already handled
+                es.close();
+                reject(new Error('Mất kết nối với máy chủ. Vui lòng thử lại.'));
+            };
+        });
+    }
+
+    // ── Render scan data after receiving final result ─────────────────────
+    async function handleScanData(response, rawUrl, meta) {
+        const scanData = response.data;
+
+        // Update Result Title
+        if (resultsTitle) {
+            resultsTitle.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart mr-2"></i> Báo cáo quét trên <span class="text-success">"${escapeHTML(rawUrl)}"</span>`;
+        }
+
+        const statCrawled = $("#bls-stat-crawled");
+        const statTotal   = $("#bls-stat-total");
+        const statUnique  = $("#bls-stat-unique");
+        const statOk      = $("#bls-stat-ok");
+        const statRedirect = $("#bls-stat-redirect");
+        const statBroken  = $("#bls-stat-broken");
+        const statBlocked = $("#bls-stat-blocked");
+        const statTimeout = $("#bls-stat-timeout");
+
+        if (statCrawled)  statCrawled.textContent  = scanData.summary?.pages_crawled  || 0;
+        if (statTotal)    statTotal.textContent     = scanData.summary?.total          || 0;
+        if (statUnique)   statUnique.textContent    = scanData.summary?.unique_targets || 0;
+        if (statOk)       statOk.textContent        = scanData.summary?.ok             || 0;
+        if (statRedirect) statRedirect.textContent  = scanData.summary?.redirect       || 0;
+        if (statBroken)   statBroken.textContent    = scanData.summary?.broken         || 0;
+        if (statBlocked)  statBlocked.textContent   = scanData.summary?.blocked        || 0;
+        if (statTimeout)  statTimeout.textContent   = scanData.summary?.timeout        || 0;
+
+        state.currentResults = scanData.results || [];
+        state.currentPage = 1;
+
+        // Extract origin host for Internal/External classification
+        try {
+            state.originHost = new URL(scanData.final_page_url || rawUrl).hostname;
+        } catch { state.originHost = ""; }
+
+        // Handle Skipped Links Warning
+        const skippedWarning = $("#bls-skipped-warning");
+        const hasOverLimit  = scanData.summary?.skipped_over_limit  > 0;
+        const hasOutOfScope = scanData.summary?.skipped_out_of_scope > 0;
+        const limitReached  = scanData.summary?.limit_reached || false;
+
+        if (skippedWarning && (hasOverLimit || hasOutOfScope || limitReached)) {
+            skippedWarning.classList.remove("d-none");
+            const overLimitRow   = $("#bls-skipped-over-limit-row");
+            const overLimitCount = $("#bls-skipped-count");
+            if ((hasOverLimit || limitReached) && overLimitRow && overLimitCount) {
+                overLimitRow.classList.remove("d-none");
+                const overLimitText = $("#bls-skipped-over-limit-text");
+                if (hasOverLimit) {
+                    overLimitCount.textContent = scanData.summary?.skipped_over_limit || 0;
+                    overLimitText?.classList.remove("d-none");
+                } else {
+                    overLimitText?.classList.add("d-none");
+                }
+            } else {
+                overLimitRow?.classList.add("d-none");
+            }
+            const outScopeRow   = $("#bls-skipped-out-scope-row");
+            const outScopeCount = $("#bls-skipped-scope-count");
+            if (hasOutOfScope && outScopeRow && outScopeCount) {
+                outScopeCount.textContent = scanData.summary.skipped_out_of_scope;
+                outScopeRow.classList.remove("d-none");
+            } else {
+                outScopeRow?.classList.add("d-none");
+            }
+        } else {
+            skippedWarning?.classList.add("d-none");
+        }
+
+        renderTable("all");
+
+        // Cache Banner — use meta passed in from SSE/cache-hit path
+        const cacheNotice = $("#cacheNotice");
+        if (cacheNotice && meta?.fetched_at) {
+            const timeStr = new Date(meta.fetched_at).toLocaleString('vi-VN');
+            const spanEl = cacheNotice.querySelector("span");
+            if (spanEl) {
+                if (meta.cached) {
+                    spanEl.innerHTML = `<i class="fa-solid fa-clock"></i> Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc <b id="cacheTime">${timeStr}</b>`;
+                } else {
+                    spanEl.innerHTML = `<i class="fa-solid fa-bolt"></i> Kết quả tra cứu mới nhất lúc <b id="cacheTime">${timeStr}</b>`;
+                }
+            }
+            cacheNotice.classList.remove('d-none');
+            cacheNotice.classList.add('d-flex');
+        } else {
+            cacheNotice?.classList.add('d-none');
+            cacheNotice?.classList.remove('d-flex');
+        }
+
+        resultsSection?.classList.remove("d-none");
+        if (shareCard) {
+            shareCard.classList.remove("d-none");
+            if (shareLink) shareLink.value = window.location.href;
+        }
+    }
+
+    function isInternal(row) {
+        if (!state.originHost || !row.final_url) return false;
+        try {
+            const targetHost = new URL(row.final_url).hostname;
+            return targetHost.toLowerCase() === state.originHost.toLowerCase();
+        } catch { return false; }
+    }
+
+    function isResource(row) {
+        const resourceKinds = ["<img>", "<script>", "<link>", '<link rel="stylesheet">', "CSS", "CSS_IMPORT", "<video>", "<audio>", "<source>", "<track>", "<embed>", "<object>"];
+        return resourceKinds.some(k => row.kind === k || row.kind.includes("style") || row.kind.includes("CSS"));
+    }
+
+    // Sort priority: broken > blocked > timeout > redirect > ok
+    const statusPriority = { broken: 0, blocked: 1, timeout: 2, redirect: 3, ok: 4 };
+
     function renderTable(filter) {
         if (!tbody) return;
         tbody.innerHTML = "";
         state.currentFilter = filter;
 
+        const searchLower = state.searchQuery.toLowerCase();
+
         const filtered = state.currentResults.filter(r => {
-            if (filter === "all") return true;
-            return r.status_class === filter;
+            // Status filter
+            if (filter !== "all" && r.status_class !== filter) return false;
+            // Scope filter
+            if (state.currentScope !== "all") {
+                const internal = isInternal(r);
+                if (state.currentScope === "internal" && !internal) return false;
+                if (state.currentScope === "external" && internal) return false;
+            }
+            // Kind filter
+            if (state.currentKind !== "all") {
+                const resource = isResource(r);
+                if (state.currentKind === "resource" && !resource) return false;
+                if (state.currentKind === "page" && resource) return false;
+            }
+            // Search filter
+            if (searchLower) {
+                const inTarget = (r.final_url || "").toLowerCase().includes(searchLower);
+                const inOriginal = (r.original_url || "").toLowerCase().includes(searchLower);
+                const inSource = (r.source_page || "").toLowerCase().includes(searchLower);
+                if (!inTarget && !inOriginal && !inSource) return false;
+            }
+            return true;
+        }).sort((a, b) => {
+            const pa = statusPriority[a.status_class] ?? 99;
+            const pb = statusPriority[b.status_class] ?? 99;
+            return pa - pb;
         });
+        
+        state.filteredResults = filtered;
         const total = filtered.length;
 
         if (total === 0) {
             emptyState?.classList.remove("d-none");
             document.querySelector(".bls-table-wrapper")?.classList.add("d-none");
             $("#bls-pagination-container")?.classList.add("d-none");
+            btnExportXlsx?.setAttribute("disabled", "true");
             return;
         }
 
         emptyState?.classList.add("d-none");
         document.querySelector(".bls-table-wrapper")?.classList.remove("d-none");
+        btnExportXlsx?.removeAttribute("disabled");
         const paginationContainer = $("#bls-pagination-container");
         paginationContainer?.classList.remove("d-none");
 
@@ -322,6 +494,11 @@ function init() {
             // Dùng final_url (absolute) cho href, original_url chỉ để hiển thị text
             const linkHref = safeFinalUrl !== "#" ? safeFinalUrl : (isSafeURL(row.original_url) ? row.original_url : "#");
 
+            const safeSourcePage = isSafeURL(row.source_page) ? row.source_page : "#";
+            const sourcePageHtml = row.source_page 
+                ? `<div class="mt-1 text-muted text-sm"><i class="fa-solid fa-file-lines mr-1"></i>Từ trang: <a href="${escapeHTML(safeSourcePage)}" target="_blank" rel="noopener noreferrer" class="text-muted">${escapeHTML(row.source_page)}</a></div>` 
+                : "";
+
             tr.innerHTML = `
                 <td>
                     <span class="badge ${badgeClass}">
@@ -346,6 +523,7 @@ function init() {
                         <a href="${escapeHTML(safeFinalUrl)}" target="_blank" rel="noopener noreferrer" class="text-muted">${escapeHTML(row.final_url)}</a>
                     </div>
                     ` : ''}
+                    ${sourcePageHtml}
                 </td>
                 <td>
                     <div class="bls-latency text-right">
@@ -460,6 +638,34 @@ function init() {
         }
     });
 
+    // Scope Filter Dropdown
+    const scopeFilter = $("#bls-scope-filter");
+    scopeFilter?.addEventListener("change", (e) => {
+        state.currentScope = e.target.value;
+        state.currentPage = 1;
+        renderTable(state.currentFilter);
+    });
+
+    // Kind Filter Dropdown
+    const kindFilter = $("#bls-kind-filter");
+    kindFilter?.addEventListener("change", (e) => {
+        state.currentKind = e.target.value;
+        state.currentPage = 1;
+        renderTable(state.currentFilter);
+    });
+
+    // Search Input
+    const searchInput = $("#bls-search-input");
+    let searchDebounce = null;
+    searchInput?.addEventListener("input", (e) => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            state.searchQuery = e.target.value.trim();
+            state.currentPage = 1;
+            renderTable(state.currentFilter);
+        }, 250);
+    });
+
     // Page Size Buttons
     document.querySelectorAll(".btn-size").forEach(btn => {
         btn.onclick = (e) => {
@@ -474,8 +680,8 @@ function init() {
 
     // XLSX Export
     btnExportXlsx?.addEventListener("click", () => {
-        if (state.currentResults.length > 0) {
-            exportXLSX(state.currentResults, state.scannedUrl);
+        if (state.filteredResults && state.filteredResults.length > 0) {
+            exportXLSX(state.filteredResults, state.scannedUrl);
         }
     });
 
@@ -557,11 +763,12 @@ function exportXLSX(results, url) {
     ["A6", "B6", "C6"].forEach(ref => { if (wsSummary[ref]) wsSummary[ref].s = headerStyle; });
 
     // --- SHEET 2: CHI TIẾT ---
-    const headers = ["Trạng thái", "Mã HTTP", "Loại thẻ", "Redirects", "URL Đích (Final)", "URL Gốc (Original)", "Độ trễ (ms)", "Lỗi chi tiết"];
+    const headers = ["Trạng thái", "Mã HTTP", "Loại thẻ", "Nguồn (Source Page)", "Redirects", "URL Đích (Final)", "URL Gốc (Original)", "Độ trễ (ms)", "Lỗi chi tiết"];
     const rows = results.map(r => [
         r.status_class.toUpperCase(),
         r.status_code || "-",
         r.kind,
+        r.source_page || "",
         r.redirect_count || 0,
         r.final_url,
         r.original_url,
@@ -586,7 +793,7 @@ function exportXLSX(results, url) {
     wsDetails["!cols"] = detailColWidths;
 
     // Filter và Freeze
-    wsDetails["!autofilter"] = { ref: `A1:H${rows.length + 1}` };
+    wsDetails["!autofilter"] = { ref: `A1:I${rows.length + 1}` };
     wsDetails["!views"] = [{ state: "frozen", ySplit: 1 }];
 
     // Styling Headers chi tiết
@@ -596,7 +803,7 @@ function exportXLSX(results, url) {
         alignment: { horizontal: "center", vertical: "center" }
     };
 
-    const alphabet = "ABCDEFGH";
+    const alphabet = "ABCDEFGHI";
     for (let i = 0; i < alphabet.length; i++) {
         const cellRef = alphabet[i] + "1";
         if (wsDetails[cellRef]) wsDetails[cellRef].s = detailHeaderStyle;

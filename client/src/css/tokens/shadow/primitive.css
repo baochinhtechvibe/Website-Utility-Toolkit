@@ -24,28 +24,28 @@
 
   /* Accent Shadows (Layered for Premium Feel) */
   --shadow-accent-blue:
-    0 4px 20px 0 var(--overlay-blue),
-    0 8px 32px 0 var(--overlay-blue);
+    0 0 20px 0 var(--overlay-blue),
+    0 0 32px 0 var(--overlay-blue);
 
   --shadow-accent-green:
-    0 4px 20px 0 var(--overlay-green),
-    0 8px 32px 0 var(--overlay-green);
+    0 0 20px 0 var(--overlay-green),
+    0 0 32px 0 var(--overlay-green);
 
   --shadow-accent-red:
-    0 4px 20px 0 var(--overlay-red),
-    0 8px 32px 0 var(--overlay-red);
+    0 0 20px 0 var(--overlay-red),
+    0 0 32px 0 var(--overlay-red);
 
   --shadow-accent-yellow:
-    0 4px 20px 0 var(--overlay-yellow),
-    0 8px 32px 0 var(--overlay-yellow);
+    0 0 20px 0 var(--overlay-yellow),
+    0 0 32px 0 var(--overlay-yellow);
 
   --shadow-accent-purple:
-    0 4px 20px 0 var(--overlay-purple),
-    0 8px 32px 0 var(--overlay-purple);
+    0 0 20px 0 var(--overlay-purple),
+    0 0 32px 0 var(--overlay-purple);
 
   --shadow-accent-brand:
-    0 4px 20px 0 var(--overlay-slate),
-    0 8px 32px 0 var(--overlay-slate);
+    0 0 20px 0 var(--overlay-slate),
+    0 0 32px 0 var(--overlay-slate);
 
   /* Target Focus Shadows */
   --shadow-focus:

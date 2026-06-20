@@ -96,6 +96,8 @@
 .text-md    { font-size: var(--text-md) !important; }
 .text-lg    { font-size: var(--text-lg) !important; }
 
+.text-nowrap { white-space: nowrap !important; }
+
 .break-all  { word-break: break-all !important; }
 .break-word { word-break: break-word !important; }
 

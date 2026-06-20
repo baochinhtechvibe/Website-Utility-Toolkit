@@ -15,12 +15,40 @@ import (
 	"tools.bctechvibe.com/server/internal/platform/errutil"
 )
 
-// ProcessScan kicks off the complete scanning phase
+// ProgressFn is an optional callback invoked after each URL is checked.
+// pagesCrawled: number of pages crawled so far (from the extract phase).
+// linksChecked: number of unique targets checked so far.
+// currentURL: the URL just processed.
+type ProgressFn func(pagesCrawled, linksChecked int, currentURL string)
+
+// ProcessScan is the synchronous (legacy/backward-compat) entry point.
 func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, error) {
-	data, validLinks, err := ExtractLinks(ctx, req)
+	return ProcessScanWithProgress(ctx, req, nil)
+}
+
+// ProcessScanWithProgress kicks off the complete scanning phase with optional live progress updates.
+func ProcessScanWithProgress(ctx context.Context, req models.ScanRequest, progressFn ProgressFn) (models.ScanData, error) {
+	rcClient := SafeBasePageClient(req.IgnoreTlsErrors)
+	rc := NewRobotsChecker(rcClient, req.UserAgent, progressFn)
+
+	data, occurrences, err := ExtractLinks(ctx, req, rc)
 	if err != nil {
 		return models.ScanData{}, err
 	}
+
+	// Deduplicate occurrences into unique targets
+	uniqueTargets := make(map[string]models.ScanResultRow)
+	for _, occ := range occurrences {
+		if _, exists := uniqueTargets[occ.FinalURL]; !exists {
+			uniqueTargets[occ.FinalURL] = occ
+		}
+	}
+
+	targetList := make([]models.ScanResultRow, 0, len(uniqueTargets))
+	for _, t := range uniqueTargets {
+		targetList = append(targetList, t)
+	}
+	data.Summary.UniqueTargets = len(uniqueTargets)
 
 	workerCount := req.MaxWorkers
 	if workerCount < 5 {
@@ -31,43 +59,69 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 	}
 
 	client := SafeHTTPClient(req.IgnoreTlsErrors)
+	targetResults := make([]models.ScanResultRow, len(targetList))
 
-	results := make([]models.ScanResultRow, len(validLinks))
-	
-	// Create channels
-	jobs := make(chan int, len(validLinks))
+	jobs := make(chan int, len(targetList))
 	var wg sync.WaitGroup
+	hostSemaphores := &sync.Map{}
 
-	// Per-host semaphore mapping to prevent hammering single domains
-	// Max 5 concurrent requests per host.
-	hostSemaphores := &sync.Map{} 
+	// Thread-safe counter for progress reporting
+	var checkedCount int
+	var counterMu sync.Mutex
 
-	// Start workers
 	for w := 0; w < workerCount; w++ {
 		wg.Add(1)
-		go func(workerID int) {
+		go func() {
 			defer wg.Done()
 			for idx := range jobs {
 				select {
 				case <-ctx.Done():
-					return 
+					return
 				default:
-					results[idx] = checkURL(ctx, validLinks[idx], client, hostSemaphores, req.IgnoreTlsErrors, req.BypassCache)
+					targetResults[idx] = checkURL(ctx, targetList[idx], client, hostSemaphores, req, rc)
+					if progressFn != nil {
+						counterMu.Lock()
+						checkedCount++
+						n := checkedCount
+						counterMu.Unlock()
+						progressFn(data.Summary.PagesCrawled, n, targetList[idx].FinalURL)
+					}
 				}
 			}
-		}(w)
+		}()
 	}
 
-	// Dispatch jobs
-	for i := range validLinks {
+	for i := range targetList {
 		jobs <- i
 	}
 	close(jobs)
-
-	// Wait for all workers to finish
 	wg.Wait()
 
-	data.Results = results
+	if ctx.Err() != nil {
+		return models.ScanData{}, ctx.Err()
+	}
+
+	// Map verdicts back to target URL based on original FinalURL
+	verdictMap := make(map[string]models.ScanResultRow)
+	for i, res := range targetResults {
+		originalTargetURL := targetList[i].FinalURL
+		verdictMap[originalTargetURL] = res
+	}
+
+	finalResults := make([]models.ScanResultRow, len(occurrences))
+	for i, occ := range occurrences {
+		res := verdictMap[occ.FinalURL]
+		occ.StatusCode = res.StatusCode
+		occ.StatusText = res.StatusText
+		occ.StatusClass = res.StatusClass
+		occ.RedirectCount = res.RedirectCount
+		occ.ResponseMs = res.ResponseMs
+		occ.Error = res.Error
+		occ.FinalURL = res.FinalURL
+		finalResults[i] = occ
+	}
+
+	data.Results = finalResults
 
 	// Compute summaries
 	for _, r := range data.Results {
@@ -88,6 +142,7 @@ func ProcessScan(ctx context.Context, req models.ScanRequest) (models.ScanData, 
 	return data, nil
 }
 
+
 type CachedVerdict struct {
 	StatusCode    int    `json:"status_code"`
 	StatusText    string `json:"status_text"`
@@ -98,10 +153,18 @@ type CachedVerdict struct {
 	ErrorDetail   string `json:"error"`
 }
 
-func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Client, hostSems *sync.Map, ignoreTLS bool, bypassCache bool) models.ScanResultRow {
-	cacheKey := BuildCacheKey(asset.FinalURL, ignoreTLS)
+func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Client, hostSems *sync.Map, req models.ScanRequest, rc *RobotsChecker) models.ScanResultRow {
+	if req.IsRespectRobots() && !rc.IsAllowed(asset.FinalURL) {
+		asset.StatusClass = "blocked"
+		asset.StatusCode = 0
+		asset.StatusText = "BLOCKED_BY_ROBOTS"
+		asset.Error = "Bị chặn bởi robots.txt"
+		return asset
+	}
 
-	if !bypassCache {
+	cacheKey := BuildCacheKey(asset.FinalURL, req.IgnoreTlsErrors)
+
+	if !req.BypassCache {
 		if cachedItem, _, ok := CacheGet(cacheKey); ok {
 			cv := cachedItem.(CachedVerdict)
 			asset.StatusCode = cv.StatusCode
@@ -118,12 +181,21 @@ func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Clie
 	// Throttle per-host.
 	host := ""
 	if u, err := url.Parse(asset.FinalURL); err == nil {
-		host = u.Host
+		host = u.Hostname()
 	}
+
+	if host != "" {
+		if err := rc.WaitCrawlDelay(ctx, asset.FinalURL, req.CrawlDelay, req.IsRespectRobots()); err != nil {
+			asset.StatusClass = "timeout"
+			asset.Error = "Timeout during crawl delay"
+			return asset
+		}
+	}
+
 	if host == "" {
-		host = asset.FinalURL
+		host = "unknown"
 	}
-	
+
 	// Ensure the semaphore channel exists
 	semVal, _ := hostSems.LoadOrStore(host, make(chan struct{}, 5))
 	hostSem := semVal.(chan struct{})
@@ -133,7 +205,7 @@ func checkURL(ctx context.Context, asset models.ScanResultRow, client *http.Clie
 	defer func() { <-hostSem }()
 
 	start := time.Now()
-	
+
 	// Point #11: Initialize visited map for loop detection
 	visited := make(map[string]bool)
 	verdict := doFetchWithFallback(ctx, asset.FinalURL, client, 0, visited)
@@ -183,9 +255,9 @@ func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client
 	req.Header.Set("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
 
 	resp, err := client.Do(req)
-	
+
 	shouldFallback := false
-	
+
 	if err != nil {
 		shouldFallback = matchTransportFallbackError(err)
 	} else {
@@ -202,7 +274,7 @@ func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client
 		reqGet.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 		reqGet.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
 		reqGet.Header.Set("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
-		
+
 		respGet, errGet := client.Do(reqGet)
 		if errGet == nil {
 			defer respGet.Body.Close()
@@ -224,25 +296,25 @@ func doFetchWithFallback(ctx context.Context, urlStr string, client *http.Client
 func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.Client, redirectDepth int, initialURL string, visited map[string]bool) CachedVerdict {
 	// Status Evaluation
 	code := resp.StatusCode
-	
+
 	// Handle 3xx Redirects
 	if code >= 300 && code <= 308 && code != 304 {
 		loc, err := resp.Location()
 		if err != nil {
 			return CachedVerdict{FinalURL: initialURL, RedirectCount: redirectDepth, StatusCode: code, StatusClass: "broken", ErrorDetail: "Thiếu header Location khi redirect"}
 		}
-		
+
 		target := loc.String()
 		// Go recursive!
 		v := doFetchWithFallback(ctx, target, client, redirectDepth+1, visited)
-		
-		// Logic: Nếu trang đích cuối cùng hoạt động tốt (ok) hoặc bị chặn (blocked), 
-		// ta hiển thị mã HTTP của bước nhảy ĐẦU TIÊN (301, 302...) 
+
+		// Logic: Nếu trang đích cuối cùng hoạt động tốt (ok) hoặc bị chặn (blocked),
+		// ta hiển thị mã HTTP của bước nhảy ĐẦU TIÊN (301, 302...)
 		// để người dùng biết loại chuyển hướng (GEMINI Issue #3).
 		if v.StatusClass == "ok" || v.StatusClass == "blocked" {
 			v.StatusClass = "redirect"
-			v.StatusCode = code 
-			
+			v.StatusCode = code
+
 			// Custom status text for common redirects to be more user-friendly
 			if code == 302 {
 				v.StatusText = "Moved Temporarily"
@@ -258,7 +330,7 @@ func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.
 	if code >= 200 && code < 300 {
 		class = "ok"
 	} else if code == 403 || code == 401 || code == 405 { // Some resources strictly block or method not allowed
-		class = "blocked" 
+		class = "blocked"
 	} else if code >= 400 && code < 500 {
 		class = "broken" // Client error
 	} else if code >= 500 {
@@ -282,7 +354,6 @@ func evaluateFinalStatus(ctx context.Context, resp *http.Response, client *http.
 	}
 }
 
-
 func normalizeForLoop(rawURL string) string {
 	p, err := url.Parse(rawURL)
 	if err != nil {
@@ -292,7 +363,7 @@ func normalizeForLoop(rawURL string) string {
 	host := strings.ToLower(p.Host)
 	// GEMINI Fix: KHÔNG được TrimRight dấu "/" vì /blog và /blog/ là 2 URL khác nhau.
 	// Việc trim làm cho tool hiểu nhầm redirect chuẩn hóa là vòng lặp.
-	path := p.Path 
+	path := p.Path
 	result := strings.ToLower(p.Scheme) + "://" + host + path
 	if p.RawQuery != "" {
 		result += "?" + p.RawQuery
@@ -313,16 +384,16 @@ func matchTransportFallbackError(err error) bool {
 	if errors.Is(errInner, io.EOF) {
 		return true
 	}
-	
-	// Type casting 
+
+	// Type casting
 	var netErr net.Error
 	if errors.As(errInner, &netErr) {
-		if netErr.Timeout() { 
+		if netErr.Timeout() {
 			return false // No point GET-fetching if we are truly timed-out, it's a dead end.
 		}
 		// TCP reset is acceptable to re-try via GET normally
 	}
-	
+
 	msg := strings.ToLower(errInner.Error())
 	// 3. Known platform WAF string edge cases fallback
 	if strings.Contains(msg, "connection reset by peer") || strings.Contains(msg, "stream error") {
@@ -334,7 +405,7 @@ func matchTransportFallbackError(err error) bool {
 
 func parseRequestError(err error, urlStr string, redirects int) CachedVerdict {
 	statusClass := "broken"
-	
+
 	// Better timeout check (GEMINI Rule #42)
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {

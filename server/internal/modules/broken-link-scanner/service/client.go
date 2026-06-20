@@ -12,6 +12,8 @@ import (
 	"tools.bctechvibe.com/server/internal/platform/validator"
 )
 
+var CheckSafeIP = validator.IsSafeIP
+
 var (
 	defaultClient      *http.Client
 	insecureClient     *http.Client
@@ -44,7 +46,7 @@ func createClient(ignoreTLS bool, followRedirect bool) *http.Client {
 			}
 
 			if ip := net.ParseIP(host); ip != nil {
-				if !validator.IsSafeIP(ip) {
+				if !CheckSafeIP(ip) {
 					return nil, errors.New("SSRF Blocked: private IP")
 				}
 				return dialer.DialContext(ctx, network, addr)
@@ -57,7 +59,7 @@ func createClient(ignoreTLS bool, followRedirect bool) *http.Client {
 
 			var safeIP net.IP
 			for _, ip := range ips {
-				if validator.IsSafeIP(ip) {
+				if CheckSafeIP(ip) {
 					safeIP = ip
 					break
 				}

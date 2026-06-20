@@ -65,6 +65,14 @@
     user-select: none;
 }
 
+/* ─── Header Customization (Domain Name Scale) ───────── */
+@media (max-width: 640px) {
+    .header--broken-link .header__brand {
+        font-size: clamp(1rem, 4.5vw, var(--text-h2));
+        white-space: nowrap; /* Ngăn rớt chữ */
+    }
+}
+
 /* Worker range slider */
 .page--broken-link .bls-range {
     width: 100%;
@@ -608,6 +616,19 @@
         gap: var(--space-4);
     }
 
+    .page--broken-link .bls-pagination__controls {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .page--broken-link .bls-pagination__list {
+        flex-wrap: nowrap;
+        width: max-content;
+        margin: 0 auto;
+        padding-bottom: var(--space-1);
+    }
+
     /* Bảng cuộn ngang mượt mà cho Mobile - Giữ nguyên độ rộng tự nhiên */
     .page--broken-link .bls-table-wrapper {
         overflow-x: auto !important;
@@ -618,15 +639,19 @@
     }
 
     .page--broken-link .bls-table {
-        min-width: 1000px; /* Ép bảng rộng để không bị bóp */
-        table-layout: auto !important; /* Để trình duyệt tự tính độ rộng dựa trên nội dung */
+        min-width: 1000px;
+        /* Ép bảng rộng để không bị bóp */
+        table-layout: auto !important;
+        /* Để trình duyệt tự tính độ rộng dựa trên nội dung */
         width: 100%;
     }
 
-    .page--broken-link .bls-table th, 
+    .page--broken-link .bls-table th,
     .page--broken-link .bls-table td {
-        white-space: nowrap !important; /* Không cho xuống dòng để giữ độ dài cột */
-        padding: var(--space-3) var(--space-5) !important; /* Tăng padding để tách biệt rõ ràng */
+        white-space: nowrap !important;
+        /* Không cho xuống dòng để giữ độ dài cột */
+        padding: var(--space-3) var(--space-5) !important;
+        /* Tăng padding để tách biệt rõ ràng */
     }
 
     /* Riêng cột URL thì cho phép xuống dòng nếu nó quá dài, nhưng vẫn giữ min-width */
@@ -637,5 +662,54 @@
 
     .page--broken-link .bls-url-main {
         font-size: var(--text-xs);
+    }
+}
+
+/* --- 13. Toolbar (Type Filters + Search) --- */
+.page--broken-link .bls-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page--broken-link .bls-type-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+
+.page--broken-link .bls-search-box {
+    position: relative;
+    flex: 1 1 220px;
+    max-width: 340px;
+}
+
+.page--broken-link .bls-search-box__icon {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    pointer-events: none;
+    font-size: var(--text-sm);
+}
+
+.page--broken-link .bls-search-box__input {
+    padding-left: var(--space-8);
+}
+
+@media (max-width: 639px) {
+    .page--broken-link .bls-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .page--broken-link .bls-search-box {
+        max-width: 100%;
+        flex: none;
+        width: 100%;
     }
 }

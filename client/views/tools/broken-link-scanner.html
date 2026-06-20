@@ -21,6 +21,28 @@
 
 <body>
     <div class="wrapper page--broken-link">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--broken-link py-10 mb-4 text-center">
             <div class="container">
@@ -31,10 +53,10 @@
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">
-                                BROKEN LINK SCANNER
+                                brokenlink.bctechvibe.com
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
-                                TRÌNH QUÉT LIÊN KẾT HỎNG & ASSET LỖI
+                                BROKEN LINK & ASSET SCANNER
                             </p>
                         </div>
                     </div>
@@ -98,6 +120,32 @@
                                             class="form-checkbox">
                                         <span>Bỏ qua lỗi SSL/TLS</span>
                                     </label>
+                                    <label class="bls-advanced-option mr-4" for="bls-respect-robots">
+                                        <input type="checkbox" id="bls-respect-robots" name="respectRobots"
+                                            class="form-checkbox" checked>
+                                        <span>Tuân thủ Robots.txt & Crawl Delay</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Crawler Configs -->
+                            <div class="form-field mt-4">
+                                <div class="d-flex flex-row justify-between flex-wrap gap-4">
+                                    <div class="flex-1">
+                                        <label class="form-label" for="bls-max-depth">Độ sâu (Max Depth)</label>
+                                        <input type="number" id="bls-max-depth" name="maxDepth" class="form-input mt-2"
+                                            min="1" max="10" value="2">
+                                    </div>
+                                    <div class="flex-1">
+                                        <label class="form-label" for="bls-max-pages">Số trang (Max Pages)</label>
+                                        <input type="number" id="bls-max-pages" name="maxPages" class="form-input mt-2"
+                                            min="1" max="500" value="50">
+                                    </div>
+                                    <div class="flex-1">
+                                        <label class="form-label" for="bls-max-links">Số link (Max Links)</label>
+                                        <input type="number" id="bls-max-links" name="maxLinks" class="form-input mt-2"
+                                            min="1" max="5000" value="1000">
+                                    </div>
                                 </div>
                             </div>
 
@@ -196,23 +244,32 @@
                                     </div>
                                     <div class="message-card__body">
                                         <p class="message-card__message">
-                                            Website có quá nhiều liên kết hoặc nằm ngoài phạm vi quét. Hệ thống đã tự
-                                            động giới hạn 500 liên kết đầu tiên để đảm bảo hiệu suất.
+                                            Quá trình kiểm tra đã bỏ qua một số liên kết do giới hạn hoặc cấu hình:
                                         </p>
                                         <ul class="bls-skipped-list mt-2 text-sm">
-                                            <li id="bls-skipped-over-limit-row" class="d-none">Đã giới hạn <strong
-                                                    id="bls-skipped-count">0</strong> liên kết do vượt ngưỡng 500.</li>
+                                            <li id="bls-skipped-over-limit-row" class="d-none">Đã dừng quét do đạt tới
+                                                giới hạn cấu hình Max Links hoặc Max Pages. <span
+                                                    id="bls-skipped-over-limit-text" class="d-none">(Đã bỏ qua <strong
+                                                        id="bls-skipped-count">0</strong> liên kết thừa)</span></li>
                                             <li id="bls-skipped-out-scope-row" class="d-none">Đã bỏ qua <strong
-                                                    id="bls-skipped-scope-count">0</strong> liên kết nằm ngoài hostname
-                                                gốc.</li>
+                                                    id="bls-skipped-scope-count">0</strong> liên kết (external link) do
+                                                đang cấu hình "Cùng Hostname".</li>
                                         </ul>
                                     </div>
                                 </div>
                                 <!-- Summary Stats -->
                                 <div class="bls-stats mb-6">
                                     <div class="bls-stat bls-stat--total">
+                                        <strong id="bls-stat-crawled" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">Địa chỉ đã quét</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--total">
                                         <strong id="bls-stat-total" class="bls-stat__value">0</strong>
-                                        <span class="bls-stat__label">Tổng Links</span>
+                                        <span class="bls-stat__label">Lượt Links</span>
+                                    </div>
+                                    <div class="bls-stat bls-stat--total">
+                                        <strong id="bls-stat-unique" class="bls-stat__value">0</strong>
+                                        <span class="bls-stat__label">URL Đích (Unique)</span>
                                     </div>
                                     <div class="bls-stat bls-stat--ok">
                                         <strong id="bls-stat-ok" class="bls-stat__value">0</strong>
@@ -256,6 +313,36 @@
                                         <i class="fa-solid fa-file-excel"></i>
                                         Xuất Excel
                                     </button>
+                                </div>
+
+                                <!-- Type Filter & Search Bar -->
+                                <div class="bls-toolbar mb-4">
+                                    <div class="bls-type-filters items-center">
+                                        <div class="bls-filter-group d-flex items-center">
+                                            <span class="text-md font-semibold text-muted mr-2 text-nowrap">Phạm
+                                                vi:</span>
+                                            <select id="bls-scope-filter" class="form-input form-input--sm">
+                                                <option value="all">Tất cả</option>
+                                                <option value="internal">Internal</option>
+                                                <option value="external">External</option>
+                                            </select>
+                                        </div>
+                                        <div class="bls-filter-group d-flex items-center">
+                                            <span class="text-md font-semibold text-muted mr-2 text-nowrap">Định
+                                                dạng:</span>
+                                            <select id="bls-kind-filter" class="form-input form-input--sm">
+                                                <option value="all">Tất cả</option>
+                                                <option value="page">Trang (HTML)</option>
+                                                <option value="resource">Tài nguyên</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="bls-search-box">
+                                        <i class="fa-solid fa-magnifying-glass bls-search-box__icon"></i>
+                                        <input type="text" id="bls-search-input"
+                                            class="bls-search-box__input form-input"
+                                            placeholder="Tìm theo URL đích hoặc trang nguồn...">
+                                    </div>
                                 </div>
 
                                 <!-- Results Table -->
@@ -343,11 +430,17 @@
             <div class="container">
                 <div class="footer__stats d-flex flex-row justify-center items-center gap-8">
                     <div class="footer__stat footer__stat--total">
-                        <span class="footer__stat-label">Tổng lượt truy cập:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-solid fa-chart-line mr-1"></i>
+                            Tổng lượt truy cập:
+                        </span>
                         <span id="visit-total" class="footer__stat-value">0</span>
                     </div>
                     <div class="footer__stat footer__stat--today">
-                        <span class="footer__stat-label">Truy cập hôm nay:</span>
+                        <span class="footer__stat-label">
+                            <i class="fa-regular fa-calendar-days mr-1"></i>
+                            Truy cập hôm nay:
+                        </span>
                         <span id="visit-today" class="footer__stat-value">0</span>
                     </div>
                 </div>
