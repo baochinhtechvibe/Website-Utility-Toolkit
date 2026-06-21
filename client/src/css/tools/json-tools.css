@@ -121,17 +121,21 @@
     font-family: var(--font-family-mono);
     font-size: var(--text-sm);
     line-height: var(--line-height-relaxed);
-    white-space: pre-wrap;
-    word-break: break-word;
+    white-space: pre;
+    word-break: normal;
     color: var(--code-text);
 }
 
 .json-tools__output--empty {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    text-align: center;
     color: var(--color-text-muted);
     font-family: var(--font-family-sans);
+    white-space: normal;
+    word-break: normal;
 }
 
 /* ===== Validator Output Box ===== */
@@ -145,10 +149,13 @@
     min-height: 320px;
     align-items: center;
     justify-content: center;
+    text-align: center;
     background-color: var(--color-surface);
     border: var(--border-width-1) dashed var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-muted);
+    white-space: normal;
+    word-break: normal;
 }
 
 /* ===== Action Bar ===== */
@@ -195,8 +202,8 @@
     font-family: var(--font-family-mono);
     font-size: var(--text-sm);
     line-height: var(--line-height-relaxed);
-    white-space: pre-wrap;
-    word-break: break-word;
+    white-space: pre;
+    word-break: normal;
     border-left: 3px solid transparent;
 }
 

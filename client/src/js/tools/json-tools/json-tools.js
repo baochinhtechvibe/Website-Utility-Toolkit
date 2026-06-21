@@ -551,11 +551,15 @@ function init() {
                 // Array index token (object có property index)
                 if (typeof t === "object" && t !== null && "index" in t) return `[${t.index}]`;
                 
-                // Nếu token chứa dấu chấm, HOẶC trông giống array index (như "[0]"), 
-                // thêm nháy kép để phân biệt đây là một literal string key.
-                if (t.includes(".") || (t.startsWith("[") && t.endsWith("]"))) return `"${t}"`;
+                // Kiểm tra xem string key có phải là identifier hợp lệ không
+                const isValidId = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(t);
                 
-                return i === 0 ? t : `.${t}`;
+                if (isValidId) {
+                    return i === 0 ? t : `.${t}`;
+                } else {
+                    // Nếu là số, có chứa khoảng trắng, dấu chấm... thì bọc trong ngoặc vuông
+                    return `["${t}"]`;
+                }
             }).join("");
         } catch {
             return serializedKey;
