@@ -101,12 +101,12 @@
 .json-tools__input:focus {
     outline: none;
     border-color: var(--color-brand);
-    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
+    box-shadow: var(--elevation-focus);
 }
 
 .json-tools__input.is-invalid {
-    border-color: var(--red-500);
-    box-shadow: 0 4px 10px 3px color-mix(in srgb, var(--red-500) 30%, transparent);
+    border-color: var(--color-error-border);
+    box-shadow: var(--elevation-focus-error);
 }
 
 /* ===== Output Area ===== */

@@ -213,20 +213,23 @@ function init() {
     }
 
     function highlightYAML(code) {
-        const escaped = escapeHTML(code);
-        return escaped
-            // YAML keys (word followed by colon). Tránh match nhầm dấu "-" dẫn đầu của array
-            .replace(/^(\s*(?:-\s+)?)([\w.-]+)(\s*:)/gm, '$1<span class="yaml-key">$2</span>$3')
-            // Strings in quotes
-            .replace(/("[^"]*"|'[^']*')/g, '<span class="yaml-string">$1</span>')
-            // Booleans với hỗ trợ trailing comment
-            .replace(/:\s+(true|false)((?:\s*(?:#.*)?))$/gm, ': <span class="yaml-boolean">$1</span>$2')
-            // Null với hỗ trợ trailing comment
-            .replace(/:\s+(null|~)((?:\s*(?:#.*)?))$/gm, ': <span class="yaml-null">$1</span>$2')
-            // Numbers với hỗ trợ trailing comment
-            .replace(/:\s+(-?\d+(?:\.\d+)?)((?:\s*(?:#.*)?))$/gm, ': <span class="yaml-number">$1</span>$2')
-            // Comments
-            .replace(/(#.*)/g, '<span class="yaml-comment">$1</span>');
+        if (!code) return "";
+        let escaped = escapeHTML(code);
+        
+        // Sử dụng 1 pass regex lớn để tránh các pattern đè lên nhau (tránh match nhầm HTML attributes)
+        // Group 1: Comment (#...)
+        // Group 2: String ("..." hoặc '...')
+        // Group 3,4,5: Key mapping (VD: "  key:") -> pKeySpace, pKey, pKeyColon
+        // Group 6,7: Value primitives (boolean, null, number) sau dấu hai chấm -> pValSpace, pVal
+        const regex = /(#.*)|("[^"]*"|'[^']*')|^(\s*(?:-\s+)?)([\w.-]+)(\s*:)|(:\s+)(true|false|null|~|-?\d+(?:\.\d+)?)(?=\s*(?:#.*)?$)/gm;
+        
+        return escaped.replace(regex, (match, pComment, pString, pKeySpace, pKey, pKeyColon, pValSpace, pVal) => {
+            if (pComment) return `<span class="code-comment">${pComment}</span>`;
+            if (pString) return `<span class="code-string">${pString}</span>`;
+            if (pKey) return `${pKeySpace}<span class="code-keyword">${pKey}</span>${pKeyColon}`;
+            if (pVal) return `${pValSpace}<span class="code-value">${pVal}</span>`;
+            return match;
+        });
     }
 
     // =================================//
@@ -493,33 +496,70 @@ function init() {
     // =================================//
     //  DIFF COMPARE LOGIC
     //==================================//
-    function flattenJSON(obj, prefix = "") {
+    /**
+     * flattenJSON: Flatten JSON object thành map key -> value.
+     *
+     * Key được lưu dưới dạng JSON.stringify(pathTokens) — mảng các segment
+     * path. Điều này tránh HOÀN TOÀN collision giữa key chứa dấu chấm và
+     * nested object (VD: {"a.b": 1} vs {"a": {"b": 1}}).
+     * Mảng được đánh dấu bằng object { index } thay vì string để pathKeyToDisplay hiển thị chuẩn.
+     *
+     * @param {*}      obj        - Giá trị cần flatten
+     * @param {Array}  pathTokens - Mảng path segments hiện tại (default [])
+     * @returns {Object} flat map: serialized-path -> primitive value
+     */
+    function flattenJSON(obj, pathTokens = []) {
         const result = {};
         if (typeof obj !== "object" || obj === null) {
-            result[prefix || "(root)"] = obj;
+            // Lưu dưới dạng JSON.stringify(array) để không bao giờ bị collision
+            const key = pathTokens.length === 0 ? JSON.stringify(["(root)"]) : JSON.stringify(pathTokens);
+            result[key] = obj;
             return result;
         }
         if (Array.isArray(obj)) {
             if (obj.length === 0) {
-                result[prefix || "(root)"] = [];
+                const key = pathTokens.length === 0 ? JSON.stringify(["(root)"]) : JSON.stringify(pathTokens);
+                result[key] = [];
                 return result;
             }
             obj.forEach((item, index) => {
-                const key = prefix ? `${prefix}[${index}]` : `[${index}]`;
-                Object.assign(result, flattenJSON(item, key));
+                Object.assign(result, flattenJSON(item, [...pathTokens, { index }]));
             });
         } else {
             const keys = Object.keys(obj);
             if (keys.length === 0) {
-                result[prefix || "(root)"] = {};
+                const key = pathTokens.length === 0 ? JSON.stringify(["(root)"]) : JSON.stringify(pathTokens);
+                result[key] = {};
                 return result;
             }
             keys.forEach(k => {
-                const key = prefix ? `${prefix}.${k}` : k;
-                Object.assign(result, flattenJSON(obj[k], key));
+                Object.assign(result, flattenJSON(obj[k], [...pathTokens, k]));
             });
         }
         return result;
+    }
+
+    /**
+     * pathKeyToDisplay: Chuyển serialized path key thành chuỗi dễ đọc để hiển thị.
+     * VD: '["a","b"]' -> 'a.b', '["a.b"]' -> '"a.b"' (có quote để phân biệt literal key)
+     */
+    function pathKeyToDisplay(serializedKey) {
+        try {
+            const tokens = JSON.parse(serializedKey);
+            if (!Array.isArray(tokens)) return serializedKey;
+            return tokens.map((t, i) => {
+                // Array index token (object có property index)
+                if (typeof t === "object" && t !== null && "index" in t) return `[${t.index}]`;
+                
+                // Nếu token chứa dấu chấm, HOẶC trông giống array index (như "[0]"), 
+                // thêm nháy kép để phân biệt đây là một literal string key.
+                if (t.includes(".") || (t.startsWith("[") && t.endsWith("]"))) return `"${t}"`;
+                
+                return i === 0 ? t : `.${t}`;
+            }).join("");
+        } catch {
+            return serializedKey;
+        }
     }
 
     function computeDiff(leftObj, rightObj) {
@@ -554,12 +594,13 @@ function init() {
         return { added, removed, modified, unchanged };
     }
 
-    function renderDiffLine(type, key, value, prefix = "") {
+    function renderDiffLine(type, serializedKey, value, prefix = "") {
         const typeClass = `json-tools__diff-line--${type}`;
         const symbol = type === "added" ? "+" : type === "removed" ? "-" : type === "modified" ? "~" : " ";
         const displayValue = typeof value === "string" ? `"${escapeHTML(value)}"` : escapeHTML(JSON.stringify(value));
+        const displayKey = pathKeyToDisplay(serializedKey);
         return `<div class="json-tools__diff-line ${typeClass}">
-            <span class="json-tools__line-num">${symbol}</span>${prefix}<strong>${escapeHTML(key)}</strong>: ${displayValue}
+            <span class="json-tools__line-num">${symbol}</span>${prefix}<strong>${escapeHTML(displayKey)}</strong>: ${displayValue}
         </div>`;
     }
 
@@ -631,11 +672,12 @@ function init() {
         diff.modified.forEach(item => {
             leftHtml += renderDiffLine("modified", item.key, item.oldValue);
             rightHtml += renderDiffLine("modified", item.key, item.newValue);
+            const displayKey = escapeHTML(pathKeyToDisplay(item.key));
             unifiedHtml += `<div class="json-tools__diff-line json-tools__diff-line--removed">
-                <span class="json-tools__line-num">-</span><strong>${escapeHTML(item.key)}</strong>: ${escapeHTML(JSON.stringify(item.oldValue))}
+                <span class="json-tools__line-num">-</span><strong>${displayKey}</strong>: ${escapeHTML(JSON.stringify(item.oldValue))}
             </div>`;
             unifiedHtml += `<div class="json-tools__diff-line json-tools__diff-line--added">
-                <span class="json-tools__line-num">+</span><strong>${escapeHTML(item.key)}</strong>: ${escapeHTML(JSON.stringify(item.newValue))}
+                <span class="json-tools__line-num">+</span><strong>${displayKey}</strong>: ${escapeHTML(JSON.stringify(item.newValue))}
             </div>`;
         });
 
