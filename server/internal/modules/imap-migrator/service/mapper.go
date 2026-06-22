@@ -129,24 +129,32 @@ func resolveDstFolder(srcName, srcDelimiter, destDelimiter string, destSpecialMa
 	}
 	lowerName = strings.ToLower(name)
 
+	// Step 1.5: Strip [Gmail]/ prefix (Google Workspace / Gmail namespace)
+	if strings.HasPrefix(lowerName, "[gmail]/") {
+		name = name[8:]
+	} else if strings.HasPrefix(lowerName, "[google mail]/") {
+		name = name[14:]
+	}
+	lowerName = strings.ToLower(name)
+
 	// Step 2: Check if this is a well-known special folder (by name, not source flags)
 	// Map name -> RFC 6154 flag to look up in destSpecialMap
 	var specialFlag string
 	var canonicalName string // English fallback if dest has no flag
 	switch lowerName {
-	case "sent", "sent items", "sent messages", "đã gửi", "sent-mail", "sentmail":
+	case "sent", "sent items", "sent messages", "đã gửi", "thư đã gửi", "sent-mail", "sent mail", "sentmail":
 		specialFlag = "\\sent"
 		canonicalName = "Sent"
 	case "trash", "deleted", "deleted items", "deleted messages", "bin", "thùng rác":
 		specialFlag = "\\trash"
 		canonicalName = "Trash"
-	case "drafts", "draft", "thư nháp":
+	case "drafts", "draft", "thư nháp", "nháp":
 		specialFlag = "\\drafts"
 		canonicalName = "Drafts"
 	case "spam", "junk", "junk email", "junk mail", "thư rác", "spambox":
 		specialFlag = "\\junk"
 		canonicalName = "Spam"
-	case "archive", "archives":
+	case "archive", "archives", "lưu trữ":
 		specialFlag = "\\archive"
 		canonicalName = "Archive"
 	}

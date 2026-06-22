@@ -96,8 +96,12 @@ func buildTree(nodes []*models.FolderNode) []*models.FolderNode {
 func IsGmailVirtualFolder(folderName string) bool {
 	lower := strings.ToLower(folderName)
 	return strings.Contains(lower, "[gmail]/all mail") ||
+		strings.Contains(lower, "[gmail]/tất cả thư") ||
 		strings.Contains(lower, "[gmail]/important") ||
-		strings.Contains(lower, "[gmail]/starred")
+		strings.Contains(lower, "[gmail]/quan trọng") ||
+		strings.Contains(lower, "[gmail]/starred") ||
+		strings.Contains(lower, "[gmail]/có gắn dấu sao") ||
+		strings.Contains(lower, "[gmail]/thư có gắn dấu sao")
 }
 
 // CanonicalizeSelection takes a list of selected folder paths and returns an optimized list.
@@ -116,7 +120,7 @@ func CanonicalizeSelection(folders []string, delimiter string) []string {
 	var optimized []string
 	for _, f := range folders {
 		isChildOfSelectedParent := false
-		
+
 		// If delimiter is empty, we can't determine hierarchy reliably, treat all as flat.
 		if delimiter != "" {
 			parts := strings.Split(f, delimiter)

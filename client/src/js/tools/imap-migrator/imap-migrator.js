@@ -1,13 +1,30 @@
 import { API_BASE_URL } from '../../config.js';
 
+// --- Session ID Management ---
+function getSessionId() {
+    let sid = localStorage.getItem('imap_migrator_session');
+    if (!sid) {
+        sid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'session-' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('imap_migrator_session', sid);
+    }
+    return sid;
+}
+
+// Wrapper for fetch to auto-inject X-Session-ID
+async function fetchWithSession(url, options = {}) {
+    const headers = options.headers || {};
+    headers['X-Session-ID'] = getSessionId();
+    options.headers = headers;
+    return fetch(url, options);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // ─── DOM Elements ─────────────────────────────────────────────────────────────
-    
+
     // Steps
     const step1Connection = document.getElementById('step1-connection');
     const step2Folders = document.getElementById('step2-folders');
-    const step3Progress = document.getElementById('step3-progress');
-    
+
     // Step 1 Form
     const imapForm = document.getElementById('imapForm');
     const btnConnect = document.getElementById('btnConnect');
@@ -15,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const connectLoading = document.getElementById('connectLoading');
     const connError = document.getElementById('connError');
     const connErrorMsg = document.getElementById('connErrorMsg');
-    
+
     // Step 2 Folders
     const modeAll = document.getElementById('modeAll');
     const modeSelected = document.getElementById('modeSelected');
@@ -26,8 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const startLoading = document.getElementById('startLoading');
     const startError = document.getElementById('startError');
     const startErrorMsg = document.getElementById('startErrorMsg');
-    
-    // Step 3 Progress
+
+    // Queue Dashboard
+    const btnRefreshQueue = document.getElementById('btnRefreshQueue');
+    const queueList = document.getElementById('queueList');
+
+    // Modal Details
+    const modal = document.getElementById('step3-progress');
+    const btnCloseModal = document.getElementById('btnCloseModal');
     const jobStatusBadge = document.getElementById('jobStatusBadge');
     const statFolders = document.getElementById('statFolders');
     const statCopied = document.getElementById('statCopied');
@@ -38,36 +61,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentProgressBar = document.getElementById('currentProgressBar');
     const logsConsole = document.getElementById('logsConsole');
     const btnCancel = document.getElementById('btnCancel');
-    const btnNew = document.getElementById('btnNew');
-    
-    // Warning
-    const activeJobWarning = document.getElementById('activeJobWarning');
-    const btnRestoreJob = document.getElementById('btnRestoreJob');
 
     // State
-    let currentJobId = sessionStorage.getItem('imap_migrator_job_id');
+    let currentJobId = null;
+    let lastLogOffset = 0;
     let sseSource = null;
     let endpointCache = {}; // Cache the endpoint used to list folders
-    
+    let queuePollTimer = null;
+
     // ─── Initialize ───────────────────────────────────────────────────────────────
-    
+
     init();
-    
+
     async function init() {
         // Toggle folder picker based on mode
         modeAll.addEventListener('change', () => folderPickerContainer.classList.add('d-none'));
         modeSelected.addEventListener('change', () => folderPickerContainer.classList.remove('d-none'));
-        
-        btnRestoreJob.addEventListener('click', restoreJobView);
-        btnNew.addEventListener('click', resetWizard);
+
+        btnCloseModal.addEventListener('click', closeJobModal);
         btnCancel.addEventListener('click', cancelJob);
-        
+        btnRefreshQueue.addEventListener('click', pollQueue);
+
         imapForm.addEventListener('submit', handleConnect);
         btnStart.addEventListener('click', handleStartJob);
-
-        if (currentJobId) {
-            checkCurrentJob(currentJobId);
-        }
 
         // Setup password toggle
         const togglePassBtns = document.querySelectorAll('.btn-toggle-pass');
@@ -77,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetId = this.getAttribute('data-target');
                 const targetInput = document.getElementById(targetId);
                 const icon = this.querySelector('i');
-                
+
                 if (targetInput.type === 'password') {
                     targetInput.type = 'text';
                     icon.classList.remove('fa-eye-slash');
@@ -89,17 +105,116 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+
+        // Initial queue poll
+        pollQueue();
+        queuePollTimer = setInterval(pollQueue, 5000);
     }
-    
+
+    // ─── Queue Dashboard ─────────────────────────────────────────────────────────
+
+    async function pollQueue() {
+        try {
+            const res = await fetchWithSession(`${API_BASE_URL}/imap-migrator/my-jobs`);
+            const data = await res.json();
+            if (data.success && Array.isArray(data.data)) {
+                renderQueueList(data.data);
+            }
+        } catch (e) {
+            console.error("Lỗi lấy danh sách queue:", e);
+        }
+    }
+
+    function renderQueueList(jobs) {
+        queueList.innerHTML = '';
+        if (jobs.length === 0) {
+            queueList.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Chưa có tiến trình nào</td></tr>';
+            return;
+        }
+
+        jobs.forEach(job => {
+            const tr = document.createElement('tr');
+
+            // Thời gian
+            const tdTime = document.createElement('td');
+            const d = new Date(job.startedAt);
+            tdTime.innerHTML = `
+                <div class="font-bold text-sm">${d.toLocaleDateString('vi-VN')}</div>
+                <div class="text-xs text-muted">${d.toLocaleTimeString('vi-VN')}</div>
+            `;
+
+            // Nguồn -> Đích
+            const tdRoute = document.createElement('td');
+            tdRoute.innerHTML = `
+                <div class="font-bold text-sm">${job.sourceUser}@${job.source}</div>
+                <div class="text-xs text-muted"><i class="fa-solid fa-arrow-down mr-1"></i> ${job.destUser}@${job.dest}</div>
+            `;
+
+            // Status & Mini Progress
+            const tdStatus = document.createElement('td');
+            let badgeClass = 'badge-default';
+            let statusText = 'Đang chờ';
+            if (job.status === 'running') {
+                badgeClass = 'badge-info'; statusText = 'Đang chạy';
+            } else if (job.status === 'done') {
+                badgeClass = 'badge-success'; statusText = 'Hoàn thành';
+            } else if (job.status === 'error') {
+                badgeClass = 'badge-error'; statusText = 'Lỗi';
+            } else if (job.status === 'cancelled') {
+                badgeClass = 'badge-warning'; statusText = 'Đã huỷ';
+            }
+
+            tdStatus.innerHTML = `<span class="badge ${badgeClass} badge-sm">${statusText}</span>`;
+
+            if (job.status === 'running') {
+                let p = 0;
+                if (job.totalFolders > 0) {
+                    let exactFolders = job.completedFolders;
+                    if (job.currentFolderTotal && job.currentFolderTotal > 0) {
+                        exactFolders += (job.currentFolderCopied / job.currentFolderTotal);
+                    }
+                    p = Math.round((exactFolders / job.totalFolders) * 100);
+                }
+
+                const progWrap = document.createElement('div');
+                progWrap.className = 'progress-bar-wrap imap-queue-progress mt-1';
+                const progFill = document.createElement('div');
+                progFill.className = 'progress-bar-fill';
+                progFill.style.setProperty('--progress-width', `${p}%`);
+                progWrap.appendChild(progFill);
+                tdStatus.appendChild(progWrap);
+            }
+
+            // Thao tác
+            const tdActions = document.createElement('td');
+            tdActions.className = "text-right";
+
+            const btnView = document.createElement('button');
+            btnView.type = "button";
+            btnView.className = "btn btn-outline btn-sm";
+            btnView.innerHTML = '<i class="fa-solid fa-eye"></i> Xem chi tiết';
+            btnView.onclick = (e) => {
+                e.preventDefault();
+                openJobModal(job.jobId);
+            };
+
+            tdActions.appendChild(btnView);
+
+            tr.appendChild(tdTime);
+            tr.appendChild(tdRoute);
+            tr.appendChild(tdStatus);
+            tr.appendChild(tdActions);
+
+            queueList.appendChild(tr);
+        });
+    }
+
     // ─── Step 1: Connect & List Folders ──────────────────────────────────────────
-    
+
     async function handleConnect(e) {
         e.preventDefault();
-        
-        // Hide previous errors
         connError.classList.add('d-none');
-        
-        // Build Endpoint Config
+
         const srcEndpoint = {
             host: document.getElementById('srcHost').value.trim(),
             port: parseInt(document.getElementById('srcPort').value) || 993,
@@ -107,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             username: document.getElementById('srcUser').value.trim(),
             password: document.getElementById('srcPass').value
         };
-        
+
         const dstEndpoint = {
             host: document.getElementById('dstHost').value.trim(),
             port: parseInt(document.getElementById('dstPort').value) || 993,
@@ -115,60 +230,53 @@ document.addEventListener('DOMContentLoaded', () => {
             username: document.getElementById('dstUser').value.trim(),
             password: document.getElementById('dstPass').value
         };
-        
+
         endpointCache = { source: srcEndpoint, dest: dstEndpoint };
-        
         setConnectLoading(true);
-        
+
         try {
-            // Check List Folders on Source
-            const res = await fetch(`${API_BASE_URL}/imap-migrator/list-folders`, {
+            const res = await fetchWithSession(`${API_BASE_URL}/imap-migrator/list-folders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: srcEndpoint })
             });
-            
             const data = await res.json();
-            
+
             if (!res.ok || !data.success) {
                 showConnError("Máy chủ Nguồn: " + (data.message || data.error || 'Lỗi kết nối'));
                 return;
             }
-            
-            // Also Test Dest Connection to ensure we don't fail later
-            const resDst = await fetch(`${API_BASE_URL}/imap-migrator/test-connection`, {
+
+            const resDst = await fetchWithSession(`${API_BASE_URL}/imap-migrator/test-connection`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: dstEndpoint })
             });
             const dataDst = await resDst.json();
-            
+
             if (!resDst.ok || !dataDst.success) {
                 showConnError("Máy chủ Đích: " + (dataDst.message || dataDst.error || 'Lỗi kết nối'));
                 return;
             }
-            
-            // Success: Build Tree and Move to Step 2
+
             buildFolderTreeUI(data.data.folders);
-            
             step1Connection.classList.add('d-none');
             step2Folders.classList.remove('d-none');
-            // reset mode to all
             modeAll.checked = true;
             folderPickerContainer.classList.add('d-none');
-            
+
         } catch (err) {
             showConnError(err.message);
         } finally {
             setConnectLoading(false);
         }
     }
-    
+
     function showConnError(msg) {
         connErrorMsg.textContent = msg;
         connError.classList.remove('d-none');
     }
-    
+
     function setConnectLoading(isLoading) {
         if (isLoading) {
             btnConnect.disabled = true;
@@ -180,37 +288,32 @@ document.addEventListener('DOMContentLoaded', () => {
             connectLoading.classList.add('d-none');
         }
     }
-    
+
     // ─── Step 2: Folder Tree UI ──────────────────────────────────────────────────
-    
+
     function buildFolderTreeUI(folders) {
         folderTree.innerHTML = '';
         if (!folders || folders.length === 0) {
             folderTree.innerHTML = '<li class="text-muted">Không tìm thấy thư mục nào</li>';
             return;
         }
-        
         folders.forEach(node => {
             folderTree.appendChild(createTreeNode(node));
         });
-        
-        // Setup checkbox cascading behavior
         setupTreeCheckboxes();
     }
-    
+
     function createTreeNode(node) {
         const li = document.createElement('li');
-        
         const itemDiv = document.createElement('div');
         itemDiv.className = 'imap-tree-item';
-        
+
         const hasChildren = node.children && node.children.length > 0;
-        
-        // Toggle icon
+
         if (hasChildren) {
             const toggle = document.createElement('i');
             toggle.className = 'fa-solid fa-caret-down imap-tree-toggle';
-            toggle.addEventListener('click', (e) => {
+            toggle.addEventListener('click', () => {
                 const childUl = li.querySelector('ul');
                 if (childUl) {
                     childUl.classList.toggle('d-none');
@@ -221,32 +324,28 @@ document.addEventListener('DOMContentLoaded', () => {
             itemDiv.appendChild(toggle);
         } else {
             const spacer = document.createElement('span');
-            spacer.style.width = '16px';
-            spacer.style.display = 'inline-block';
+            spacer.className = 'imap-tree-spacer';
             itemDiv.appendChild(spacer);
         }
-        
-        // Checkbox
+
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.className = 'imap-tree-checkbox';
         cb.value = node.fullPath;
         itemDiv.appendChild(cb);
-        
-        // Icon & Label
+
         const icon = document.createElement('i');
         icon.className = 'fa-regular fa-folder text-warning';
         itemDiv.appendChild(icon);
-        
+
         const label = document.createElement('span');
         label.className = 'imap-tree-label';
         label.textContent = node.name;
         label.addEventListener('click', () => { cb.click(); });
         itemDiv.appendChild(label);
-        
+
         li.appendChild(itemDiv);
-        
-        // Children
+
         if (hasChildren) {
             const childrenUl = document.createElement('ul');
             node.children.forEach(childNode => {
@@ -254,77 +353,66 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             li.appendChild(childrenUl);
         }
-        
+
         return li;
     }
-    
+
     function setupTreeCheckboxes() {
         const checkboxes = folderTree.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(cb => {
-            cb.addEventListener('change', function(e) {
+            cb.addEventListener('change', function() {
                 const isChecked = this.checked;
-                // Update children
                 const parentLi = this.closest('li');
                 const childCheckboxes = parentLi.querySelectorAll('ul input[type="checkbox"]');
-                childCheckboxes.forEach(childCb => {
-                    childCb.checked = isChecked;
-                });
-                
-                // Indeterminate / Update parents
+                childCheckboxes.forEach(childCb => childCb.checked = isChecked);
                 updateParents(this);
             });
         });
     }
-    
+
     function updateParents(checkbox) {
         let parentLi = checkbox.closest('ul').closest('li');
         while (parentLi) {
             const parentCb = parentLi.querySelector(':scope > div > input[type="checkbox"]');
             const siblingCbs = parentLi.querySelectorAll(':scope > ul > li > div > input[type="checkbox"]');
-            
+
             let allChecked = true;
             let someChecked = false;
-            
+
             siblingCbs.forEach(cb => {
-                if (cb.checked) {
-                    someChecked = true;
-                } else {
-                    allChecked = false;
-                }
+                if (cb.checked) someChecked = true;
+                else allChecked = false;
                 if (cb.indeterminate) {
                     someChecked = true;
                     allChecked = false;
                 }
             });
-            
+
             if (parentCb) {
                 parentCb.checked = allChecked;
                 parentCb.indeterminate = !allChecked && someChecked;
             }
-            
             parentLi = parentLi.closest('ul').closest('li');
         }
     }
-    
+
     function getSelectedFolders() {
-        // We only need to collect checked checkboxes.
-        // Even if parent is checked and children are checked, backend canonicalizes it.
         const checked = folderTree.querySelectorAll('input[type="checkbox"]:checked');
         return Array.from(checked).map(cb => cb.value);
     }
-    
+
     // ─── Step 3: Start Job ───────────────────────────────────────────────────────
-    
+
     async function handleStartJob() {
         startError.classList.add('d-none');
-        
+
         const reqPayload = {
             source: endpointCache.source,
             dest: endpointCache.dest,
             mode: document.querySelector('input[name="migrateMode"]:checked').value,
             folders: []
         };
-        
+
         if (reqPayload.mode === 'selected') {
             reqPayload.folders = getSelectedFolders();
             if (reqPayload.folders.length === 0) {
@@ -333,33 +421,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
-        
+
         setStartLoading(true);
-        
+
         try {
-            const res = await fetch(`${API_BASE_URL}/imap-migrator/start`, {
+            const res = await fetchWithSession(`${API_BASE_URL}/imap-migrator/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(reqPayload)
             });
-            
+
             const data = await res.json();
-            
+
             if (!res.ok || !data.success) {
                 startErrorMsg.textContent = data.message || data.error || 'Không thể bắt đầu tiến trình mới.';
                 startError.classList.remove('d-none');
                 return;
             }
-            
-            // Success
-            currentJobId = data.data.jobId;
-            sessionStorage.setItem('imap_migrator_job_id', currentJobId);
-            
-            endpointCache = {}; // Security: Clear credentials from memory
-            
+
+            // Thành công: Reset form, báo thành công, update queue
+            endpointCache = {};
             step2Folders.classList.add('d-none');
-            restoreJobView();
-            
+            step1Connection.classList.remove('d-none');
+            imapForm.reset();
+
+            pollQueue(); // Refresh queue immediately
+
+            // Scroll down to queue dashboard
+            document.getElementById('queueDashboard').scrollIntoView({ behavior: 'smooth' });
+
         } catch (err) {
             startErrorMsg.textContent = err.message;
             startError.classList.remove('d-none');
@@ -367,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setStartLoading(false);
         }
     }
-    
+
     function setStartLoading(isLoading) {
         if (isLoading) {
             btnStart.disabled = true;
@@ -379,82 +469,70 @@ document.addEventListener('DOMContentLoaded', () => {
             startLoading.classList.add('d-none');
         }
     }
-    
-    // ─── Job Monitoring (SSE & Status) ───────────────────────────────────────────
-    
-    async function checkCurrentJob(jobId) {
-        try {
-            const res = await fetch(`${API_BASE_URL}/imap-migrator/status?jobId=${jobId}`);
-            const data = await res.json();
-            
-            if (!res.ok || !data.success) {
-                // Job expired or not found
-                sessionStorage.removeItem('imap_migrator_job_id');
-                currentJobId = null;
-                return;
-            }
-            
-            const snap = data.data;
-            if (snap.status === 'running') {
-                activeJobWarning.classList.remove('d-none');
-            } else if (snap.status === 'done' || snap.status === 'error' || snap.status === 'cancelled') {
-                // Still exists in cache, allow viewing it if no other is active
-                activeJobWarning.classList.remove('d-none');
-                btnRestoreJob.textContent = "Xem kết quả tiến trình gần nhất";
-            }
-            
-        } catch (err) {
-            // Silently ignore network errors for status polling
-            console.error(err);
-        }
-    }
-    
-    function restoreJobView() {
-        activeJobWarning.classList.add('d-none');
-        step1Connection.classList.add('d-none');
-        step2Folders.classList.add('d-none');
-        step3Progress.classList.remove('d-none');
-        
+
+    // ─── Modal Details (SSE & Status) ───────────────────────────────────────────
+
+    function openJobModal(jobId) {
+        currentJobId = jobId;
+        lastLogOffset = 0; // Reset offset khi mở job mới
+        modal.classList.remove('d-none');
+
         // Reset logs
-        logsConsole.innerHTML = '<div class="imap-log-entry ">Đang kết nối hệ thống log...</div>';
+        logsConsole.innerHTML = '<div class="imap-log-entry ">Đang tải lịch sử log...</div>';
         resetStats();
-        
-        pollStatusSilent(currentJobId); // Immediatley populate UI stats on reload
+
+        pollStatusSilent(currentJobId);
         startSSE(currentJobId);
     }
-    
+
+    function closeJobModal() {
+        if (sseSource) {
+            sseSource.close();
+            sseSource = null;
+        }
+        currentJobId = null;
+        modal.classList.add('d-none');
+    }
+
     let sseRetryCount = 0;
     const maxSseRetries = 5;
 
     function startSSE(jobId) {
-        sseRetryCount = 0; // reset on fresh connect
+        sseRetryCount = 0;
 
-        if (sseSource) {
-            sseSource.close();
-        }
-        
+        if (sseSource) sseSource.close();
+
         btnCancel.classList.remove('d-none');
-        btnNew.classList.add('d-none');
-        
         updateJobBadge('running', 'Đang hoạt động');
-        
-        sseSource = new EventSource(`${API_BASE_URL}/imap-migrator/stream?jobId=${jobId}`);
-        
+
+        // sse event source does not support custom headers natively.
+        // We will pass session id as query param to bypass if needed,
+        // though HandleStream only checks jobId.
+        // Pass session id as query param since EventSource doesn't support headers
+        const sid = getSessionId();
+
+        // Connect real-time SSE. backend HandleStream will subscribe,
+        // then read file from fromOffset, send VERBOSE_CHUNK, and stream new events.
+        // This ensures 0 gap between old logs and new logs.
+        sseSource = new EventSource(`${API_BASE_URL}/imap-migrator/stream?jobId=${jobId}&sessionId=${sid}&fromOffset=${lastLogOffset}`);
+
         sseSource.onmessage = function(event) {
             const ev = JSON.parse(event.data);
             handleSSEEvent(ev);
         };
-        
+
         sseSource.onerror = function() {
             sseSource.close();
             sseRetryCount++;
-            
-            fetch(`${API_BASE_URL}/imap-migrator/status?jobId=${jobId}`)
+
+            fetchWithSession(`${API_BASE_URL}/imap-migrator/status?jobId=${jobId}`)
                 .then(r => r.json())
                 .then(d => {
                     if (d.data?.status === 'running' && sseRetryCount <= maxSseRetries) {
                         appendLog(`Đang kết nối lại... (${sseRetryCount}/${maxSseRetries})`, 'warning');
-                        setTimeout(() => startSSE(jobId), 3000);
+                        setTimeout(() => {
+                            if (currentJobId === jobId) startSSE(jobId);
+                        }, 3000);
                     } else {
                         if (d.data) finalizeJobState(d.data);
                         else appendLog('Không thể lấy trạng thái cuối cùng của tiến trình.', 'error');
@@ -464,83 +542,96 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         };
     }
-    
     function handleSSEEvent(ev) {
         switch(ev.type) {
-            case "HEARTBEAT":
-                // Ignore visually
-                break;
+            case "HEARTBEAT": break;
             case "INFO":
-                appendLog(`[INFO] ${ev.folder ? ev.folder + ': ' : ''}${ev.message}`, 'warning');
+                // State only, no log append (handled by VERBOSE)
                 break;
             case "FOLDER_START":
                 currentFolderLbl.textContent = ev.folder;
                 currentProgressLbl.textContent = '0%';
-                currentProgressBar.style.width = '0%';
-                appendLog(`[START] Bắt đầu đồng bộ thư mục: ${ev.folder} (${ev.total} emails)`, 'info');
+                currentProgressBar.style.setProperty('--progress-width', '0%');
                 break;
             case "PROGRESS":
-                // Update Progress bar
                 let p = 0;
-                if (ev.total > 0) {
-                    p = Math.round((ev.copied / ev.total) * 100);
-                }
+                if (ev.total > 0) p = Math.round((ev.copied / ev.total) * 100);
                 currentProgressLbl.textContent = `${p}%`;
-                currentProgressBar.style.width = `${p}%`;
+                currentProgressBar.style.setProperty('--progress-width', `${p}%`);
                 
-                // Add to total completed counter 
-                // Wait, SSE gives incremental progress within folder? Yes, `ev.copied` is accumulated per folder.
-                // We should rely on standard stats update or just wait for SERVER to emit global stats?
-                // Actually the backend emits global TotalCopied implicitly via FOLDER_DONE, or we can just fetch status.
+                if (ev.totalCopied !== undefined) statCopied.textContent = ev.totalCopied;
+                if (ev.totalSkipped !== undefined) statSkipped.textContent = ev.totalSkipped;
+                if (ev.totalErrors !== undefined) statErrors.textContent = ev.totalErrors;
+                if (ev.totalFolders !== undefined && ev.completedFolders !== undefined) {
+                    statFolders.textContent = `${ev.completedFolders} / ${ev.totalFolders}`;
+                }
                 break;
             case "FOLDER_DONE":
-                if (ev.errors > 0 && ev.message) {
-                    appendLog(`[ERROR] Thư mục ${ev.folder}: ${ev.message}`, 'error');
-                } else if (ev.errors > 0) {
-                    appendLog(`[DONE] Hoàn tất thư mục ${ev.folder}. Thành công: ${ev.copied}, Bỏ qua: ${ev.skipped}, Lỗi: ${ev.errors}`, 'warning');
-                } else {
-                    appendLog(`[DONE] Hoàn tất thư mục ${ev.folder}. Thành công: ${ev.copied}, Bỏ qua: ${ev.skipped}, Lỗi: ${ev.errors}`, 'success');
-                }
-                // Refresh full status
-                pollStatusSilent(currentJobId);
-                break;
             case "EMAIL_SKIPPED":
-                appendLog(`[SKIPPED] ${ev.folder} - UID ${ev.uid}: ${ev.message}`, 'warning');
-                pollStatusSilent(currentJobId);
-                break;
             case "EMAIL_ERROR":
-                appendLog(`[ERROR] ${ev.folder} - UID ${ev.uid}: ${ev.message}`, 'error');
                 pollStatusSilent(currentJobId);
                 break;
             case "COMPLETE":
-                appendLog(`[COMPLETE] Toàn bộ tiến trình đã chuyển thành công. TỔNG CỘNG: ${ev.totalCopied} thư, ${ev.totalErrors} lỗi, bỏ qua ${ev.totalSkipped}`, 'success');
-                pollStatusSilent(currentJobId); // Will trigger finalizeJobState
-                break;
             case "ERROR":
-                appendLog(`[ERROR] NGHIÊM TRỌNG: ${ev.message}`, 'error');
+                if (sseSource) {
+                    sseSource.close();
+                    sseSource = null;
+                }
                 pollStatusSilent(currentJobId);
+                break;
+            case "VERBOSE":
+                if (ev.offset && ev.offset <= lastLogOffset) return;
+                if (ev.offset) lastLogOffset = ev.offset;
+                appendLog(ev.message, 'verbose');
+                break;
+            case "VERBOSE_CHUNK":
+                if (ev.offset) lastLogOffset = ev.offset;
+                if (ev.message) {
+                    const lines = ev.message.split('\n');
+                    const frag = document.createDocumentFragment();
+                    for (let line of lines) {
+                        if (!line.trim()) continue;
+                        const div = document.createElement('div');
+                        div.className = `imap-log-entry imap-log-entry--verbose`;
+                        div.textContent = line;
+                        frag.appendChild(div);
+                    }
+                    if (logsConsole.innerHTML.includes('Đang tải lịch sử log...')) {
+                        logsConsole.innerHTML = '';
+                    }
+                    logsConsole.appendChild(frag);
+                    while (logsConsole.children.length > 500) {
+                        logsConsole.removeChild(logsConsole.firstChild);
+                    }
+                    logsConsole.scrollTop = logsConsole.scrollHeight;
+                }
                 break;
         }
     }
-    
+
     function appendLog(msg, type = 'info') {
         const div = document.createElement('div');
         div.className = `imap-log-entry imap-log-entry--${type}`;
-        
-        const timestamp = new Date().toLocaleTimeString();
-        div.textContent = `[${timestamp}] ${msg}`;
-        
+
+        if (type === 'verbose') {
+            div.textContent = msg.trim(); // Không thêm timestamp cho log raw, loại bỏ \n thừa
+        } else {
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        }
+
         logsConsole.appendChild(div);
-        
-        // auto scroll
+
+        // Limit DOM size to prevent freezing on large mailboxes (keep last 300 logs)
+        while (logsConsole.children.length > 300) {
+            logsConsole.removeChild(logsConsole.firstChild);
+        }
+
         logsConsole.scrollTop = logsConsole.scrollHeight;
     }
-    
-    // ─── Status Updates ──────────────────────────────────────────────────────────
-    
+
     async function pollStatusSilent(jobId) {
         try {
-            const res = await fetch(`${API_BASE_URL}/imap-migrator/status?jobId=${jobId}`);
+            const res = await fetchWithSession(`${API_BASE_URL}/imap-migrator/status?jobId=${jobId}`);
             const data = await res.json();
             if (data.success) {
                 updateStatsUI(data.data);
@@ -550,18 +641,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch(e) {}
     }
-    
+
     function updateStatsUI(snap) {
         statFolders.textContent = `${snap.completedFolders} / ${snap.totalFolders}`;
         statCopied.textContent = snap.totalCopied;
         statSkipped.textContent = snap.totalSkipped;
         statErrors.textContent = snap.totalErrors;
-        
-        if (snap.currentFolder) {
-            currentFolderLbl.textContent = snap.currentFolder;
+        if (snap.currentFolder) currentFolderLbl.textContent = snap.currentFolder;
+
+        let p = 0;
+        if (snap.currentFolderTotal && snap.currentFolderTotal > 0) {
+            p = Math.round((snap.currentFolderCopied / snap.currentFolderTotal) * 100);
+            currentProgressLbl.textContent = `${p}%`;
+            currentProgressBar.style.setProperty('--progress-width', `${p}%`);
         }
     }
-    
+
     function resetStats() {
         statFolders.textContent = `0 / 0`;
         statCopied.textContent = `0`;
@@ -569,34 +664,25 @@ document.addEventListener('DOMContentLoaded', () => {
         statErrors.textContent = `0`;
         currentFolderLbl.textContent = `--`;
         currentProgressLbl.textContent = `0%`;
-        currentProgressBar.style.width = `0%`;
+        currentProgressBar.style.setProperty('--progress-width', '0%');
     }
-    
+
     function updateJobBadge(status, text) {
         jobStatusBadge.className = 'badge';
         jobStatusBadge.textContent = text;
-        
         if (status === 'running') jobStatusBadge.classList.add('badge-info');
         else if (status === 'done') jobStatusBadge.classList.add('badge-success');
         else if (status === 'error') jobStatusBadge.classList.add('badge-error');
         else if (status === 'cancelled') jobStatusBadge.classList.add('badge-warning');
         else jobStatusBadge.classList.add('badge-default');
     }
-    
+
     function finalizeJobState(snap) {
-        if (sseSource) {
-            sseSource.close();
-            sseSource = null;
-        }
-        
         btnCancel.classList.add('d-none');
-        btnNew.classList.remove('d-none');
-        
-        sessionStorage.removeItem('imap_migrator_job_id');
-        
+
         if (snap.status === 'done') {
             updateJobBadge('done', 'Thành công');
-            currentProgressBar.style.width = '100%';
+            currentProgressBar.style.setProperty('--progress-width', '100%');
             currentProgressLbl.textContent = '100%';
         } else if (snap.status === 'cancelled') {
             updateJobBadge('cancelled', 'Đã hủy bỏ');
@@ -604,36 +690,20 @@ document.addEventListener('DOMContentLoaded', () => {
             updateJobBadge('error', 'Lỗi tiến trình');
             appendLog(`[FAIL] ${snap.lastError || 'Lỗi không xác định'}`, 'error');
         }
+        pollQueue(); // Refresh queue to reflect final status
     }
-    
+
     async function cancelJob() {
-        if (!confirm('Bạn có chắc chắn muốn hủy bỏ tiến trình này? (Thư mục đã chuyển sẽ giữ nguyên, thư đang chuyển sẽ bị dừng)')) {
-            return;
-        }
-        
+        if (!confirm('Bạn có chắc chắn muốn hủy bỏ tiến trình này? (Thư mục đã chuyển sẽ giữ nguyên, thư đang chuyển sẽ bị dừng)')) return;
+
         btnCancel.disabled = true;
-        
         try {
-            await fetch(`${API_BASE_URL}/imap-migrator/cancel?jobId=${currentJobId}`, { method: 'POST' });
-            // SSE should receive Cancelled or we poll
+            await fetchWithSession(`${API_BASE_URL}/imap-migrator/cancel?jobId=${currentJobId}`, { method: 'POST' });
             setTimeout(() => pollStatusSilent(currentJobId), 1000);
+            pollQueue();
         } catch(e) {
             alert('Lỗi hủy tiến trình: ' + e.message);
             btnCancel.disabled = false;
         }
-    }
-    
-    function resetWizard() {
-        if (sseSource) sseSource.close();
-        
-        step3Progress.classList.add('d-none');
-        step2Folders.classList.add('d-none');
-        step1Connection.classList.remove('d-none');
-        
-        currentJobId = null;
-        sessionStorage.removeItem('imap_migrator_job_id');
-        
-        resetStats();
-        btnCancel.disabled = false;
     }
 });

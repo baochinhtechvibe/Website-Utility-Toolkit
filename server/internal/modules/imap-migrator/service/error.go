@@ -15,16 +15,16 @@ func FriendlyError(err error) error {
 	lowerMsg := strings.ToLower(msg)
 
 	// Authentication errors
-	if strings.Contains(lowerMsg, "invalid credentials") || 
-	   strings.Contains(lowerMsg, "login failed") ||
-	   strings.Contains(lowerMsg, "authentication failed") {
+	if strings.Contains(lowerMsg, "invalid credentials") ||
+		strings.Contains(lowerMsg, "login failed") ||
+		strings.Contains(lowerMsg, "authentication failed") {
 		return newSanitizedError("Sai tên đăng nhập hoặc mật khẩu (Nếu dùng Gmail/Outlook, vui lòng sử dụng App Password).")
 	}
 
 	// Connection errors
-	if strings.Contains(lowerMsg, "connection refused") || 
-	   strings.Contains(lowerMsg, "no such host") ||
-	   strings.Contains(lowerMsg, "không phân giải được hostname") {
+	if strings.Contains(lowerMsg, "connection refused") ||
+		strings.Contains(lowerMsg, "no such host") ||
+		strings.Contains(lowerMsg, "không phân giải được hostname") {
 		return newSanitizedError("Không thể phân giải hoặc kết nối tới máy chủ IMAP. Vui lòng kiểm tra lại Host và Port.")
 	}
 

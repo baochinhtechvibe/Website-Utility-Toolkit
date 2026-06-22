@@ -14,7 +14,7 @@ const tempPrefix = "imap-migrator-"
 // StartupCleanup removes any orphan temp files left over from a previous crash
 func StartupCleanup() {
 	tempDir := os.TempDir()
-	
+
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		log.Warn().Err(err).Msg("Không thể đọc thư mục Temp để dọn dẹp file di cư IMAP")
@@ -41,10 +41,10 @@ func StartupCleanup() {
 // CleanupJobFiles removes all temp files associated with a specific job
 func CleanupJobFiles(jobID string) {
 	tempDir := os.TempDir()
-	
+
 	// Format is imap-migrator-<jobID>-*
 	prefix := tempPrefix + jobID + "-"
-	
+
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		return

@@ -25,8 +25,8 @@ type ListFoldersRequest struct {
 type StartRequest struct {
 	Source  MigrationEndpoint `json:"source"  binding:"required"`
 	Dest    MigrationEndpoint `json:"dest"    binding:"required"`
-	Mode    string            `json:"mode"    binding:"required,oneof=all selected"`    // "all" | "selected"
-	Folders []string          `json:"folders"` // chỉ dùng khi mode = "selected"
+	Mode    string            `json:"mode"    binding:"required,oneof=all selected"` // "all" | "selected"
+	Folders []string          `json:"folders"`                                       // chỉ dùng khi mode = "selected"
 }
 
 // ─── Folder Tree ──────────────────────────────────────────────────────────────
@@ -51,13 +51,15 @@ type SSEEvent struct {
 	Copied       int    `json:"copied,omitempty"`
 	Skipped      int    `json:"skipped,omitempty"`
 	Errors       int    `json:"errors,omitempty"`
-	TotalFolders int    `json:"totalFolders,omitempty"`
-	TotalCopied  int    `json:"totalCopied,omitempty"`
-	TotalSkipped int    `json:"totalSkipped,omitempty"`
-	TotalErrors  int    `json:"totalErrors,omitempty"`
-	UID          uint32 `json:"uid,omitempty"`
+	TotalFolders     int    `json:"totalFolders,omitempty"`
+	CompletedFolders int    `json:"completedFolders,omitempty"`
+	TotalCopied      int    `json:"totalCopied,omitempty"`
+	TotalSkipped     int    `json:"totalSkipped,omitempty"`
+	TotalErrors      int    `json:"totalErrors,omitempty"`
+	UID              uint32 `json:"uid,omitempty"`
 	Size         int64  `json:"size,omitempty"`
 	Message      string `json:"message,omitempty"`
+	Offset       int64  `json:"offset,omitempty"`
 }
 
 // SSE Types:
@@ -68,21 +70,26 @@ type SSEEvent struct {
 // ─── Job Snapshot ─────────────────────────────────────────────────────────────
 
 type JobSnapshot struct {
-	JobID            string     `json:"jobId"`
-	Status           string     `json:"status"` // running | done | error | cancelled
-	Source           string     `json:"source"`
-	Dest             string     `json:"dest"`
-	Mode             string     `json:"mode"`
-	SelectedFolders  []string   `json:"selectedFolders"`
-	TotalFolders     int        `json:"totalFolders"`
-	CurrentFolder    string     `json:"currentFolder"`
-	CompletedFolders int        `json:"completedFolders"`
-	TotalCopied      int        `json:"totalCopied"`
-	TotalSkipped     int        `json:"totalSkipped"`
-	TotalErrors      int        `json:"totalErrors"`
-	RecentErrors     []string   `json:"recentErrors"`
-	LastError        string     `json:"lastError,omitempty"`
-	StartedAt        time.Time  `json:"startedAt"`
-	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
-	CanReconnect     bool       `json:"canReconnect"`
+	JobID               string     `json:"jobId"`
+	Status              string     `json:"status"` // running | done | error | cancelled
+	Source              string     `json:"source"`
+	SourceUser          string     `json:"sourceUser"`
+	Dest                string     `json:"dest"`
+	DestUser            string     `json:"destUser"`
+	Mode                string     `json:"mode"`
+	SelectedFolders     []string   `json:"selectedFolders"`
+	TotalFolders        int        `json:"totalFolders"`
+	CurrentFolder       string     `json:"currentFolder"`
+	CompletedFolders    int        `json:"completedFolders"`
+	CurrentFolderCopied int        `json:"currentFolderCopied"`
+	CurrentFolderTotal  int        `json:"currentFolderTotal"`
+	TotalCopied         int        `json:"totalCopied"`
+	TotalSkipped        int        `json:"totalSkipped"`
+	TotalErrors         int        `json:"totalErrors"`
+	TotalBytes          int64      `json:"totalBytes"`
+	RecentErrors        []string   `json:"recentErrors"`
+	LastError           string     `json:"lastError,omitempty"`
+	StartedAt           time.Time  `json:"startedAt"`
+	FinishedAt          *time.Time `json:"finishedAt,omitempty"`
+	CanReconnect        bool       `json:"canReconnect"`
 }

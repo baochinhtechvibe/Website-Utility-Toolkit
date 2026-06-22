@@ -10,7 +10,7 @@ import (
 )
 
 const cleanupInterval = 24 * time.Hour
-const retainDays = 90
+const retainDays = 30
 
 func init() {
 	go runCronCleanup()
@@ -19,7 +19,7 @@ func init() {
 func runCronCleanup() {
 	// Chờ 5p sau khi khởi động server cho ổn định rồi mới chạy lần đầu
 	time.Sleep(5 * time.Minute)
-	
+
 	for {
 		cleanOldLogsAndHistory()
 		time.Sleep(cleanupInterval)
@@ -28,9 +28,8 @@ func runCronCleanup() {
 
 func cleanOldLogsAndHistory() {
 	log.Info().Msg("Bắt đầu dọn dẹp log và history cũ (cron)...")
-	
-	cwd, _ := os.Getwd()
-	historyDir := filepath.Join(cwd, "data", "imap-history")
+
+	historyDir := GetDataDir()
 	logDir := filepath.Join(historyDir, "logs")
 
 	cutoff := time.Now().AddDate(0, 0, -retainDays)
@@ -54,6 +53,7 @@ func cleanOldLogsAndHistory() {
 
 	// Dọn history.json — dùng Write lock suốt để tránh TOCTOU race
 	// (AppendHistory có thể chen vào giữa RUnlock và Lock trong pattern cũ)
+	ensureHistoryLoaded()
 	historyMutex.Lock()
 	var newHistory []JobSummary
 	needUpdate := false
@@ -76,6 +76,26 @@ func cleanOldLogsAndHistory() {
 		tmp := historyPath + ".tmp"
 		if errWrite := os.WriteFile(tmp, data, 0644); errWrite == nil {
 			os.Rename(tmp, historyPath)
+		}
+	}
+
+	// Clean up SQLite DB
+	db := GetDB()
+	if db != nil {
+		_, errLog := db.Exec(`DELETE FROM job_logs WHERE job_id IN (SELECT id FROM jobs WHERE finished_at < ?)`, cutoff)
+		resJob, errJob := db.Exec(`DELETE FROM jobs WHERE finished_at < ?`, cutoff)
+		if errLog == nil && errJob == nil {
+			deletedDBJobs, _ := resJob.RowsAffected()
+			if deletedDBJobs > 0 {
+				log.Info().Int64("deleted_jobs", deletedDBJobs).Msg("Đã xóa dữ liệu jobs cũ khỏi SQLite. Đang dồn mảnh VACUUM...")
+				if _, errVacuum := db.Exec("VACUUM"); errVacuum != nil {
+					log.Warn().Err(errVacuum).Msg("Không thể dồn mảnh (VACUUM) SQLite lúc này")
+				} else {
+					log.Info().Msg("Đã hoàn tất dồn mảnh VACUUM")
+				}
+			}
+		} else {
+			log.Error().Err(errJob).Msg("Lỗi khi dọn dẹp SQLite jobs")
 		}
 	}
 

@@ -16,48 +16,77 @@ var (
 	historyPath  string
 )
 
+// JobSummary lưu thông tin tóm tắt của một job đã hoàn thành.
+// Bao gồm TotalBytes thực tế, CompletedFolders, TotalFolders để
+// admin dashboard hiển thị chính xác thay vì ước tính.
 type JobSummary struct {
-	ID        string    `json:"id"`
-	Status    string    `json:"status"`
-	Source    string    `json:"source"`
-	Dest      string    `json:"dest"`
-	Total     int       `json:"total"`
-	Errors    int       `json:"errors"`
-	StartedAt time.Time `json:"started_at"`
-	EndedAt   time.Time `json:"ended_at"`
+	ID               string    `json:"id"`
+	Status           string    `json:"status"`
+	Source           string    `json:"source"`
+	SourceUser       string    `json:"source_user"`
+	Dest             string    `json:"dest"`
+	DestUser         string    `json:"dest_user"`
+	TotalCopied      int       `json:"total_copied"`  // Số thư mới được copy
+	TotalSkipped     int       `json:"total_skipped"` // Số thư đã tồn tại (bỏ qua)
+	Total            int       `json:"total"`         // Tổng = copied + skipped (backward compat)
+	TotalBytes       int64     `json:"total_bytes"`
+	Errors           int       `json:"errors"`
+	TotalFolders     int       `json:"total_folders"`
+	CompletedFolders int       `json:"completed_folders"`
+	StartedAt        time.Time `json:"started_at"`
+	EndedAt          time.Time `json:"ended_at"`
 }
 
-func init() {
-	cwd, _ := os.Getwd()
-	historyPath = filepath.Join(cwd, "data", "imap-history", "history.json")
-	os.MkdirAll(filepath.Dir(historyPath), 0755)
-
-	data, err := os.ReadFile(historyPath)
-	if err == nil {
-		json.Unmarshal(data, &historyList)
+// GetDataDir trả về thư mục lưu trữ dữ liệu chính.
+// Hỗ trợ ghi đè qua IMAP_DATA_DIR trong môi trường production.
+func GetDataDir() string {
+	dir := os.Getenv("IMAP_DATA_DIR")
+	if dir != "" {
+		return dir
 	}
+	cwd, _ := os.Getwd()
+	return filepath.Join(cwd, "data", "imap-history")
 }
 
-// AppendHistory saves completed/failed/cancelled jobs to history and persists to JSON.
+var historyOnce sync.Once
+
+func ensureHistoryLoaded() {
+	historyOnce.Do(func() {
+		historyPath = filepath.Join(GetDataDir(), "history.json")
+		os.MkdirAll(filepath.Dir(historyPath), 0755)
+
+		data, err := os.ReadFile(historyPath)
+		if err == nil {
+			json.Unmarshal(data, &historyList)
+		}
+	})
+}
+
+// AppendHistory lưu job đã hoàn thành/lỗi/hủy vào history và persist xuống file JSON.
 func AppendHistory(job *Job) {
+	ensureHistoryLoaded()
 	historyMutex.Lock()
 	defer historyMutex.Unlock()
 
 	summary := JobSummary{
-		ID:        job.ID,
-		Status:    job.Snapshot.Status,
-		Source:    job.Snapshot.Source,
-		Dest:      job.Snapshot.Dest,
-		Total:     0, // Computed below
-		Errors:    job.Snapshot.TotalErrors,
-		StartedAt: job.Snapshot.StartedAt,
-		EndedAt:   time.Now(),
+		ID:               job.ID,
+		Status:           job.Snapshot.Status,
+		Source:           job.Snapshot.Source,
+		SourceUser:       job.Snapshot.SourceUser,
+		Dest:             job.Snapshot.Dest,
+		DestUser:         job.Snapshot.DestUser,
+		TotalCopied:      job.Snapshot.TotalCopied,
+		TotalSkipped:     job.Snapshot.TotalSkipped,
+		Total:            job.Snapshot.TotalCopied + job.Snapshot.TotalSkipped,
+		TotalBytes:       job.Snapshot.TotalBytes,
+		Errors:           job.Snapshot.TotalErrors,
+		TotalFolders:     job.Snapshot.TotalFolders,
+		CompletedFolders: job.Snapshot.CompletedFolders,
+		StartedAt:        job.Snapshot.StartedAt,
+		EndedAt:          time.Now(),
 	}
-	
-	// Derive Total processed if TotalEmails doesn't exist
-	summary.Total = job.Snapshot.TotalCopied + job.Snapshot.TotalSkipped
 
-	// If source/dest wasn't populated during connection failure, set blank
+	// Nếu source/dest chưa được điền (lỗi kết nối ngay từ đầu), để là N/A
 	if summary.Source == "" {
 		summary.Source = "N/A"
 	}
@@ -65,10 +94,10 @@ func AppendHistory(job *Job) {
 		summary.Dest = "N/A"
 	}
 
-	// Insert at beginning
+	// Thêm vào đầu danh sách (mới nhất lên trên)
 	historyList = append([]JobSummary{summary}, historyList...)
 
-	// Keep max 500
+	// Giữ tối đa 500 bản ghi
 	if len(historyList) > 500 {
 		historyList = historyList[:500]
 	}
@@ -86,8 +115,9 @@ func AppendHistory(job *Job) {
 	}
 }
 
-// GetHistory returns a copy of the history array
+// GetHistory trả về bản sao của danh sách lịch sử
 func GetHistory() []JobSummary {
+	ensureHistoryLoaded()
 	historyMutex.RLock()
 	defer historyMutex.RUnlock()
 

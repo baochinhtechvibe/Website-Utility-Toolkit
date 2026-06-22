@@ -255,6 +255,14 @@
   font-size: var(--text-sm);
 }
 
+.log-viewer__header .btn-outline {
+  --btn-text: var(--gray-100);
+  --btn-border: var(--gray-600);
+  --btn-hover-bg: var(--gray-700);
+  --btn-hover-text: var(--white);
+  border: var(--border-width-1) solid var(--btn-border);
+}
+
 .log-viewer__indicator {
   font-size: 8px;
   vertical-align: middle;

@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,17 +21,16 @@ const (
 )
 
 type Job struct {
-	ID        string
-	Mutex     sync.RWMutex
-	Snapshot  models.JobSnapshot
+	ID       string
+	Mutex    sync.RWMutex
+	Snapshot models.JobSnapshot
 
 	subsMu    sync.Mutex
 	subs      []chan models.SSEEvent
 	closeOnce sync.Once
 	isClosed  bool
 
-	LogFile   *os.File // Log file handler
-
+	LogFile *os.File // Log file handler
 
 	CancelCtx context.Context
 	CancelFn  context.CancelFunc
@@ -40,7 +41,7 @@ const maxConcurrentJobs = 50
 var (
 	jobSem   = make(chan struct{}, maxConcurrentJobs)
 	ipJobMap sync.Map
-	
+
 	// jobStore lưu lại job sau khi xong để user có thể fetch status (hỗ trợ reconnect/reload)
 	jobStore sync.Map // map[string]*Job
 )
@@ -77,32 +78,23 @@ func (e *ServerBusyError) Error() string {
 
 // ─── Job Creation ─────────────────────────────────────────────────────────────
 
-// CreateAndStartJob starts a new job subject to concurrency and IP limits.
-func CreateAndStartJob(req models.StartRequest, clientIP string) (*Job, error) {
-	// Check per-IP limit atomically to avoid race condition
-	if _, loaded := ipJobMap.LoadOrStore(clientIP, ""); loaded {
-		return nil, &RateLimitError{}
+// EnqueueJob puts a new job into the SQLite queue and memory store.
+func EnqueueJob(req models.StartRequest, sessionID string) (*Job, error) {
+	active, _ := CountActiveJobsBySession(sessionID)
+	if active >= 20 {
+		return nil, fmt.Errorf("bạn đã đạt giới hạn 20 tiến trình trong hàng đợi")
 	}
 
-	// Check global concurrent limit
-	select {
-	case jobSem <- struct{}{}:
-	default:
-		// Rollback IP claim if system is busy
-		ipJobMap.Delete(clientIP)
-		return nil, &ServerBusyError{Max: maxConcurrentJobs}
-	}
-
-	const maxJobDuration = 4 * time.Hour
-	ctx, cancel := context.WithTimeout(context.Background(), maxJobDuration)
+	jobID := uuid.NewString()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	job := &Job{
-		ID:        uuid.NewString(),
+		ID:        jobID,
 		CancelCtx: ctx,
 		CancelFn:  cancel,
 		Snapshot: models.JobSnapshot{
-			JobID:           "", // Set below
-			Status:          "running",
+			JobID:           jobID,
+			Status:          "pending",
 			Mode:            req.Mode,
 			SelectedFolders: req.Folders,
 			StartedAt:       time.Now(),
@@ -110,38 +102,28 @@ func CreateAndStartJob(req models.StartRequest, clientIP string) (*Job, error) {
 			CanReconnect:    true,
 		},
 	}
-	job.Snapshot.JobID = job.ID
 	job.Snapshot.Source = req.Source.Host
+	job.Snapshot.SourceUser = req.Source.Username
 	job.Snapshot.Dest = req.Dest.Host
+	job.Snapshot.DestUser = req.Dest.Username
 
-	// Create log file
-	cwd, _ := os.Getwd()
-	logDir := filepath.Join(cwd, "data", "imap-history", "logs")
+	// Lưu vào SQLite
+	if err := CreateJob(job, req, sessionID); err != nil {
+		return nil, err
+	}
+
+	// Create log file for fallback
+	logDir := filepath.Join(GetDataDir(), "logs")
 	os.MkdirAll(logDir, 0755)
 	logFile, err := os.OpenFile(filepath.Join(logDir, "job_"+job.ID+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {
 		job.LogFile = logFile
 	}
 
-	ipJobMap.Store(clientIP, job.ID)
 	jobStore.Store(job.ID, job)
 
-	// Start a single heartbeat routine for this job
+	// Heartbeat để giữ kết nối SSE không đứt khi đang pending
 	go job.RunHeartbeat()
-
-	// Cleanup goroutine to release semaphore, IP lock, and files when job is done/cancelled
-	go func() {
-		<-job.CancelCtx.Done()
-		if job.LogFile != nil {
-			job.LogFile.Close()
-		}
-		<-jobSem
-		if val, ok := ipJobMap.Load(clientIP); ok {
-			if val == job.ID {
-				ipJobMap.Delete(clientIP)
-			}
-		}
-	}()
 
 	return job, nil
 }
@@ -155,8 +137,6 @@ func GetJob(id string) (*Job, bool) {
 	return nil, false
 }
 
-
-
 // ─── Job Status Updates ───────────────────────────────────────────────────────
 
 func (j *Job) GetSnapshot() models.JobSnapshot {
@@ -166,19 +146,22 @@ func (j *Job) GetSnapshot() models.JobSnapshot {
 	return j.Snapshot
 }
 
-func (j *Job) UpdateProgress(copied, skipped, errors int) {
+func (j *Job) UpdateProgress(copied, skipped, errors int, bytes int64) {
 	j.Mutex.Lock()
 	defer j.Mutex.Unlock()
 	j.Snapshot.TotalCopied += copied
 	j.Snapshot.TotalSkipped += skipped
 	j.Snapshot.TotalErrors += errors
+	j.Snapshot.CurrentFolderCopied += copied
+	j.Snapshot.TotalBytes += bytes
 }
 
 func (j *Job) SetCurrentFolder(folder string, totalMail int) {
 	j.Mutex.Lock()
 	defer j.Mutex.Unlock()
 	j.Snapshot.CurrentFolder = folder
-	// We don't track totalMail in Snapshot here, but we could if we wanted to
+	j.Snapshot.CurrentFolderTotal = totalMail
+	j.Snapshot.CurrentFolderCopied = 0
 }
 
 func (j *Job) MarkFolderDone(folder string) {
@@ -199,10 +182,10 @@ func (j *Job) AddError(err error) {
 	}
 	j.Mutex.Lock()
 	defer j.Mutex.Unlock()
-	
+
 	msg := FriendlyErrorMessage(err)
 	j.Snapshot.LastError = msg
-	
+
 	j.Snapshot.RecentErrors = append(j.Snapshot.RecentErrors, msg)
 	if len(j.Snapshot.RecentErrors) > maxRecentErrors {
 		// remove oldest
@@ -231,13 +214,14 @@ func (j *Job) MarkDone() {
 		TotalSkipped: j.Snapshot.TotalSkipped,
 		TotalErrors:  j.Snapshot.TotalErrors,
 	}
-	
+
 	j.Mutex.Unlock()
 
 	j.Emit(event)
+	UpdateJobStatus(j.ID, "done", "")
 	j.closeEvents()
 	j.scheduleCleanup()
-	AppendHistory(j)
+	AppendHistory(j) // legacy history
 	j.CancelFn()
 }
 
@@ -263,6 +247,7 @@ func (j *Job) MarkError(err error) {
 	j.Mutex.Unlock()
 
 	j.Emit(event)
+	UpdateJobStatus(j.ID, "error", j.Snapshot.LastError)
 	j.closeEvents()
 	j.scheduleCleanup()
 	AppendHistory(j)
@@ -271,8 +256,9 @@ func (j *Job) MarkError(err error) {
 
 func (j *Job) Cancel() {
 	j.Mutex.Lock()
-	
-	if j.Snapshot.Status == "running" {
+
+	status := j.Snapshot.Status
+	if status == "running" || status == "pending" {
 		now := time.Now()
 		j.Snapshot.Status = "cancelled"
 		j.Snapshot.FinishedAt = &now
@@ -282,10 +268,11 @@ func (j *Job) Cancel() {
 			Type:    "ERROR",
 			Message: "Tiến trình đồng bộ đã bị hủy bỏ",
 		}
-		
+
 		j.Mutex.Unlock()
-		
+
 		j.Emit(event)
+		UpdateJobStatus(j.ID, "cancelled", "Bị huỷ bởi người dùng")
 		j.closeEvents()
 		j.scheduleCleanup()
 		AppendHistory(j)
@@ -332,8 +319,20 @@ func (j *Job) Unsubscribe(ch chan models.SSEEvent) {
 }
 
 func (j *Job) Emit(event models.SSEEvent) {
-	// Write to log file if available
-	if j.LogFile != nil && event.Type != "HEARTBEAT" && event.Type != "PROGRESS" {
+	// Persist every meaningful event to SQLite
+	if event.Type != "HEARTBEAT" && event.Type != "PROGRESS" && event.Type != "VERBOSE" {
+		msg := event.Message
+		if msg == "" && event.Folder != "" {
+			event.Message = fmt.Sprintf("Event %s on %s", event.Type, event.Folder)
+		}
+
+		if strings.TrimSpace(event.Message) != "" || event.Type == "COMPLETE" || event.Type == "FOLDER_DONE" {
+			PersistSSEEvent(j.ID, event)
+		}
+	}
+
+	// Write to legacy file
+	if j.LogFile != nil && event.Type != "HEARTBEAT" && event.Type != "PROGRESS" && event.Type != "VERBOSE" {
 		timestamp := time.Now().Format("15:04:05")
 		logLine := ""
 		switch event.Type {
@@ -358,7 +357,25 @@ func (j *Job) Emit(event models.SSEEvent) {
 		}
 		if logLine != "" {
 			j.LogFile.WriteString(logLine)
+			offset, _ := j.LogFile.Seek(0, io.SeekCurrent)
+			// Phát log này dưới dạng VERBOSE realtime cho UI
+			verboseEv := models.SSEEvent{Type: "VERBOSE", Message: logLine, Offset: offset}
+			j.subsMu.Lock()
+			if !j.isClosed {
+				for _, sub := range j.subs {
+					select {
+					case sub <- verboseEv:
+					default:
+					}
+				}
+			}
+			j.subsMu.Unlock()
 		}
+	}
+
+	// Sync progress occasionally
+	if event.Type == "PROGRESS" || event.Type == "FOLDER_DONE" {
+		UpdateJobProgress(j.ID, j.Snapshot)
 	}
 
 	j.subsMu.Lock()
@@ -404,10 +421,25 @@ func (j *Job) RunHeartbeat() {
 			if status != "running" {
 				return
 			}
-			
+
 			j.Emit(models.SSEEvent{
 				Type: "HEARTBEAT",
 			})
 		}
 	}
+}
+
+// LogVerbose writes a raw string to the file and broadcasts to SSE clients.
+// It skips SQLite to prevent DB bloat.
+func (j *Job) LogVerbose(msg string) {
+	var offset int64 = 0
+	if j.LogFile != nil {
+		j.LogFile.WriteString(fmt.Sprintf("%s\n", msg))
+		offset, _ = j.LogFile.Seek(0, io.SeekCurrent)
+	}
+	j.Emit(models.SSEEvent{
+		Type:    "VERBOSE",
+		Message: msg,
+		Offset:  offset,
+	})
 }

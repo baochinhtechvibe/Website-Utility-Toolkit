@@ -1,91 +1,134 @@
 package service
 
 import (
-	"fmt"
+	"context"
+	"os"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"tools.bctechvibe.com/server/internal/modules/imap-migrator/models"
 )
 
-func resetGlobalState() {
-	ipJobMap.Range(func(key, value any) bool {
-		ipJobMap.Delete(key)
-		return true
-	})
-	
-	// drain jobSem if any
-	for {
-		select {
-		case <-jobSem:
-		default:
-			goto done
-		}
+func TestCryptoAES(t *testing.T) {
+	// Set test environment variable for AES key
+	// Key must be exactly 32 bytes base64 encoded
+	os.Setenv("APP_SECRET_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+
+	original := "p@ssw0rd123"
+
+	enc, err := EncryptAES(original)
+	if err != nil {
+		t.Fatalf("EncryptAES failed: %v", err)
 	}
-done:
-	jobStore.Range(func(key, value any) bool {
-		jobStore.Delete(key)
-		return true
+
+	if enc == original {
+		t.Fatalf("Encrypted string is same as original")
+	}
+
+	dec, err := DecryptAES(enc)
+	if err != nil {
+		t.Fatalf("DecryptAES failed: %v", err)
+	}
+
+	if dec != original {
+		t.Fatalf("Expected '%s', got '%s'", original, dec)
+	}
+}
+
+func TestJobUpdateProgress(t *testing.T) {
+	job := &Job{
+		ID:        "test-job",
+		CancelCtx: context.Background(),
+	}
+
+	job.UpdateProgress(10, 5, 2, 1024)
+
+	snap := job.GetSnapshot()
+	if snap.TotalCopied != 10 {
+		t.Errorf("Expected TotalCopied 10, got %d", snap.TotalCopied)
+	}
+	if snap.TotalSkipped != 5 {
+		t.Errorf("Expected TotalSkipped 5, got %d", snap.TotalSkipped)
+	}
+	if snap.TotalErrors != 2 {
+		t.Errorf("Expected TotalErrors 2, got %d", snap.TotalErrors)
+	}
+	if snap.TotalBytes != 1024 {
+		t.Errorf("Expected TotalBytes 1024, got %d", snap.TotalBytes)
+	}
+	if snap.CurrentFolderCopied != 10 {
+		t.Errorf("Expected CurrentFolderCopied 10, got %d", snap.CurrentFolderCopied)
+	}
+}
+
+func TestJobSetCurrentFolder(t *testing.T) {
+	job := &Job{
+		ID: "test-job-folder",
+	}
+
+	job.SetCurrentFolder("INBOX", 100)
+	snap := job.GetSnapshot()
+
+	if snap.CurrentFolder != "INBOX" {
+		t.Errorf("Expected CurrentFolder INBOX, got %s", snap.CurrentFolder)
+	}
+	if snap.CurrentFolderTotal != 100 {
+		t.Errorf("Expected CurrentFolderTotal 100, got %d", snap.CurrentFolderTotal)
+	}
+	if snap.CurrentFolderCopied != 0 {
+		t.Errorf("Expected CurrentFolderCopied 0, got %d", snap.CurrentFolderCopied)
+	}
+}
+
+func setupTestDB(t *testing.T) {
+	os.Setenv("IMAP_DATA_DIR", t.TempDir())
+	ResetTestDB()
+	InitTestDB()
+
+	// Ensure DB is empty before test
+	GetDB().Exec("DELETE FROM job_logs; DELETE FROM jobs")
+
+	t.Cleanup(func() {
+		GetDB().Exec("DELETE FROM job_logs; DELETE FROM jobs")
+		ResetTestDB()
 	})
 }
 
-func TestCreateAndStartJob_SameIP(t *testing.T) {
-	resetGlobalState()
-	defer resetGlobalState()
+func TestJobCancel(t *testing.T) {
+	setupTestDB(t)
 
-	req := models.StartRequest{}
-	ip := "192.168.1.1"
-
-	job1, err := CreateAndStartJob(req, ip)
-	require.NoError(t, err)
-	require.NotNil(t, job1)
-
-	// Second request from same IP should fail with RateLimitError
-	job2, err := CreateAndStartJob(req, ip)
-	assert.Error(t, err)
-	assert.Nil(t, job2)
-	assert.IsType(t, &RateLimitError{}, err)
-
-	// Cancel job1, wait for cleanup goroutine to release lock
-	job1.Cancel()
-	time.Sleep(100 * time.Millisecond)
-
-	// Third request from same IP should now succeed
-	job3, err := CreateAndStartJob(req, ip)
-	assert.NoError(t, err)
-	assert.NotNil(t, job3)
-	
-	// Cleanup at the end
-	job3.Cancel()
-	time.Sleep(10 * time.Millisecond)
-}
-
-func TestCreateAndStartJob_MaxConcurrent(t *testing.T) {
-	resetGlobalState()
-	defer resetGlobalState()
-
-	req := models.StartRequest{}
-
-	var jobs []*Job
-	// Fill all max slots
-	for i := 1; i <= maxConcurrentJobs; i++ {
-		job, err := CreateAndStartJob(req, fmt.Sprintf("10.0.0.%d", i))
-		require.NoError(t, err)
-		require.NotNil(t, job)
-		jobs = append(jobs, job)
+	ctx, cancel := context.WithCancel(context.Background())
+	job := &Job{
+		ID:        "test-cancel-job",
+		CancelCtx: ctx,
+		CancelFn:  cancel,
+		Snapshot: models.JobSnapshot{
+			JobID:  "test-cancel-job",
+			Status: "running",
+		},
 	}
 
-	// Request exceeding maxConcurrentJobs should fail with ServerBusyError
-	jobExtra, err := CreateAndStartJob(req, "10.0.0.99")
-	assert.Error(t, err)
-	assert.Nil(t, jobExtra)
-	assert.IsType(t, &ServerBusyError{}, err)
-	
-	// Clean up jobs
-	for _, j := range jobs {
-		j.Cancel()
+	// Insert into DB first so Cancel can update status without failing
+	GetDB().Exec(`INSERT INTO jobs (id, session_id, status) VALUES (?, 'test-session', 'running')`, job.ID)
+
+	if job.CancelCtx.Err() != nil {
+		t.Errorf("Expected context not canceled initially")
 	}
-	time.Sleep(100 * time.Millisecond)
+
+	job.Cancel()
+
+	if job.CancelCtx.Err() == nil {
+		t.Errorf("Expected context to be canceled")
+	}
+
+	snap := job.GetSnapshot()
+	if snap.Status != "cancelled" {
+		t.Errorf("Expected status to be cancelled, got %s", snap.Status)
+	}
+
+	// Check if DB updated
+	var status string
+	GetDB().QueryRow(`SELECT status FROM jobs WHERE id = ?`, job.ID).Scan(&status)
+	if status != "cancelled" {
+		t.Errorf("Expected DB status to be cancelled, got %s", status)
+	}
 }

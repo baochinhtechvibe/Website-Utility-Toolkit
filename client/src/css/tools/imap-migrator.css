@@ -85,12 +85,20 @@
     color: var(--text-secondary);
 }
 
+/* Spacer cho các node lá (không có children) để căn chỉnh với node có toggle icon */
+.imap-tree-spacer {
+    display: inline-block;
+    width: 16px;
+    flex-shrink: 0;
+}
+
 /* Progress Logs */
 .imap-logs-container {
     height: 250px;
     overflow-y: auto;
-    background-color: var(--slate-900);
-    color: var(--slate-300);
+    /* Dùng semantic token qua code-bg thay vì --slate-900 trực tiếp (F-05) */
+    background-color: var(--code-bg);
+    color: var(--code-text);
     padding: var(--space-3);
     border-radius: var(--radius-sm);
     font-family: var(--font-family-mono);
@@ -103,10 +111,12 @@
     word-break: break-all;
 }
 
-.imap-log-entry--info { color: var(--blue-400); }
-.imap-log-entry--success { color: var(--green-400); }
-.imap-log-entry--warning { color: var(--yellow-400); }
-.imap-log-entry--error { color: var(--red-400); }
+/* Dùng semantic tokens qua code-* / color-* thay vì palette --X-400 trực tiếp */
+.imap-log-entry--info    { color: var(--color-info); }
+.imap-log-entry--success { color: var(--color-success); }
+.imap-log-entry--warning { color: var(--color-warning); }
+.imap-log-entry--error   { color: var(--color-error); }
+.imap-log-entry--verbose { color: var(--gray-400); }
 
 /* Progress Stats */
 .imap-stats-grid {
@@ -140,17 +150,25 @@
 .progress-bar-wrap {
     width: 100%;
     height: 8px;
-    background-color: var(--bg-surface-alt);
+    background-color: var(--color-surface-muted);
     border-radius: var(--radius-sm);
     overflow: hidden;
     margin-top: var(--space-2);
 }
 
+/* F-04: Dùng CSS Custom Property cho giá trị động từ JS.
+   JS đặt: progressBar.style.setProperty('--progress-width', p + '%')
+   thay vì progressBar.style.width = p + '%' */
 .progress-bar-fill {
     height: 100%;
-    background-color: var(--blue-500);
-    width: 0%;
+    background-color: var(--color-info);
+    width: var(--progress-width, 0%);
     transition: width var(--transition-slow);
+}
+
+/* Utility: link có gạch chân (dùng cho link hướng dẫn trong form) */
+.link-underline {
+    text-decoration: underline;
 }
 
 .btn-toggle-pass {
@@ -158,4 +176,65 @@
     top: 50%;
     transform: translateY(-50%);
     right: var(--space-2);
+}
+
+/* =======================================
+   Phase 3: Queue Table & Modal
+========================================== */
+
+/* Queue Table */
+.imap-queue-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+.imap-queue-table th {
+    border-bottom: var(--border-width-2) solid var(--color-border);
+    color: var(--text-secondary);
+}
+.imap-queue-table td, .imap-queue-table th {
+    padding: var(--space-3) var(--space-2);
+    vertical-align: middle;
+}
+.imap-queue-table tr {
+    border-bottom: var(--border-width-1) solid var(--color-border-subtle);
+    transition: background-color var(--transition-fast);
+}
+.imap-queue-table tr:hover {
+    background-color: var(--color-surface-hover);
+}
+.imap-queue-progress {
+    height: 4px;
+}
+
+/* Modal Overlay & Content */
+.imap-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: var(--z-modal);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.imap-modal__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+.imap-modal__content {
+    position: relative;
+    z-index: 2;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
 }

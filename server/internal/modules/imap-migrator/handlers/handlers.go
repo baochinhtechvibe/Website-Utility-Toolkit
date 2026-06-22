@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -73,22 +73,18 @@ func HandleStart(c *gin.Context) {
 	}
 
 	clientIP := c.ClientIP()
-	job, err := service.CreateAndStartJob(req, clientIP)
+	sessionID := c.GetHeader("X-Session-ID")
+	if sessionID == "" {
+		sessionID = clientIP
+	}
+
+	job, err := service.EnqueueJob(req, sessionID)
 	if err != nil {
-		var rateErr *service.RateLimitError
-		var busyErr *service.ServerBusyError
-		if errors.As(err, &rateErr) || errors.As(err, &busyErr) {
-			response.Error(c, http.StatusConflict, service.FriendlyErrorMessage(err))
-			return
-		}
 		response.Error(c, http.StatusInternalServerError, service.FriendlyErrorMessage(err))
 		return
 	}
 
-	// Start background pipeline
-	go service.RunMigration(job.CancelCtx, job, req)
-
-	response.SuccessWithMessage(c, gin.H{"jobId": job.ID}, "Đã bắt đầu tiến trình sao chép IMAP")
+	response.SuccessWithMessage(c, gin.H{"jobId": job.ID}, "Đã đưa tiến trình vào hàng đợi")
 }
 
 // HandleStatus returns the snapshot of a running or recently finished job
@@ -99,10 +95,34 @@ func HandleStatus(c *gin.Context) {
 		return
 	}
 
+	sessionID := c.GetHeader("X-Session-ID")
+	if sessionID == "" {
+		sessionID = c.ClientIP()
+	}
+
+	jobSessionID, found, err := service.GetJobSessionID(jobID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Lỗi kiểm tra quyền truy cập")
+		return
+	}
+	if !found {
+		response.Error(c, http.StatusNotFound, "Không tìm thấy Job hoặc Job đã hết hạn")
+		return
+	}
+	if jobSessionID != sessionID {
+		response.Error(c, http.StatusForbidden, "Không có quyền truy cập tiến trình này")
+		return
+	}
+
 	job, ok := service.GetJob(jobID)
 	if !ok {
-		// Possibly expired or invalid
-		response.Error(c, http.StatusNotFound, "Không tìm thấy Job hoặc Job đã hết hạn")
+		// Fallback to SQLite
+		snap, dbOk := service.GetJobSnapshot(jobID)
+		if !dbOk {
+			response.Error(c, http.StatusNotFound, "Không tìm thấy Job hoặc Job đã hết hạn")
+			return
+		}
+		response.SuccessNoMeta(c, snap)
 		return
 	}
 
@@ -118,9 +138,33 @@ func HandleCancel(c *gin.Context) {
 		return
 	}
 
+	sessionID := c.GetHeader("X-Session-ID")
+	if sessionID == "" {
+		sessionID = c.ClientIP()
+	}
+
+	jobSessionID, found, err := service.GetJobSessionID(jobID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Lỗi kiểm tra quyền truy cập")
+		return
+	}
+	if !found {
+		response.Error(c, http.StatusNotFound, "Không tìm thấy Job hoặc Job đã hoàn tất")
+		return
+	}
+	if jobSessionID != sessionID {
+		response.Error(c, http.StatusForbidden, "Không có quyền hủy tiến trình này")
+		return
+	}
+
 	job, ok := service.GetJob(jobID)
 	if !ok {
-		response.Error(c, http.StatusNotFound, "Không tìm thấy Job hoặc Job đã hết hạn")
+		// Try to cancel in DB directly if it's still pending
+		if cancelled := service.CancelJobInDB(jobID); cancelled {
+			response.SuccessWithMessage(c, nil, "Đã hủy tiến trình trong hàng đợi")
+			return
+		}
+		response.Error(c, http.StatusNotFound, "Không tìm thấy Job hoặc Job đã hoàn tất")
 		return
 	}
 
@@ -137,10 +181,67 @@ func HandleStream(c *gin.Context) {
 		return
 	}
 
-	job, ok := service.GetJob(jobID)
-	if !ok {
+	sessionID := c.Query("sessionId")
+	if sessionID == "" {
+		sessionID = c.ClientIP()
+	}
+
+	jobSessionID, found, err := service.GetJobSessionID(jobID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Lỗi kiểm tra quyền truy cập")
+		c.Abort()
+		return
+	}
+	if !found {
 		response.Error(c, http.StatusNotFound, "Không tìm thấy Job")
 		c.Abort()
+		return
+	}
+	if jobSessionID != sessionID {
+		response.Error(c, http.StatusForbidden, "Không có quyền truy cập tiến trình này")
+		c.Abort()
+		return
+	}
+
+	// Parse offset from query
+	offsetStr := c.Query("fromOffset")
+	var fromOffset int64 = 0
+	if offsetStr != "" {
+		fmt.Sscanf(offsetStr, "%d", &fromOffset)
+	}
+
+	job, ok := service.GetJob(jobID)
+	if !ok {
+		// Thử kiểm tra trong SQLite
+		snap, dbOk := service.GetJobSnapshot(jobID)
+		if !dbOk {
+			response.Error(c, http.StatusNotFound, "Không tìm thấy Job")
+			c.Abort()
+			return
+		}
+
+		// Nếu Job đã kết thúc / lỗi / cancelled, ta chỉ cần replay log cũ và đóng kết nối SSE
+		c.Writer.Header().Set("Content-Type", "text/event-stream")
+		c.Writer.Header().Set("Cache-Control", "no-cache")
+		c.Writer.Header().Set("Connection", "keep-alive")
+		c.Writer.Header().Set("X-Accel-Buffering", "no")
+		c.Writer.WriteHeaderNow()
+
+		streamLogChunks(c, jobID, fromOffset)
+
+		events := service.GetJobLogs(jobID)
+		for _, ev := range events {
+			c.Render(-1, sseEventRender{Event: ev})
+			c.Writer.Flush()
+		}
+
+		// Emit final event to close UI nicely
+		if snap.Status == "done" {
+			c.Render(-1, sseEventRender{Event: models.SSEEvent{Type: "COMPLETE"}})
+		} else if snap.Status == "error" || snap.Status == "cancelled" {
+			c.Render(-1, sseEventRender{Event: models.SSEEvent{Type: "ERROR", Message: snap.LastError}})
+		}
+		c.Writer.Flush()
 		return
 	}
 
@@ -151,10 +252,20 @@ func HandleStream(c *gin.Context) {
 	c.Writer.WriteHeaderNow()
 
 	clientGone := c.Request.Context().Done()
-	
-	// Subscribe to pub-sub events
+
+	// 1. Subscribe to pub-sub events TRƯỚC để không miss event mới
 	ch := job.Subscribe()
 	defer job.Unsubscribe(ch)
+
+	// 2. Replay real-time raw logs từ file vật lý (sẽ tự động đọc từ fromOffset)
+	streamLogChunks(c, jobID, fromOffset)
+
+	// 4. Luôn gửi toàn bộ state event cũ (INFO, START, DONE) để replay UI Progress Bar
+	pastEvents := service.GetJobLogs(jobID)
+	for _, ev := range pastEvents {
+		c.Render(-1, sseEventRender{Event: ev})
+		c.Writer.Flush()
+	}
 
 	for {
 		select {
@@ -166,11 +277,33 @@ func HandleStream(c *gin.Context) {
 				// Job internally emits COMPLETE / ERROR before closing.
 				return
 			}
-			
+
 			// SSE format requires starting with "data: " and ending with "\n\n"
-		    c.Render(-1, sseEventRender{Event: ev})
+			c.Render(-1, sseEventRender{Event: ev})
 			c.Writer.Flush()
 		}
+	}
+}
+
+func streamLogChunks(c *gin.Context, jobID string, fromOffset int64) {
+	currentOffset := fromOffset
+	for {
+		lines, newOffset := service.TailJobLog(jobID, 500, currentOffset)
+
+		// Luôn gửi CHUNK để cập nhật lastLogOffset ở Frontend, ngay cả khi lines rỗng
+		if len(lines) > 0 || (newOffset > 0 && newOffset != currentOffset) {
+			c.Render(-1, sseEventRender{Event: models.SSEEvent{
+				Type:    "VERBOSE_CHUNK",
+				Message: strings.Join(lines, "\n"),
+				Offset:  newOffset,
+			}})
+			c.Writer.Flush()
+		}
+
+		if newOffset <= currentOffset {
+			break
+		}
+		currentOffset = newOffset
 	}
 }
 
@@ -200,6 +333,24 @@ func (r sseEventRender) Render(w http.ResponseWriter) error {
 // WriteContentType is intentionally a no-op: Content-Type is set in HandleStream before streaming begins.
 func (r sseEventRender) WriteContentType(w http.ResponseWriter) {}
 
+// HandleMyJobs returns all jobs for the current session.
+func HandleMyJobs(c *gin.Context) {
+	clientIP := c.ClientIP()
+	sessionID := c.GetHeader("X-Session-ID")
+	if sessionID == "" {
+		sessionID = clientIP
+	}
+
+	jobs := service.GetJobsBySession(sessionID, 20)
+
+	// Khởi tạo mảng rỗng nếu nil để đảm bảo trả về JSON mảng thay vì null
+	if jobs == nil {
+		jobs = []models.JobSnapshot{}
+	}
+
+	response.SuccessNoMeta(c, jobs)
+}
+
 // HandleAdminHistory returns history JSON
 func HandleAdminHistory(c *gin.Context) {
 	response.SuccessNoMeta(c, service.GetHistory())
@@ -222,8 +373,8 @@ func HandleAdminLogFile(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "ID không hợp lệ (phải là UUID)")
 		return
 	}
-	cwd, _ := os.Getwd()
-	logPath := filepath.Join(cwd, "data", "imap-history", "logs", "job_"+id+".log")
+
+	logPath := filepath.Join(service.GetDataDir(), "logs", "job_"+id+".log")
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {
 		response.Error(c, http.StatusNotFound, "Không tìm thấy file log (hoặc đã bị dọn dẹp)")
 		return

@@ -123,8 +123,8 @@
                         </div>
                         <div class="card card--flat">
                             <div class="card__body p-4">
-                                <div class="text-sm text-muted mb-2" title="Ước tính khoảng 50KB mỗi email">Data Transferred (Est. 50KB/mail)</div>
-                                <div class="font-display font-bold text-info admin-stat-value" id="stat-data">0 B</div>
+                                <div class="text-sm text-muted mb-2">Data Transferred</div>
+                                <div class="font-display font-bold text-info admin-stat-value" id="stat-copied">0 GB</div>
                             </div>
                         </div>
                     </div>
@@ -160,8 +160,7 @@
                                         <tr>
                                             <th>Job ID</th>
                                             <th>Trạng Thái</th>
-                                            <th>Nguồn</th>
-                                            <th>Đích</th>
+                                            <th>Nguồn → Đích</th>
                                             <th>Thư Mục</th>
                                             <th>Tiến Độ Email</th>
                                             <th>Lỗi</th>
@@ -169,7 +168,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="7" class="text-center text-secondary py-4">No jobs currently running.</td>
+                                            <td colspan="6" class="text-center text-secondary py-4">No jobs currently running.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -198,8 +197,8 @@
                                             <th>Source → Dest</th>
                                             <th>Started</th>
                                             <th>Duration</th>
-                                            <th>Messages</th>
-                                            <th>Data (Est.)</th>
+                                            <th>Copied / Skipped</th>
+                                            <th>Folders</th>
                                             <th>Errors</th>
                                             <th>Actions</th>
                                         </tr>
@@ -229,8 +228,9 @@
                 </div>
                 <div class="modal__body p-0 flex-1 d-flex flex-col overflow-hidden">
                     <div class="log-viewer log-viewer--modal">
-                        <div class="log-viewer__header border-0 border-b border-subtle bg-surface">
+                        <div class="log-viewer__header border-0 border-b border-subtle bg-surface d-flex justify-between items-center">
                             <span class="text-muted text-xs">/server/data/imap-history/logs/ <span id="log-filename" class="text-info font-bold"></span></span>
+                            <button id="btn-download-log" class="btn btn-outline btn-sm"><i class="fa-solid fa-download mr-1"></i> Tải về</button>
                         </div>
                         <div class="log-viewer__body log-viewer__body--flex" id="log-output-content">Khởi tạo bộ đọc log...</div>
                     </div>
@@ -240,9 +240,7 @@
 
     </main>
 
-    <!-- SCIPTS -->
-    <script src="../../src/js/utils/url.js"></script>
-    <!-- Tránh import tracker.js để không track admin -->
-    <script src="../../src/js/tools/admin-imap/admin-dashboard.js"></script>
+    <!-- Dùng type="module" vì admin-dashboard.js dùng ES module import -->
+    <script type="module" src="../../src/js/tools/admin-imap/admin-dashboard.js"></script>
 </body>
 </html>

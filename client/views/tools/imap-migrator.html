@@ -21,6 +21,28 @@
 
 <body>
     <div class="wrapper page--imap-migrator">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header -->
         <header id="header" class="header header--imap-migrator py-10 mb-4 text-center">
             <div class="container">
@@ -35,7 +57,8 @@
                         </div>
                     </div>
                     <p class="header__meta text-center justify-center">
-                        Công cụ di chuyển toàn bộ hộp thư email từ máy chủ cũ sang máy chủ mới thông qua giao thức IMAP an toàn, không lưu trữ thông tin đăng nhập.
+                        Công cụ di chuyển toàn bộ hộp thư email từ máy chủ cũ sang máy chủ mới thông qua giao thức IMAP
+                        an toàn, không lưu trữ thông tin đăng nhập.
                     </p>
                     <div class="header__theme-toggle">
                         <input type="checkbox" id="theme-toggle" class="header__theme-input">
@@ -48,7 +71,7 @@
 
         <main id="main" class="main pt-2 pb-6">
             <div class="container">
-                
+
                 <!-- Active Job Warning -->
                 <div id="activeJobWarning" class="message-card message-card--warning mb-4 d-none">
                     <div class="message-card__header">
@@ -57,7 +80,8 @@
                         </h4>
                     </div>
                     <div class="message-card__body">
-                        <p>Hệ thống chỉ cho phép mỗi địa chỉ mạng (IP) chạy 1 tiến trình sao chép tại cùng 1 thời điểm. Vui lòng kết nối vào tiến trình đang chạy hoặc chờ nó hoàn tất.</p>
+                        <p>Hệ thống chỉ cho phép mỗi địa chỉ mạng (IP) chạy 1 tiến trình sao chép tại cùng 1 thời điểm.
+                            Vui lòng kết nối vào tiến trình đang chạy hoặc chờ nó hoàn tất.</p>
                         <button id="btnRestoreJob" class="btn btn-action mt-4">Đến màn hình tiến trình</button>
                     </div>
                 </div>
@@ -73,25 +97,28 @@
                     <div class="card__body">
                         <form id="imapForm" class="form">
                             <div class="imap-form-grid">
-                                
+
                                 <!-- Nguồn -->
                                 <div class="imap-server-card">
                                     <h3 class="imap-server-card__title">
                                         <i class="fa-solid fa-upload"></i> MÁY CHỦ NGUỒN
                                     </h3>
-                                    
+
                                     <div class="form-field mb-2">
                                         <label class="form-label" for="srcHost">Địa chỉ IMAP Host *</label>
-                                        <input type="text" id="srcHost" name="srcHost" class="form-input" placeholder="imap.gmail.com" required>
+                                        <input type="text" id="srcHost" name="srcHost" class="form-input"
+                                            placeholder="imap.gmail.com" required>
                                     </div>
                                     <div class="form-field mb-2 d-flex flex-row gap-2">
                                         <div class="flex-1">
                                             <label class="form-label" for="srcPort">Port *</label>
-                                            <input type="number" id="srcPort" name="srcPort" class="form-input" value="993" required>
+                                            <input type="number" id="srcPort" name="srcPort" class="form-input"
+                                                value="993" required>
                                         </div>
                                         <div class="flex-1">
                                             <label class="form-label" for="srcSecurity">Bảo mật *</label>
-                                            <select id="srcSecurity" name="srcSecurity" class="form-input form-select" required>
+                                            <select id="srcSecurity" name="srcSecurity" class="form-input form-select"
+                                                required>
                                                 <option value="SSL" selected>SSL/TLS</option>
                                                 <option value="STARTTLS">STARTTLS</option>
                                                 <option value="NONE">Không có (NONE)</option>
@@ -100,37 +127,43 @@
                                     </div>
                                     <div class="form-field mb-2">
                                         <label class="form-label" for="srcUser">Tên đăng nhập (Email) *</label>
-                                        <input type="email" id="srcUser" name="srcUser" class="form-input" placeholder="you@domain.com" required>
+                                        <input type="email" id="srcUser" name="srcUser" class="form-input"
+                                            placeholder="you@domain.com" required>
                                     </div>
                                     <div class="form-field mb-2">
                                         <label class="form-label" for="srcPass">Mật khẩu *</label>
                                         <div class="relative w-full">
-                                            <input type="password" id="srcPass" name="srcPass" class="form-input w-full" placeholder="Mật khẩu hoặc App Password" required>
-                                            <button type="button" class="btn-toggle-pass absolute" data-target="srcPass">
+                                            <input type="password" id="srcPass" name="srcPass" class="form-input w-full"
+                                                placeholder="Mật khẩu hoặc App Password" required>
+                                            <button type="button" class="btn-toggle-pass absolute"
+                                                data-target="srcPass">
                                                 <i class="fa-solid fa-eye-slash"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Đích -->
                                 <div class="imap-server-card">
                                     <h3 class="imap-server-card__title">
                                         <i class="fa-solid fa-download"></i> MÁY CHỦ ĐÍCH
                                     </h3>
-                                    
+
                                     <div class="form-field mb-2">
                                         <label class="form-label" for="dstHost">Địa chỉ IMAP Host *</label>
-                                        <input type="text" id="dstHost" name="dstHost" class="form-input" placeholder="imap.mail.yahoo.com" required>
+                                        <input type="text" id="dstHost" name="dstHost" class="form-input"
+                                            placeholder="imap.mail.yahoo.com" required>
                                     </div>
                                     <div class="form-field mb-2 d-flex flex-row gap-2">
                                         <div class="flex-1">
                                             <label class="form-label" for="dstPort">Port *</label>
-                                            <input type="number" id="dstPort" name="dstPort" class="form-input" value="993" required>
+                                            <input type="number" id="dstPort" name="dstPort" class="form-input"
+                                                value="993" required>
                                         </div>
                                         <div class="flex-1">
                                             <label class="form-label" for="dstSecurity">Bảo mật *</label>
-                                            <select id="dstSecurity" name="dstSecurity" class="form-input form-select" required>
+                                            <select id="dstSecurity" name="dstSecurity" class="form-input form-select"
+                                                required>
                                                 <option value="SSL" selected>SSL/TLS</option>
                                                 <option value="STARTTLS">STARTTLS</option>
                                                 <option value="NONE">Không có (NONE)</option>
@@ -139,21 +172,24 @@
                                     </div>
                                     <div class="form-field mb-2">
                                         <label class="form-label" for="dstUser">Tên đăng nhập (Email) *</label>
-                                        <input type="email" id="dstUser" name="dstUser" class="form-input" placeholder="you@newdomain.com" required>
+                                        <input type="email" id="dstUser" name="dstUser" class="form-input"
+                                            placeholder="you@newdomain.com" required>
                                     </div>
                                     <div class="form-field mb-2">
                                         <label class="form-label" for="dstPass">Mật khẩu *</label>
                                         <div class="relative w-full">
-                                            <input type="password" id="dstPass" name="dstPass" class="form-input w-full"  placeholder="Mật khẩu hoặc App Password" required>
-                                            <button type="button" class="btn-toggle-pass absolute" data-target="dstPass">
+                                            <input type="password" id="dstPass" name="dstPass" class="form-input w-full"
+                                                placeholder="Mật khẩu hoặc App Password" required>
+                                            <button type="button" class="btn-toggle-pass absolute"
+                                                data-target="dstPass">
                                                 <i class="fa-solid fa-eye-slash"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
-                            
+
                             <div class="form-field mt-6 text-center">
                                 <button id="btnConnect" type="submit" class="btn btn-action w-auto px-10">
                                     <i class="fa-solid fa-link" id="connectIcon"></i>
@@ -161,7 +197,7 @@
                                     <i class="fa-solid fa-spinner fa-spin d-none" id="connectLoading"></i>
                                 </button>
                             </div>
-                            
+
                             <div id="connError" class="message-card message-card--error mt-4 d-none">
                                 <div class="message-card__header">
                                     <h4 class="message-card__title">
@@ -170,25 +206,26 @@
                                     </h4>
                                 </div>
                                 <div class="message-card__body">
-                                    <p id="connErrorMsg" class="message-card__message">Sai tên đăng nhập hoặc mật khẩu...</p>
+                                    <p id="connErrorMsg" class="message-card__message">Sai tên đăng nhập hoặc mật
+                                        khẩu...</p>
                                 </div>
                             </div>
 
                             <div class="message-card message-card--suggestion mt-6">
-                            <div class="message-card__header">
-                                <h4 class="message-card__title font-bold">
-                                    <i class="fa-solid fa-lightbulb"></i>
-                                    Gợi ý
-                                </h4>
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title font-bold">
+                                        <i class="fa-solid fa-lightbulb"></i>
+                                        Gợi ý
+                                    </h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <ul class="message-card__message">
+                                        <li>Xem hướng dẫn lấy App Password cho <strong>Gmail</strong>: <a href="#" class="link-underline"><strong><i>Link hướng dẫn.</i></strong></a></li>
+										<li>Xem hướng dẫn lấy App Password cho <strong>Outlook</strong>: <a href="#" class="link-underline"><strong><i>Link hướng dẫn.</i></strong></a></li>
+                                    </ul>
+                                </div>
                             </div>
-                            <div class="message-card__body">
-                                <ul class="message-card__message">
-                                    <li>Xem hướng dẫn lấy App Password cho <strong>Gmail</strong>: <a href="#" style="text-decoration: underline;"><strong><i>Link hướng dẫn.</i></strong></a></li>
-                                    <li>Xem hướng dẫn lấy App Password cho <strong>Outlook</strong>: <a href="#" style="text-decoration: underline;"><strong><i>Link hướng dẫn.</i></strong></a></li>
-                                </ul>
-                            </div>
-                        </div>
-                            
+
                         </form>
                     </div>
                 </div>
@@ -206,11 +243,13 @@
                             <label class="form-label">Chọn chế độ di chuyển</label>
                             <div class="d-flex flex-row gap-4">
                                 <label class="form-radio-label">
-                                    <input type="radio" name="migrateMode" value="all" id="modeAll" class="form-radio" checked>
+                                    <input type="radio" name="migrateMode" value="all" id="modeAll" class="form-radio"
+                                        checked>
                                     <span>Tất cả thư mục (kể cả thư mục con)</span>
                                 </label>
                                 <label class="form-radio-label">
-                                    <input type="radio" name="migrateMode" value="selected" id="modeSelected" class="form-radio">
+                                    <input type="radio" name="migrateMode" value="selected" id="modeSelected"
+                                        class="form-radio">
                                     <span>Chỉ chọn các thư mục nhất định</span>
                                 </label>
                             </div>
@@ -221,7 +260,7 @@
                                 <!-- Tree items will be injected here via JS -->
                             </ul>
                         </div>
-                        
+
                         <div id="startError" class="message-card message-card--error mb-4 d-none">
                             <div class="message-card__body">
                                 <p id="startErrorMsg" class="message-card__message"></p>
@@ -238,64 +277,99 @@
                     </div>
                 </div>
 
-                <!-- Step 3: Progress & Logs -->
-                <div id="step3-progress" class="card mb-6 d-none">
-                    <div class="card__header d-flex flex-row justify-between items-center flex-wrap gap-4">
+                <!-- Queue Dashboard -->
+                <div id="queueDashboard" class="card mb-6">
+                    <div class="card__header d-flex flex-row justify-between items-center">
                         <h2 class="card__title font-bold">
-                            <i class="fa-solid fa-server"></i>
-                            3. Tiến trình di chuyển
+                            <i class="fa-solid fa-list-check mr-2"></i>
+                            Tiến trình của bạn
                         </h2>
-                        <div id="jobStatusBadge" class="badge badge-default">Đang kết nối...</div>
+                        <button id="btnRefreshQueue" type="button" class="btn btn-outline btn-sm">
+                            <i class="fa-solid fa-rotate-right"></i> Làm mới
+                        </button>
                     </div>
                     <div class="card__body">
-                        
-                        <!-- Stats Grid -->
-                        <div class="imap-stats-grid">
-                            <div class="imap-stat-card">
-                                <div id="statFolders" class="imap-stat-card__value">0 / 0</div>
-                                <div class="imap-stat-card__label">Thư mục</div>
-                            </div>
-                            <div class="imap-stat-card">
-                                <div id="statCopied" class="imap-stat-card__value text-success">0</div>
-                                <div class="imap-stat-card__label">Hoàn thành</div>
-                            </div>
-                            <div class="imap-stat-card">
-                                <div id="statSkipped" class="imap-stat-card__value text-warning">0</div>
-                                <div class="imap-stat-card__label">Bỏ qua (>50MB)</div>
-                            </div>
-                            <div class="imap-stat-card">
-                                <div id="statErrors" class="imap-stat-card__value text-error">0</div>
-                                <div class="imap-stat-card__label">Lỗi</div>
-                            </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left imap-queue-table">
+                                <thead>
+                                    <tr>
+                                        <th class="pb-2 font-bold text-sm">Thời gian</th>
+                                        <th class="pb-2 font-bold text-sm">Nguồn -> Đích</th>
+                                        <th class="pb-2 font-bold text-sm">Trạng thái</th>
+                                        <th class="pb-2 font-bold text-sm text-right">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="queueList">
+                                    <!-- Job items injected here -->
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">Chưa có tiến trình nào</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Current Item Progress -->
-                        <div class="mb-4">
-                            <div class="d-flex flex-row justify-between font-bold mb-1">
-                                <span>Thư mục hiện tại: <span id="currentFolderLbl" class="text-info">--</span></span>
-                                <span id="currentProgressLbl">0%</span>
-                            </div>
-                            <div class="progress-bar-wrap">
-                                <div id="currentProgressBar" class="progress-bar-fill"></div>
+                <!-- Step 3: Progress & Logs (Now a Modal) -->
+                <div id="step3-progress" class="imap-modal d-none">
+                    <div class="imap-modal__overlay"></div>
+                    <div class="imap-modal__content card">
+                        <div class="card__header d-flex flex-row justify-between items-center flex-wrap gap-4">
+                            <h2 class="card__title font-bold">
+                                <i class="fa-solid fa-server"></i>
+                                Chi tiết tiến trình
+                            </h2>
+                            <div class="d-flex items-center gap-2">
+                                <div id="jobStatusBadge" class="badge badge-default">Đang kết nối...</div>
+                                <button id="btnCloseModal" class="btn btn-outline btn-sm p-1" title="Đóng">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
                             </div>
                         </div>
+                        <div class="card__body">
+                            <!-- Stats Grid -->
+                            <div class="imap-stats-grid">
+                                <div class="imap-stat-card">
+                                    <div id="statFolders" class="imap-stat-card__value">0 / 0</div>
+                                    <div class="imap-stat-card__label">Thư mục</div>
+                                </div>
+                                <div class="imap-stat-card">
+                                    <div id="statCopied" class="imap-stat-card__value text-success">0</div>
+                                    <div class="imap-stat-card__label">Hoàn thành</div>
+                                </div>
+                                <div class="imap-stat-card">
+                                    <div id="statSkipped" class="imap-stat-card__value text-warning">0</div>
+                                    <div class="imap-stat-card__label">Bỏ qua (>100MB)</div>
+                                </div>
+                                <div class="imap-stat-card">
+                                    <div id="statErrors" class="imap-stat-card__value text-error">0</div>
+                                    <div class="imap-stat-card__label">Lỗi</div>
+                                </div>
+                            </div>
 
-                        <!-- Logs Console -->
-                        <h4 class="font-bold mb-2"><i class="fa-solid fa-terminal"></i> Nhật ký hệ thống</h4>
-                        <div id="logsConsole" class="imap-logs-container mb-4">
-                            <div class="imap-log-entry">Đang chờ sự kiện...</div>
-                        </div>
-                        
-                        <!-- Actions -->
-                        <div class="text-center">
-                            <button id="btnCancel" type="button" class="btn btn-danger w-auto px-6">
-                                <i class="fa-solid fa-stop"></i>
-                                HỦY BỎ
-                            </button>
-                            <button id="btnNew" type="button" class="btn btn-outline w-auto px-6 d-none">
-                                <i class="fa-solid fa-rotate-left"></i>
-                                TẠO TIẾN TRÌNH MỚI
-                            </button>
+                            <!-- Current Item Progress -->
+                            <div class="mb-4">
+                                <div class="d-flex flex-row justify-between font-bold mb-1">
+                                    <span>Thư mục hiện tại: <span id="currentFolderLbl" class="text-info">--</span></span>
+                                    <span id="currentProgressLbl">0%</span>
+                                </div>
+                                <div class="progress-bar-wrap">
+                                    <div id="currentProgressBar" class="progress-bar-fill"></div>
+                                </div>
+                            </div>
+
+                            <!-- Logs Console -->
+                            <h4 class="font-bold mb-2"><i class="fa-solid fa-terminal"></i> Nhật ký hệ thống</h4>
+                            <div id="logsConsole" class="imap-logs-container mb-4">
+                                <div class="imap-log-entry">Đang chờ sự kiện...</div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="text-center">
+                                <button id="btnCancel" type="button" class="btn btn-danger w-auto px-6">
+                                    <i class="fa-solid fa-stop"></i> HỦY BỎ TIẾN TRÌNH
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -329,7 +403,7 @@
                 <div class="footer__copyright text-center">
                     <p>
                         © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
-                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                        <a href="https://bctechvibe.com" target="_blank">Phát triển bởi BCTECHVIBE.COM</a>
                     </p>
                 </div>
             </div>
