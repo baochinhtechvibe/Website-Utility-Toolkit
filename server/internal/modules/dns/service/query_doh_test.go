@@ -31,3 +31,35 @@ func TestDoHResolverRejectsOversizedBody(t *testing.T) {
 		t.Fatalf("DoHResolver.Query() error = %v, want body limit error", err)
 	}
 }
+
+func TestParseDohRecord_SRV(t *testing.T) {
+	ans := dohRecord{
+		Type: 33, // SRV
+		Data: "10 5 5060 sip.example.com.",
+		TTL:  300,
+	}
+
+	rec := parseDohRecord(ans, "_sip._tcp.example.com")
+	if rec == nil {
+		t.Fatal("Expected record, got nil")
+	}
+
+	if rec.Type != "SRV" {
+		t.Errorf("Expected Type SRV, got %s", rec.Type)
+	}
+	if rec.Target != "sip.example.com" {
+		t.Errorf("Expected Target sip.example.com, got %s", rec.Target)
+	}
+	if rec.Priority != 10 {
+		t.Errorf("Expected Priority 10, got %d", rec.Priority)
+	}
+	if rec.Weight != 5 {
+		t.Errorf("Expected Weight 5, got %d", rec.Weight)
+	}
+	if rec.Port != 5060 {
+		t.Errorf("Expected Port 5060, got %d", rec.Port)
+	}
+	if rec.TTL != 300 {
+		t.Errorf("Expected TTL 300, got %d", rec.TTL)
+	}
+}

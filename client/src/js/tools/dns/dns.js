@@ -62,6 +62,9 @@ function init() {
     const tableWrapper = document.getElementById("tableWrapper");
     const resultsTableHead = document.getElementById("resultsTableHead");
     const resultsTableBody = document.getElementById("resultsTableBody");
+    const tableWrapperSRV = document.getElementById("tableWrapperSRV");
+    const resultsTableHeadSRV = document.getElementById("resultsTableHeadSRV");
+    const resultsTableBodySRV = document.getElementById("resultsTableBodySRV");
     const resultDNSSECSection = document.getElementById("resultDNSSECSection");
     const dnssecDetailTitleDNSKEY = document.getElementById("dnssecDetailTitleDNSKEY");
     const tableWrapperDNSKEY = document.getElementById("tableWrapperDNSKEY");
@@ -537,6 +540,7 @@ function init() {
             btnWhois,
             errorSection,
             tableWrapper,
+            tableWrapperSRV,
             resultDNSSECSection,
             shareLinkSection
         );
@@ -744,6 +748,41 @@ function init() {
     //  UI RENDERING – PAGE
     //==================================//
     /**
+     * Create table row for SRV records
+     */
+    function createTableSRVRow(record, domain) {
+        const tr = document.createElement("tr");
+
+        const targetHTML = escapeHTML(record.target || "-");
+        const portHTML = escapeHTML(record.port || "0");
+        const priorityHTML = escapeHTML(record.priority || "0");
+        const weightHTML = escapeHTML(record.weight || "0");
+        const ttlHTML = escapeHTML(record.ttl ? String(record.ttl) : "-");
+
+        tr.innerHTML = `
+        <td class="results-table__cell results-table__cell--domain" data-label="DOMAIN">
+            <span class="results-table__value results-table__value--domain">${escapeHTML(domain)}</span>
+        </td>
+        <td class="results-table__cell results-table__cell--target" data-label="TARGET">
+            <span class="results-table__value">${targetHTML}</span>
+        </td>
+        <td class="results-table__cell results-table__cell--port" data-label="PORT">
+            <span class="results-table__value">${portHTML}</span>
+        </td>
+        <td class="results-table__cell results-table__cell--priority" data-label="PRIORITY">
+            <span class="results-table__value">${priorityHTML}</span>
+        </td>
+        <td class="results-table__cell results-table__cell--weight" data-label="WEIGHT">
+            <span class="results-table__value">${weightHTML}</span>
+        </td>
+        <td class="results-table__cell results-table__cell--ttl" data-label="TTL">
+            <span class="results-table__value">${ttlHTML}</span>
+        </td>
+        `;
+        return tr;
+    }
+
+    /**
      * Display results in table
      */
     function displayResults(data) {
@@ -932,7 +971,18 @@ function init() {
         }
 
         // Set table headers based on type
-        if (type === "PTR" || (type === "ALL" && isIPInput)) {
+        if (type === "SRV") {
+            resultsTableHeadSRV.innerHTML = `
+            <tr>
+                <th class="results-table__cell results-table__cell--domain">DOMAIN</th>
+                <th class="results-table__cell results-table__cell--target">TARGET</th>
+                <th class="results-table__cell results-table__cell--port">PORT</th>
+                <th class="results-table__cell results-table__cell--priority">PRIORITY</th>
+                <th class="results-table__cell results-table__cell--weight">WEIGHT</th>
+                <th class="results-table__cell results-table__cell--ttl">TTL</th>
+            </tr>
+        `;
+        } else if (type === "PTR" || (type === "ALL" && isIPInput)) {
             resultsTableHead.innerHTML = `
             <tr>
                 <th class="results-table__cell results-table__cell--ip">IP</th>
@@ -956,6 +1006,7 @@ function init() {
 
         // Clear previous results
         resultsTableBody.innerHTML = "";
+        resultsTableBodySRV.innerHTML = "";
 
         // Check if we have actual records OR trace logs
         const hasRecords = actualRecords && actualRecords.length > 0;
@@ -971,12 +1022,17 @@ function init() {
             setDisplay(resultsSection, "block");
 
             if (hasRecords) {
-                setDisplay(tableWrapper, "block");
+                if (type === "SRV") {
+                    setDisplay(tableWrapperSRV, "block");
+                } else {
+                    setDisplay(tableWrapper, "block");
+                }
                 setDisplay(errorSection, "none"); // Có records thì ẩn lỗi đi (thành công)
                 setDisplay(shareLinkSection, "block"); // Hiện share card khi thành công
             } else {
                 // Trường hợp chỉ có Trace Logs nhưng không có Records (ví dụ lỗi NXDOMAIN khi trace)
                 setDisplay(tableWrapper, "none");
+                setDisplay(tableWrapperSRV, "none");
                 setDisplay(shareLinkSection, "none"); // Ẩn share card khi lỗi
 
                 // 🚨 QUAN TRỌNG: Nếu là lỗi (success=false) thì phải hiện message-card--error lên
@@ -1016,9 +1072,16 @@ function init() {
                 return;
             }
 
-            const row = createTableRow(record, hostname);
-            if (row && row.children.length > 0) {
-                resultsTableBody.appendChild(row);
+            if (type === "SRV") {
+                const row = createTableSRVRow(record, hostname);
+                if (row && row.children.length > 0) {
+                    resultsTableBodySRV.appendChild(row);
+                }
+            } else {
+                const row = createTableRow(record, hostname);
+                if (row && row.children.length > 0) {
+                    resultsTableBody.appendChild(row);
+                }
             }
         });
 
@@ -1274,6 +1337,7 @@ function init() {
 
         // Cập nhật lại hiển thị của Trace Root checkbox dựa trên Type vừa set từ URL
         updateTraceVisibility();
+        updateInputPlaceholder();
 
         if (traceroot === "true" && traceRootCheckbox) {
             traceRootCheckbox.checked = true;
@@ -1298,6 +1362,7 @@ function init() {
         btnResolve
     );
     updateTraceVisibility();
+    updateInputPlaceholder();
     handleURLParams();
     hostnameInput.focus();
 
@@ -1416,11 +1481,28 @@ function init() {
 
     recordTypeSelect.addEventListener("change", () => {
         updateTraceVisibility();
+        updateInputPlaceholder();
         // Ẩn kết quả cũ hoặc lỗi cũ ngay khi người dùng thay đổi loại bản ghi
         setDisplay(errorSection, "none");
         setDisplay(resultsSection, "none");
         setDisplay(shareLinkSection, "none");
     });
+
+    /**
+     * Update placeholder based on selected record type
+     */
+    function updateInputPlaceholder() {
+        if (!recordTypeSelect || !hostnameInput) return;
+        const type = recordTypeSelect.value;
+
+        if (type === "SRV") {
+            hostnameInput.placeholder = "Ví dụ: _sip._tcp.example.com";
+        } else if (type === "PTR") {
+            hostnameInput.placeholder = "Ví dụ: 8.8.8.8 hoặc example.com";
+        } else {
+            hostnameInput.placeholder = "Ví dụ: google.com";
+        }
+    }
 
     /**
      * Update Trace Root checkbox visibility based on record type
@@ -1429,7 +1511,7 @@ function init() {
         if (!recordTypeSelect || !traceRootContainer || !traceRootCheckbox) return;
 
         const type = recordTypeSelect.value;
-        const hideTraceTypes = ["PTR", "DNSSEC", "BLACKLIST"];
+        const hideTraceTypes = ["PTR", "DNSSEC", "BLACKLIST", "SRV"];
         const normalizedHost = normalizeHostnameInput(hostnameInput?.value || "");
         const isIPInput = normalizedHost && (isIP(normalizedHost) || isIPv6(normalizedHost));
 

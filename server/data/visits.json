@@ -1,4 +1,15 @@
 {
+  "dns": {
+    "total_visits": 1,
+    "today_visits": 1,
+    "last_reset_date": "2026-06-22",
+    "daily_ips": {
+      "127.0.0.1": {}
+    },
+    "daily_ip_vals": [
+      "127.0.0.1"
+    ]
+  },
   "encode-decode": {
     "total_visits": 1,
     "today_visits": 1,

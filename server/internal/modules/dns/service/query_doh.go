@@ -185,6 +185,21 @@ func parseDohRecord(ans dohRecord, domain string) *models.DNSRecord {
 		}
 		return nil
 
+	case 33: // SRV
+		rec.Type = "SRV"
+		parts := strings.Split(ans.Data, " ")
+		if len(parts) >= 4 {
+			p, _ := strconv.Atoi(parts[0])
+			w, _ := strconv.Atoi(parts[1])
+			port, _ := strconv.Atoi(parts[2])
+			rec.Priority = uint16(p)
+			rec.Weight = uint16(w)
+			rec.Port = uint16(port)
+			rec.Target = strings.TrimSuffix(parts[3], ".")
+			return &rec
+		}
+		return nil
+
 	default:
 		return nil
 	}
@@ -331,6 +346,16 @@ func parseRFC8484Record(ans dns.RR, domain string) *models.DNSRecord {
 			Domain: domain,
 			Value:  strings.TrimSuffix(rr.Ptr, "."),
 			TTL:    rr.Hdr.Ttl,
+		}
+	case *dns.SRV:
+		return &models.DNSRecord{
+			Type:     "SRV",
+			Domain:   domain,
+			Priority: rr.Priority,
+			Weight:   rr.Weight,
+			Port:     rr.Port,
+			Target:   strings.TrimSuffix(rr.Target, "."),
+			TTL:      rr.Hdr.Ttl,
 		}
 	default:
 		return nil

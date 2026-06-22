@@ -962,6 +962,8 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 		dnsType = dnslib.TypeCNAME
 	case "TXT":
 		dnsType = dnslib.TypeTXT
+	case "SRV":
+		dnsType = dnslib.TypeSRV
 	default:
 		// Loại bản ghi không được hỗ trợ
 		responseAPI.Error(c, http.StatusBadRequest, "Loại bản ghi không được hỗ trợ.")
@@ -971,8 +973,8 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 	// Query trên canonical name (hoặc original nếu không có CNAME)
 	queryTarget := canonicalName
 	switch req.Type {
-	case "CNAME", "MX":
-		queryTarget = fqdn // CNAME, MX luôn query trên original domain
+	case "CNAME", "MX", "SRV":
+		queryTarget = fqdn // CNAME, MX, SRV luôn query trên original domain
 	case "NS":
 		queryTarget = apexFQDN // NS luôn query trên apex domain
 	}
@@ -997,8 +999,8 @@ func handleSpecificRecord(c *gin.Context, serverKey string, req *models.DNSLooku
 				if rec.Type == "A" || rec.Type == "AAAA" {
 					dns.EnrichIPInfoByString(&rec, rec.Address)
 				}
-			case "MX", "NS":
-				// MX records query trên original domain
+			case "MX", "NS", "SRV":
+				// MX, SRV records query trên original domain
 				// NS records query trên apex domain
 				if rec.Type == "NS" {
 					rec.Domain = apexDomain

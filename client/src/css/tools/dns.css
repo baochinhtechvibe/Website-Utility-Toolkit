@@ -964,3 +964,42 @@
         margin-right: 0;
     }
 }
+
+/* ========================================================
+   SRV Table Column Widths (Desktop)
+   ======================================================== */
+@media (min-width: 800px) {
+    .page--dns .results-table--srv {
+        table-layout: auto;
+    }
+
+    /* DOMAIN */
+    .page--dns .results-table--srv th:nth-child(1),
+    .page--dns .results-table--srv td:nth-child(1) {
+        width: 30%;
+        text-align: left;
+    }
+
+    /* TARGET */
+    .page--dns .results-table--srv th:nth-child(2),
+    .page--dns .results-table--srv td:nth-child(2) {
+        width: 30%;
+        text-align: left;
+        white-space: normal;
+        word-break: break-all;
+    }
+
+    /* PORT, PRIORITY, WEIGHT, TTL */
+    .page--dns .results-table--srv th:nth-child(3),
+    .page--dns .results-table--srv td:nth-child(3),
+    .page--dns .results-table--srv th:nth-child(4),
+    .page--dns .results-table--srv td:nth-child(4),
+    .page--dns .results-table--srv th:nth-child(5),
+    .page--dns .results-table--srv td:nth-child(5),
+    .page--dns .results-table--srv th:nth-child(6),
+    .page--dns .results-table--srv td:nth-child(6) {
+        width: 10%;
+        text-align: center;
+        white-space: nowrap;
+    }
+}

@@ -225,6 +225,16 @@ func QueryDNSUDP(server, domain string, qtype uint16) []interface{} {
 			}
 			records = append(records, record)
 
+		case *dns.SRV:
+			records = append(records, models.DNSRecord{
+				Type:     "SRV",
+				Target:   strings.TrimSuffix(rr.Target, "."),
+				Priority: rr.Priority,
+				Weight:   rr.Weight,
+				Port:     rr.Port,
+				TTL:      rr.Hdr.Ttl,
+			})
+
 		default:
 			log.Printf("Unknown record type: %T", rr)
 		}
@@ -248,7 +258,7 @@ func enrichIPInfo(record *models.DNSRecord, ip net.IP) {
 	if geoip.GeoASNDB != nil {
 		if asn, err := geoip.GeoASNDB.ASN(ip); err == nil {
 			org := strings.TrimSpace(asn.AutonomousSystemOrganization)
-			
+
 			// Attempt to get shorter AS name from Team Cymru DNS
 			if asn.AutonomousSystemNumber > 0 {
 				if shortName := getCymruASName(asn.AutonomousSystemNumber); shortName != "" {
@@ -294,7 +304,7 @@ func getCymruASName(asn uint) string {
 	parts := strings.Split(txtRecords[0], "|")
 	if len(parts) >= 5 {
 		asInfo := strings.TrimSpace(parts[4])
-		
+
 		// "VNNIC-AS-VN, VN" -> extract "VNNIC-AS-VN"
 		nameParts := strings.Split(asInfo, ",")
 		if len(nameParts) > 0 {

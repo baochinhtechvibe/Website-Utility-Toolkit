@@ -104,6 +104,7 @@
                                         <option value="MX">MX</option>
                                         <option value="CNAME">CNAME</option>
                                         <option value="TXT">TXT</option>
+                                        <option value="SRV">SRV</option>
                                         <option value="PTR">PTR</option>
                                         <option value="DNSSEC">DNSSEC</option>
                                         <option value="BLACKLIST" class="option-blacklist">
@@ -179,6 +180,13 @@
                                     <table class="results-table w-full">
                                         <thead id="resultsTableHead"></thead>
                                         <tbody id="resultsTableBody"></tbody>
+                                    </table>
+                                </div>
+                                <!-- SRV Table wrapper -->
+                                <div id="tableWrapperSRV" class="table-wrapper w-full overflow-x-auto d-none mb-4">
+                                    <table class="results-table results-table--srv w-full">
+                                        <thead id="resultsTableHeadSRV"></thead>
+                                        <tbody id="resultsTableBodySRV"></tbody>
                                     </table>
                                 </div>
                                 <!-- DNSSEC Details -->

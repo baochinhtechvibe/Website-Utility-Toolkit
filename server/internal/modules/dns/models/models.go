@@ -21,6 +21,9 @@ type DNSRecord struct {
 	Nameserver string `json:"nameserver,omitempty"`
 	Exchange   string `json:"exchange,omitempty"`
 	Priority   uint16 `json:"priority,omitempty"`
+	Port       uint16 `json:"port,omitempty"`
+	Weight     uint16 `json:"weight,omitempty"`
+	Target     string `json:"target,omitempty"`
 	Value      string `json:"value,omitempty"`
 	TTL        uint32 `json:"ttl,omitempty"`
 
