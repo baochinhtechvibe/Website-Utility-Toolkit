@@ -45,3 +45,5 @@ Thumbs.db
 # Logs
 *.log
 server/err.txt
+server/data/imap-history/
+server/internal/modules/imap-migrator/service/data/

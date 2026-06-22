@@ -11,7 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"tools.bctechvibe.com/server/internal/config"
 	"tools.bctechvibe.com/server/internal/logger"
-	"tools.bctechvibe.com/server/internal/modules/imap-migrator/service"
+	imapService "tools.bctechvibe.com/server/internal/modules/imap-migrator/service"
+	speedTestService "tools.bctechvibe.com/server/internal/modules/website-speed-test/service"
 	"tools.bctechvibe.com/server/internal/pkg/iana"
 	"tools.bctechvibe.com/server/internal/router"
 )
@@ -21,7 +22,14 @@ func main() {
 	logger.InitLogger(cfg.LogLevel, cfg.AppEnv)
 
 	// Dọn dẹp các file tạm của tiến trình IMAP Migrator nếu có từ trước
-	service.StartupCleanup()
+	imapService.StartupCleanup()
+
+	// Khởi tạo SQLite Database cho IMAP Migrator
+	imapService.InitDB()
+
+	// Khởi chạy IMAP Worker Pool
+	workerCtx, cancelWorkers := context.WithCancel(context.Background())
+	imapService.StartWorkerPool(workerCtx)
 
 	// Khởi tạo IANA Bootstrap (RDAP & TLD Nameservers)
 	iana.Init()
@@ -47,13 +55,21 @@ func main() {
 	<-quit
 	log.Info().Msg("Shutting down server...")
 
+	// Hủy các worker đang chạy
+	cancelWorkers()
+
 	// Timeout 5 giây ráng lo xử lý cho xong request đang chạy
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal().Err(err).Msg("Server forced to shutdown")
 	}
+
+	// Dọn dẹp các background process
+	speedTestService.ShutdownBrowserAllocator()
+	imapService.WaitWorkers()
+	imapService.CloseDB()
 
 	log.Info().Msg("Server exiting")
 }

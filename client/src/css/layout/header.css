@@ -3,6 +3,75 @@
     Header Layout
 ========================================== */
 
+.top-bar {
+    background-color: var(--color-brand);
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding-block: var(--space-2);
+    font-size: var(--text-base);
+}
+
+.top-bar__link {
+    color: var(--slate-300);
+    text-decoration: none;
+    transition: color var(--transition-fast) ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-family-serif);
+    font-size: var(--text-sm);
+}
+
+.top-bar__link:hover {
+    color: var(--white);
+}
+
+.top-bar__clock {
+    color: var(--slate-300);
+    font-size: var(--text-sm);
+    font-family: var(--font-family-serif);
+    display: inline-flex;
+    align-items: center;
+}
+
+.top-bar__divider {
+    width: 1px;
+    height: 14px;
+    background-color: var(--slate-600);
+}
+
+.top-bar__link i {
+    font-size: var(--text-xs);
+}
+
+@media (max-width: 768px) {
+    .top-bar .container {
+        justify-content: center !important;
+        gap: var(--space-4);
+    }
+
+    .top-bar__left::after {
+        content: "";
+        width: 1px;
+        height: 14px;
+        background-color: var(--slate-600);
+        display: block;
+    }
+
+    /* Giảm font-size của top-bar trên mobile để tránh bị tràn */
+    .top-bar__clock,
+    .top-bar__link {
+        font-size: 11px;
+    }
+
+    .top-bar__left,
+    .top-bar__right {
+        gap: var(--space-2) !important;
+    }
+
+    .top-bar .container {
+        gap: var(--space-2) !important;
+    }
+}
+
 .header {
     --gradient-brand: linear-gradient(90deg,
             var(--slate-800) 0%,
@@ -66,25 +135,21 @@
     --switch-width: clamp(1.75rem, 5vw, var(--space-10));
     --switch-height: calc(var(--switch-width) / 2);
     --switch-padding: calc(var(--switch-height) / 10);
-    --switch-thumb-size: calc(
-        var(--switch-height) - (var(--switch-padding) * 2)
-    );
+    --switch-thumb-size: calc(var(--switch-height) - (var(--switch-padding) * 2));
 
     --switch-bg: var(--gray-300);
     --switch-bg-checked: var(--neutral-800);
 
     --switch-thumb-bg: var(--gray-100);
-    --switch-thumb-bg-checked: linear-gradient(
-        180deg,
-        var(--neutral-500),
-        var(--neutral-700)
-    );
+    --switch-thumb-bg-checked: linear-gradient(180deg,
+            var(--neutral-500),
+            var(--neutral-700));
 
     --switch-shadow-inset-top:
-        inset 0 var(--space-1) var(--space-3) rgba(0,0,0,0.25);
+        inset 0 var(--space-1) var(--space-3) rgba(0, 0, 0, 0.25);
 
     --switch-shadow-inset-bottom:
-        inset 0 calc(var(--space-1) * -1) var(--space-3) rgba(255,255,255,0.25);
+        inset 0 calc(var(--space-1) * -1) var(--space-3) rgba(255, 255, 255, 0.25);
 
     position: relative;
     display: block;
@@ -125,18 +190,12 @@
         background var(--transition-fast);
 }
 
-.header__theme-input:checked + .header__theme-switch {
+.header__theme-input:checked+.header__theme-switch {
     background: var(--switch-bg-checked);
 }
 
-.header__theme-input:checked + .header__theme-switch::after {
-    transform: translateX(
-        calc(
-            var(--switch-width)
-            - var(--switch-thumb-size)
-            - (var(--switch-padding) * 2)
-        )
-    );
+.header__theme-input:checked+.header__theme-switch::after {
+    transform: translateX(calc(var(--switch-width) - var(--switch-thumb-size) - (var(--switch-padding) * 2)));
 
     background: var(--switch-thumb-bg-checked);
 }
@@ -181,12 +240,20 @@
     content: url("../../../public/assets/images/layout/header/security-headers.png");
 }
 
-.header--web-latency .header__icon img {
+.header--speed-test .header__icon img {
     content: url("../../../public/assets/images/layout/header/latency.png");
 }
 
 .header--encode-decode .header__icon img {
     content: url("../../../public/assets/images/layout/header/encoding.png");
+}
+
+.header--whois .header__icon img {
+    content: url("../../../public/assets/images/layout/header/whois-v2.png");
+}
+
+.header--json-tools .header__icon img {
+    content: url("../../../public/assets/images/layout/header/json-file.png");
 }
 
 @container (min-width: 750px) {

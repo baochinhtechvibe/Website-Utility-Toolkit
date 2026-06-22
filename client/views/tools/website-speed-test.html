@@ -169,9 +169,12 @@
                                 <div id="cacheNotice" class="cache-card mt-4 mb-4 d-none">
                                     <div class="cache-card__content">
                                         <i class="fa-solid fa-bolt" aria-hidden="true"></i>
-                                        <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất lúc</span> <b id="cacheTime"></b>.</span>
+                                        <span class="cache-card__text"><span id="cacheText">Kết quả tra cứu mới nhất
+                                                lúc</span> <b id="cacheTime"></b>.</span>
                                     </div>
-                                    <button type="button" id="btnBypassCache" class="btn btn-sm btn-outline cache-card__btn" aria-label="Làm mới thông tin tra cứu">
+                                    <button type="button" id="btnBypassCache"
+                                        class="btn btn-sm btn-outline cache-card__btn"
+                                        aria-label="Làm mới thông tin tra cứu">
                                         <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Làm mới
                                     </button>
                                 </div>
@@ -184,7 +187,8 @@
                                             <div class="speed-summary-cell__icon text-success" id="gradeIcon">
                                                 <i class="fa-solid fa-ranking-star"></i>
                                             </div>
-                                            <p id="gradeScore" class="speed-summary-cell__value speed-summary-cell__value--large">A</p>
+                                            <p id="gradeScore"
+                                                class="speed-summary-cell__value speed-summary-cell__value--large">A</p>
                                             <p id="gradeNumber" class="speed-summary-cell__desc font-bold">100</p>
                                         </div>
                                     </div>
@@ -194,7 +198,9 @@
                                             <div class="speed-summary-cell__icon text-info">
                                                 <i class="fa-solid fa-file-zipper"></i>
                                             </div>
-                                            <p id="pageSize" class="speed-summary-cell__value speed-summary-cell__value--large text-info">0 MB</p>
+                                            <p id="pageSize"
+                                                class="speed-summary-cell__value speed-summary-cell__value--large text-info">
+                                                0 MB</p>
                                             <p class="speed-summary-cell__desc font-bold">Kích thước trang</p>
                                         </div>
                                     </div>
@@ -204,7 +210,9 @@
                                             <div class="speed-summary-cell__icon text-warning">
                                                 <i class="fa-solid fa-stopwatch"></i>
                                             </div>
-                                            <p id="loadTime" class="speed-summary-cell__value speed-summary-cell__value--large text-warning">0 s</p>
+                                            <p id="loadTime"
+                                                class="speed-summary-cell__value speed-summary-cell__value--large text-warning">
+                                                0 s</p>
                                             <p class="speed-summary-cell__desc font-bold">Thời gian tải</p>
                                         </div>
                                     </div>
@@ -214,7 +222,9 @@
                                             <div class="speed-summary-cell__icon text-purple-500">
                                                 <i class="fa-solid fa-network-wired"></i>
                                             </div>
-                                            <p id="totalRequests" class="speed-summary-cell__value speed-summary-cell__value--large text-purple-500">0</p>
+                                            <p id="totalRequests"
+                                                class="speed-summary-cell__value speed-summary-cell__value--large text-purple-500">
+                                                0</p>
                                             <p class="speed-summary-cell__desc font-bold">Tổng số yêu cầu</p>
                                         </div>
                                     </div>
@@ -248,9 +258,14 @@
                                             <table class="speed-table w-full text-sm">
                                                 <thead>
                                                     <tr>
-                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Loại nội dung</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Kích thước</th>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Loại nội
+                                                            dung</th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Phần trăm</th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Kích thước</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="contentSizeBody"></tbody>
@@ -262,16 +277,22 @@
                                     <div class="card card--flat flex-1 min-w-0">
                                         <div class="card__header">
                                             <h4 class="card__title font-bold">
-                                                <i class="fa-solid fa-list-ul mr-2"></i> Số lượng yêu cầu theo loại nội dung
+                                                <i class="fa-solid fa-list-ul mr-2"></i> Số lượng yêu cầu theo loại nội
+                                                dung
                                             </h4>
                                         </div>
                                         <div class="card__body p-0 overflow-x-auto">
                                             <table class="speed-table w-full text-sm">
                                                 <thead>
                                                     <tr>
-                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Loại nội dung</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Yêu cầu</th>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Loại nội
+                                                            dung</th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Phần trăm</th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Yêu cầu</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="contentRequestsBody"></tbody>
@@ -293,9 +314,14 @@
                                             <table class="speed-table w-full text-sm">
                                                 <thead>
                                                     <tr>
-                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Tên miền</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Kích thước</th>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Tên miền
+                                                        </th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Phần trăm</th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Kích thước</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="domainSizeBody"></tbody>
@@ -314,9 +340,14 @@
                                             <table class="speed-table w-full text-sm">
                                                 <thead>
                                                     <tr>
-                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Tên miền</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Phần trăm</th>
-                                                        <th class="p-3 text-right text-muted font-bold text-xs uppercase">Yêu cầu</th>
+                                                        <th class="p-3 text-muted font-bold text-xs uppercase">Tên miền
+                                                        </th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Phần trăm</th>
+                                                        <th
+                                                            class="p-3 text-right text-muted font-bold text-xs uppercase">
+                                                            Yêu cầu</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="domainRequestsBody"></tbody>
@@ -336,9 +367,12 @@
                                         <table class="speed-table w-full text-sm">
                                             <thead>
                                                 <tr>
-                                                    <th class="p-3 text-muted font-bold text-xs uppercase text-left" style="width: 25%;">Mã phản hồi</th>
-                                                    <th class="p-3 text-right text-muted font-bold text-xs uppercase" style="width: 50%;">Phần trăm</th>
-                                                    <th class="p-3 text-right text-muted font-bold text-xs uppercase" style="width: 25%;">Yêu cầu</th>
+                                                    <th class="p-3 text-muted font-bold text-xs uppercase text-left"
+                                                        style="width: 25%;">Mã phản hồi</th>
+                                                    <th class="p-3 text-right text-muted font-bold text-xs uppercase"
+                                                        style="width: 50%;">Phần trăm</th>
+                                                    <th class="p-3 text-right text-muted font-bold text-xs uppercase"
+                                                        style="width: 25%;">Yêu cầu</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="responseCodesBody"></tbody>
@@ -356,7 +390,8 @@
                                     </div>
                                     <div class="card__body p-0">
                                         <!-- Toolbar -->
-                                        <div class="waterfall-toolbar d-flex flex-wrap items-center justify-between px-4 py-4 border-b border-border bg-surface gap-4">
+                                        <div
+                                            class="waterfall-toolbar d-flex flex-wrap items-center justify-between px-4 py-4 border-b border-border bg-surface gap-4">
                                             <div class="d-flex flex-wrap items-center gap-4">
                                                 <div class="wf-toolbar-group">
                                                     <span class="wf-toolbar-label">Sắp xếp theo</span>
@@ -372,33 +407,55 @@
                                                         <option value="receive_time">Receive Time</option>
                                                         <option value="ssl_time">SSL Time</option>
                                                         <option value="wait_time">Wait Time</option>
-                                                        <option value="content_type">Loại nội dung (Content Type)</option>
+                                                        <option value="content_type">Loại nội dung (Content Type)
+                                                        </option>
                                                     </select>
                                                 </div>
                                                 <div class="wf-toolbar-group items-center">
                                                     <span class="wf-toolbar-label">Tăng dần</span>
-                                                    <div class="wf-toolbar-checkbox-wrap cursor-pointer" onclick="document.getElementById('wfSortRising').click()" title="Đánh dấu để sắp xếp tăng dần">
-                                                        <input type="checkbox" id="wfSortRising" class="form-checkbox m-0 cursor-pointer" checked>
+                                                    <div class="wf-toolbar-checkbox-wrap cursor-pointer"
+                                                        onclick="document.getElementById('wfSortRising').click()"
+                                                        title="Đánh dấu để sắp xếp tăng dần">
+                                                        <input type="checkbox" id="wfSortRising"
+                                                            class="form-checkbox m-0 cursor-pointer" checked>
                                                     </div>
                                                 </div>
                                                 <div class="wf-toolbar-group ml-2 border-l border-border pl-4">
                                                     <span class="wf-toolbar-label">Tìm kiếm</span>
                                                     <div class="relative">
-                                                        <i class="fa-solid fa-magnifying-glass wf-toolbar-search-icon"></i>
-                                                        <input type="text" id="wfFilter" class="wf-toolbar-input wf-toolbar-filter" placeholder="...">
+                                                        <i
+                                                            class="fa-solid fa-magnifying-glass wf-toolbar-search-icon"></i>
+                                                        <input type="text" id="wfFilter"
+                                                            class="wf-toolbar-input wf-toolbar-filter"
+                                                            placeholder="...">
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="wf-toolbar-group items-end">
                                                 <span class="wf-toolbar-label pr-2">Chú giải</span>
-                                                <div class="waterfall-legend d-flex flex-wrap gap-2 text-xs text-muted wf-toolbar-legend-wrap">
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--gray-400);"></span> Blocked</span>
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--pink-500);"></span> DNS</span>
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--cyan-500);"></span> Connect</span>
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--purple-500);"></span> SSL</span>
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--orange-400);"></span> Send</span>
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--yellow-400);"></span> Wait</span>
-                                                    <span class="d-flex items-center gap-1"><span class="legend-color" style="background-color: var(--green-500);"></span> Receive</span>
+                                                <div
+                                                    class="waterfall-legend d-flex flex-wrap gap-2 text-xs text-muted wf-toolbar-legend-wrap">
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--gray-400);"></span>
+                                                        Blocked</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--pink-500);"></span>
+                                                        DNS</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--cyan-500);"></span>
+                                                        Connect</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--purple-500);"></span>
+                                                        SSL</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--orange-400);"></span>
+                                                        Send</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--yellow-400);"></span>
+                                                        Wait</span>
+                                                    <span class="d-flex items-center gap-1"><span class="legend-color"
+                                                            style="background-color: var(--green-500);"></span>
+                                                        Receive</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -417,18 +474,24 @@
                                             </div>
                                             <!-- Waterfall items will be generated here by JS -->
                                             <div id="waterfallBody" class="waterfall-body"></div>
-                                            
+
                                             <!-- Pagination Toolbar -->
-                                            <div class="waterfall-pagination d-flex flex-wrap items-center justify-between gap-4 px-4 py-4 border-t border-border bg-surface">
-                                                <div class="text-sm text-muted font-bold" id="wfTotalEntries">0 requests</div>
+                                            <div
+                                                class="waterfall-pagination d-flex flex-wrap items-center justify-between gap-4 px-4 py-4 border-t border-border bg-surface">
+                                                <div class="text-sm text-muted font-bold" id="wfTotalEntries">0 requests
+                                                </div>
                                                 <div class="d-flex items-center gap-2">
-                                                    <button type="button" class="btn btn-sm btn-outline px-2" id="wfBtnPrev"><i class="fa-solid fa-chevron-left"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline px-2"
+                                                        id="wfBtnPrev"><i class="fa-solid fa-chevron-left"></i></button>
                                                     <span class="text-sm font-bold mx-2" id="wfPageInfo">1/1</span>
-                                                    <button type="button" class="btn btn-sm btn-outline px-2" id="wfBtnNext"><i class="fa-solid fa-chevron-right"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline px-2"
+                                                        id="wfBtnNext"><i
+                                                            class="fa-solid fa-chevron-right"></i></button>
                                                 </div>
                                                 <div class="d-flex items-center gap-2">
                                                     <span class="text-sm text-muted">Entries per page:</span>
-                                                    <select id="wfPerPage" class="wf-toolbar-input wf-toolbar-select-sm">
+                                                    <select id="wfPerPage"
+                                                        class="wf-toolbar-input wf-toolbar-select-sm">
                                                         <option value="10">10</option>
                                                         <option value="25">25</option>
                                                         <option value="50">50</option>
@@ -450,7 +513,8 @@
                                     </div>
                                     <div class="share-card__body d-flex flex-row items-stretch mt-2">
                                         <input type="text" id="shareLink" readonly class="share-card__input" />
-                                        <button class="share-card__button share-card__button--copy gap-1" id="btnCopyLink">
+                                        <button class="share-card__button share-card__button--copy gap-1"
+                                            id="btnCopyLink">
                                             <i class="fa-solid fa-copy"></i>
                                             <span>Copy</span>
                                         </button>
@@ -492,17 +556,18 @@
                 <div class="footer__copyright text-center">
                     <p>
                         © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
-                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                        <a href="https://bctechvibe.com" target="_blank">Phát triển bởi BCTECHVIBE.COM</a>
                     </p>
                 </div>
             </div>
         </footer>
         <!-- End: Footer Content -->
-        
+
         <!-- Image Preview Modal -->
         <div id="imagePreviewModal" class="wf-image-modal d-none">
             <div class="wf-image-modal__content">
-                <button type="button" id="wfBtnCloseImage" class="wf-image-modal__close"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" id="wfBtnCloseImage" class="wf-image-modal__close"><i
+                        class="fa-solid fa-xmark"></i></button>
                 <div class="wf-image-modal__body">
                     <img id="wfPreviewImageFull" src="" alt="Image Preview">
                 </div>

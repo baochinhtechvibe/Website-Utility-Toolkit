@@ -897,6 +897,7 @@ function init() {
         // Generate share link
         const link = generateShareLink(hostname, type);
         shareLink.value = link;
+        shareLink.title = link;
 
         // Handle DNSSEC separately
         if (type === "DNSSEC") {
@@ -1045,6 +1046,7 @@ function init() {
         const cleanHostname = normalizeHostnameInput(hostname);
         hostnameInput.value = cleanHostname;
         shareLink.value = generateShareLink(cleanHostname, "BLACKLIST");
+        shareLink.title = shareLink.value;
         showElements("block", shareLinkSection, resultsSection, tableWrapper);
         tableWrapper.classList.add("table-wrapper--blacklist"); // Sử dụng class thay vì inline style (Rule J-07)
 
@@ -1087,6 +1089,7 @@ function init() {
     `;
 
         shareLink.value = generateShareLink(hostname, "DNSSEC");
+        shareLink.title = shareLink.value;
 
         // ===== Reset tất cả bảng =====
         showElements("block", shareLinkSection, tableWrapper);

@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Bộ công cụ mã hóa và giải mã trực tuyến: Base64, URL Encode/Decode và JWT Decoder. Chuyển đổi ngay trên trình duyệt, không cần gửi dữ liệu lên server.">
+    <meta name="description"
+        content="Bộ công cụ mã hóa và giải mã trực tuyến: Base64, URL Encode/Decode và JWT Decoder. Chuyển đổi ngay trên trình duyệt, không cần gửi dữ liệu lên server.">
 
     <link rel="stylesheet" href="../../src/css/main.css">
     <link rel="stylesheet" href="../../public/assets/vendor/fontawesome/css/all.min.css">
@@ -15,11 +16,33 @@
     <meta name="apple-mobile-web-app-title" content="Website" />
     <link rel="manifest" href="../../public/site.webmanifest" />
 
-    <title>Encoding / Decoding Tools | Website Utility Toolkit</title>
+    <title>Encode / Decode Tools | Công cụ mã hóa, giải mã và tạo mật khẩu</title>
 </head>
 
 <body>
     <div class="wrapper page--encode-decode">
+        <!-- Begin: Top Bar -->
+        <div class="top-bar">
+            <div class="container d-flex justify-between items-center">
+                <div class="top-bar__left d-flex items-center gap-4">
+                    <span id="real_time_clock" class="top-bar__clock font-medium"></span>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com" target="_blank" class="top-bar__link">
+                        <i class="fa-solid fa-house mr-1"></i>Home
+                    </a>
+                </div>
+                <div class="top-bar__right d-flex gap-4 items-center">
+                    <a href="https://bctechvibe.com/profile" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-user mr-1"></i>Profile
+                    </a>
+                    <div class="top-bar__divider"></div>
+                    <a href="https://bctechvibe.com/donate" class="top-bar__link font-medium">
+                        <i class="fa-solid fa-heart mr-1"></i>Donate
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- End: Top Bar -->
         <!-- Begin: Header Content -->
         <header id="header" class="header header--encode-decode py-10 mb-4 text-center">
             <div class="container">
@@ -30,7 +53,7 @@
                         </div>
                         <div class="header__text text-left">
                             <h1 class="header__brand uppercase">
-                                ENCODING TOOLS
+                                encoding.bctechvibe.com
                             </h1>
                             <p class="header__subtitle uppercase font-bold">
                                 Base64 · URL · JWT Decoder
@@ -70,10 +93,10 @@
                                 <i class="fa-solid fa-lock-open"></i> Base64 Decode
                             </button>
                             <button id="modeUrlEnc" class="btn btn-outline" data-mode="url_enc">
-                                <i class="fa-solid fa-link"></i> URL Encode
+                                <i class="fa-solid fa-link"></i> URI Component Encode
                             </button>
                             <button id="modeUrlDec" class="btn btn-outline" data-mode="url_dec">
-                                <i class="fa-solid fa-link-slash"></i> URL Decode
+                                <i class="fa-solid fa-link-slash"></i> URI Component Decode
                             </button>
                             <button id="modeJwtDec" class="btn btn-outline" data-mode="jwt_dec">
                                 <i class="fa-solid fa-key"></i> JWT Decode
@@ -106,20 +129,24 @@
                                     <span>Special Symbols (!@#...)</span>
                                 </label>
                             </div>
-                            
+
                             <div class="encode-tools__length-row mb-4">
                                 <div class="form-group flex-1">
                                     <div class="d-flex justify-between items-center mb-1">
                                         <label class="form-label mb-0" for="passLengthRange">Password Length</label>
-                                        <input type="number" id="passLengthNum" class="form-input text-center encode-tools__length-input" value="16" min="4" max="64">
+                                        <input type="number" id="passLengthNum"
+                                            class="form-input text-center encode-tools__length-input" value="16" min="4"
+                                            max="64">
                                     </div>
-                                    <input type="range" id="passLengthRange" class="form-range" min="4" max="64" value="16">
+                                    <input type="range" id="passLengthRange" class="form-range" min="4" max="64"
+                                        value="16">
                                 </div>
                             </div>
 
                             <label class="form-checkbox-label mb-4 encode-tools__ambiguous-label">
                                 <input type="checkbox" id="passExcludeAmbiguous" class="form-checkbox">
-                                <span class="text-secondary text-sm">Exclude Ambiguous Characters (I, l, 1, 0, o, O)</span>
+                                <span class="text-secondary text-sm">Exclude Ambiguous Characters (I, l, 1, 0, o,
+                                    O)</span>
                             </label>
                         </div>
 
@@ -129,13 +156,8 @@
                                 <i class="fa-solid fa-keyboard"></i>
                                 <span id="inputLabel">Input – Nhập văn bản cần mã hóa</span>
                             </label>
-                            <textarea
-                                id="encodeInput"
-                                class="encode-tools__input"
-                                placeholder="Nhập nội dung vào đây..."
-                                spellcheck="false"
-                                autocomplete="off"
-                            ></textarea>
+                            <textarea id="encodeInput" class="encode-tools__input" maxlength="5242880"
+                                placeholder="Nhập nội dung vào đây..." spellcheck="false" autocomplete="off"></textarea>
                         </div>
 
                         <!-- ===== Action Bar ===== -->
@@ -184,10 +206,28 @@
                             <label class="encode-tools__label">
                                 <i class="fa-solid fa-key"></i> Kết quả JWT Decode
                             </label>
+
+                            <!-- Cảnh báo JWT Decode -->
+                            <div class="message-card message-card--warning mb-4" role="alert">
+                                <div class="message-card__header">
+                                    <h4 class="message-card__title">
+                                        <i class="fa-solid fa-shield-halved"></i>
+                                        Chỉ decode, không xác thực chữ ký
+                                    </h4>
+                                </div>
+                                <div class="message-card__body">
+                                    <p class="message-card__message">Dữ liệu được giải mã hiển thị bên dưới chỉ mang
+                                        tính chất tham khảo. Chữ ký số (Signature) không được xác thực, không sử dụng
+                                        token này cho các mục đích bảo mật trừ khi bạn đã tự verify trên server backend.
+                                    </p>
+                                </div>
+                            </div>
+
                             <div class="encode-tools__jwt-grid">
                                 <!-- Header box -->
                                 <div class="encode-tools__jwt-box">
-                                    <span class="encode-tools__jwt-label encode-tools__jwt-label--header">
+                                    <span class="encode-tools__jwt-label encode-tools__jwt-label--header"
+                                        id="jwtHeaderLabel">
                                         <i class="fa-solid fa-heading"></i> Header
                                     </span>
                                     <div id="jwtHeader" class="encode-tools__jwt-part encode-tools__output--empty">
@@ -196,7 +236,8 @@
                                 </div>
                                 <!-- Payload box -->
                                 <div class="encode-tools__jwt-box">
-                                    <span class="encode-tools__jwt-label encode-tools__jwt-label--payload">
+                                    <span class="encode-tools__jwt-label encode-tools__jwt-label--payload"
+                                        id="jwtPayloadLabel">
                                         <i class="fa-solid fa-box-open"></i> Payload
                                     </span>
                                     <div id="jwtPayload" class="encode-tools__jwt-part encode-tools__output--empty">
@@ -208,7 +249,8 @@
                                     <span class="encode-tools__jwt-label encode-tools__jwt-label--sig">
                                         <i class="fa-solid fa-signature"></i> Signature <span>(raw, chưa verify)</span>
                                     </span>
-                                    <div id="jwtSignature" class="encode-tools__jwt-part encode-tools__jwt-part--sig encode-tools__output--empty">
+                                    <div id="jwtSignature"
+                                        class="encode-tools__jwt-part encode-tools__jwt-part--sig encode-tools__output--empty">
                                         Signature sẽ hiển thị tại đây...
                                     </div>
                                 </div>
@@ -247,7 +289,7 @@
                 <div class="footer__copyright text-center">
                     <p>
                         © 2026 Website Utility Toolkit - Công cụ kiểm tra chính xác và toàn diện cho website miễn phí -
-                        <a href="https://bctechvibe.com" target="_blank">BCTECHVIBE.COM</a>
+                        <a href="https://bctechvibe.com" target="_blank">Phát triển bởi BCTECHVIBE.COM</a>
                     </p>
                 </div>
             </div>

@@ -34,17 +34,17 @@ const EncodeDecode = (() => {
             jwtView: false,
         },
         url_enc: {
-            inputLabel: 'Input – Nhập URL hoặc văn bản cần mã hóa',
-            outputLabel: 'Output – Kết quả URL Encode',
+            inputLabel: 'Input – Nhập URI Component hoặc văn bản cần mã hóa',
+            outputLabel: 'Output – Kết quả URI Component Encode',
             btnLabel: '<i class="fa-solid fa-link"></i> Encode',
-            placeholder: 'Nhập URL hoặc văn bản cần URL encode...',
+            placeholder: 'Nhập URI Component hoặc văn bản cần encode...',
             jwtView: false,
         },
         url_dec: {
-            inputLabel: 'Input – Nhập chuỗi URL Encoded cần giải mã',
+            inputLabel: 'Input – Nhập chuỗi URI Component Encoded cần giải mã',
             outputLabel: 'Output – Văn bản sau khi giải mã',
             btnLabel: '<i class="fa-solid fa-link-slash"></i> Decode',
-            placeholder: 'Nhập chuỗi URL encoded cần decode...',
+            placeholder: 'Nhập chuỗi URI Component encoded cần decode...',
             jwtView: false,
         },
         jwt_dec: {
@@ -95,8 +95,11 @@ const EncodeDecode = (() => {
             for (let i = 0; i < binary.length; i++) {
                 bytes[i] = binary.charCodeAt(i);
             }
-            return new TextDecoder('utf-8').decode(bytes);
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
         } catch (e) {
+            if (e instanceof TypeError) {
+                throw new Error('Dữ liệu Base64 chứa nội dung nhị phân (binary) hoặc không phải chuỗi UTF-8 hợp lệ. Tool hiện chỉ hỗ trợ giải mã văn bản.');
+            }
             throw new Error('Chuỗi Base64 không hợp lệ. Vui lòng kiểm tra lại định dạng đầu vào.');
         }
     }
@@ -291,21 +294,52 @@ const EncodeDecode = (() => {
     }
 
     function setJwtOutput(header, payload, signature) {
+        let headerBadges = '';
+        if (header && header.alg === 'none') {
+            headerBadges += `<span class="badge badge-error ml-2">alg=none</span>`;
+        }
+        dom.jwtHeaderLabel.innerHTML = `<i class="fa-solid fa-heading"></i> Header ${headerBadges}`;
+
         // Header
         dom.jwtHeader.innerHTML = highlightJson(header);
         dom.jwtHeader.classList.remove('encode-tools__output--empty');
 
         // Payload – thêm phân tích timestamps nếu có
         const payloadWithInfo = { ...payload };
+        let payloadBadges = '';
+        const now = Math.floor(Date.now() / 1000);
+
+        let hasExp = false;
+        let isExpired = false;
+        let isNotYetValid = false;
 
         // Annotate exp/iat/nbf thành thời gian đọc được
         ['exp', 'iat', 'nbf'].forEach(field => {
             if (payloadWithInfo[field]) {
                 const dt = new Date(payloadWithInfo[field] * 1000);
                 payloadWithInfo[`${field}_human`] = dt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+                
+                if (field === 'exp') {
+                    hasExp = true;
+                    if (payloadWithInfo[field] < now) {
+                        isExpired = true;
+                        payloadBadges += `<span class="badge badge-error ml-2">Expired</span>`;
+                    }
+                }
+                if (field === 'nbf') {
+                    if (payloadWithInfo[field] > now) {
+                        isNotYetValid = true;
+                        payloadBadges += `<span class="badge badge-warning ml-2">Not Yet Valid</span>`;
+                    }
+                }
             }
         });
 
+        if (hasExp && !isExpired && !isNotYetValid) {
+            payloadBadges += `<span class="badge badge-success ml-2">Valid</span>`;
+        }
+
+        dom.jwtPayloadLabel.innerHTML = `<i class="fa-solid fa-box-open"></i> Payload ${payloadBadges}`;
         dom.jwtPayload.innerHTML = highlightJson(payloadWithInfo);
         dom.jwtPayload.classList.remove('encode-tools__output--empty');
 
@@ -315,6 +349,8 @@ const EncodeDecode = (() => {
     }
 
     function resetJwtOutput() {
+        if (dom.jwtHeaderLabel) dom.jwtHeaderLabel.innerHTML = `<i class="fa-solid fa-heading"></i> Header`;
+        if (dom.jwtPayloadLabel) dom.jwtPayloadLabel.innerHTML = `<i class="fa-solid fa-box-open"></i> Payload`;
         dom.jwtHeader.innerHTML = 'Header sẽ hiển thị tại đây...';
         dom.jwtHeader.classList.add('encode-tools__output--empty');
         dom.jwtPayload.innerHTML = 'Payload sẽ hiển thị tại đây...';
@@ -367,7 +403,8 @@ const EncodeDecode = (() => {
             dom.passGenConfig.classList.add('d-none');
         }
 
-        // Reset outputs
+        // Reset inputs & outputs
+        dom.encodeInput.value = '';
         setOutput('Kết quả sẽ hiển thị tại đây...', true);
         resetJwtOutput();
         hideError();
@@ -399,6 +436,11 @@ const EncodeDecode = (() => {
             const input = ['base64_dec', 'url_dec', 'jwt_dec'].includes(currentMode)
                 ? dom.encodeInput.value.trim()
                 : dom.encodeInput.value;
+
+            const MAX_INPUT_CHARS = 5242880; // 5MB
+            if (currentMode !== 'pass_gen' && input.length > MAX_INPUT_CHARS) {
+                throw new Error(`Dữ liệu đầu vào quá lớn. Giới hạn tối đa là ${MAX_INPUT_CHARS.toLocaleString('vi-VN')} ký tự (khoảng 5MB) để tránh treo trình duyệt.`);
+            }
 
             switch (currentMode) {
                 case 'base64_enc':
@@ -484,7 +526,9 @@ const EncodeDecode = (() => {
         dom.outputSection  = document.getElementById('outputSection');
         dom.jwtSection     = document.getElementById('jwtSection');
         dom.jwtHeader      = document.getElementById('jwtHeader');
+        dom.jwtHeaderLabel = document.getElementById('jwtHeaderLabel');
         dom.jwtPayload     = document.getElementById('jwtPayload');
+        dom.jwtPayloadLabel= document.getElementById('jwtPayloadLabel');
         dom.jwtSignature   = document.getElementById('jwtSignature');
         dom.encodeError    = document.getElementById('encodeError');
         dom.encodeErrorMsg = document.getElementById('encodeErrorMsg');

@@ -1,0 +1,10 @@
+./cache.go
+./catalog.go
+./client.go
+./compare.go
+./indexability.go
+./meta.go
+./robots.go
+./sitemap.go
+./robots_test.go
+./service_test.go

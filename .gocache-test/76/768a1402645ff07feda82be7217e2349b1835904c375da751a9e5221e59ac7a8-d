@@ -1,0 +1,13 @@
+./scratch_service.go
+./scratch_tags.go
+./scratch_tls.go
+./test_freeipapi.go
+./test_geoip.go
+./test_ip2loc.go
+./test_ipapi.go
+./test_ipapico.go
+./test_ipapiis.go
+./test_ipinfo.go
+./test_ipwhois.go
+./test_req.go
+./test_tz.go

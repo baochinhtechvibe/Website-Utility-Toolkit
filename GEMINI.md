@@ -1,323 +1,697 @@
-# MỘT SỐ NGUYÊN TẮC VÀ LƯU Ý KHI CODE (Rút kinh nghiệm từ các file/tools trước)
+# CODING STANDARDS & LESSONS LEARNED
 
-## Rút kinh nghiệm từ quá trình Refactor:
-Để tránh việc làm hỏng bộ UI/UX hiện tại và vi phạm cấu trúc Design System, cần TUYỆT ĐỐI GHI NHỚ những bài học sau:
+> Tài liệu này tổng hợp các nguyên tắc bắt buộc khi làm việc với codebase này, được đúc kết từ quá trình refactor thực tế. Mọi AI assistant hoặc developer khi nhận task **phải đọc toàn bộ tài liệu này trước khi bắt đầu code.**
 
-### 1. TUYỆT ĐỐI KHÔNG DÙNG THÓI QUEN TAILWIND CSS BỪA BÃI
-- **Lỗi đã mắc:** Tự ý gõ các class kiểu `text-xl`, `bg-gray-50`, `text-red-500`, `.hidden`, `break-all`... theo thói quen mặc dù project KHÔNG cài đặt framework Tailwind đầy đủ.
-- **Cách khắc phục đúng:**
-  - Về layout/display: Dùng các helper đã có (như `.d-none` thay cho `.hidden`, `.d-block`, `.d-flex`, `.justify-between`, v.v. trong `utilities/helper.css`).
-  - Về typography: Kiểm tra trong `tokens/typography/semantic.css` (VD: dùng text-base, text-secondary).
-  - Về background/spacing: Sử dụng các class tiện ích trong `utilities/colors.css` và `utilities/spacing.css` (VD: `.py-10`, `.mb-4`). Tuyệt đối không tự chế class kiểu Tailwind nếu project chưa có.
+---
 
-### 2. SỬ DỤNG ĐÚNG VÀ ĐỦ CSS TOKENS, KHÔNG HARDCODE
-- **Lỗi đã mắc:** Hardcode các thông số như `border-radius: 4px;`, `box-shadow: 0 1px 3px rgba(...)`, `transition: 0.3s ease;` ngay trong các file `.css` của tool. Ngoài ra, tự bịa ra các biến color CSS mông lung (ví dụ: `var(--color-primary-600)`) làm vỡ hệ thống token.
-- **Cách khắc phục đúng:** 
-  - Shadow: Bắt buộc dùng `var(--shadow-1)`, `var(--shadow-2)` (từ `shadow/primitive.css`).
-  - Radius: Bắt buộc dùng `var(--radius-xs)`, `var(--radius-md)`, `var(--radius-lg)`.
-  - Motion (Transition): Dùng `var(--transition-base)`, `var(--transition-slow)`.
-  - Colors: Tuyệt đối chỉ map tới đúng Token có trong `color/semantic.css` (ví dụ: `--color-surface`, `--color-info`, `--color-text-muted`) hoặc `color/palette.css` (`--gray-50`, `--green-500`). Tuyệt đối không tự chế Token color mới.
+## MỤC LỤC NHANH
 
-### 3. SỬ DỤNG LẠI CÁC STRUCTURE/PATTERN ĐÃ CHUẨN HOÁ TRONG HTML
-- **Lỗi đã mắc:** Tự nghĩ ra cấu trúc wrapper kết quả riêng, quên thêm các thành phần quan trọng theo chuẩn chung.
-- **Cách khắc phục đúng:** 
-  - Phần header kết quả tìm kiếm cần phải bám chặt HTML pattern `result-card__title` (có icon).
-  - Phải tích hợp đủ `share-card` kèm icon và chức năng Copy URL chia sẻ ở dưới component (Tham khảo mẫu của `dns.html`).
-  - Khi render kết quả lỗi, sử dụng đúng `message-card` và `message-card--error`.
+- [Frontend – CSS & HTML](#frontend--css--html)
+- [Frontend – JavaScript](#frontend--javascript)
+- [Backend – Go Architecture](#backend--go-architecture)
+- [Backend – Security & Performance](#backend--security--performance)
+- [Quy trình làm việc](#quy-trình-làm-việc)
 
-### 4. MODULE JS SAU KHI TẠO PHẢI CÓ `INIT()` PATTERN
-- **Lỗi đã mắc:** Chạy code, lấy element thẳng ở Global scope của file script.
-- **Cách khắc phục đúng:** Đóng gói toàn bộ logic khởi tạo event listener và biến local vào trong hàm `function init() { ... }`, gọi callback này qua `document.addEventListener("DOMContentLoaded", init);`. Không pollute global scope.
+---
 
-### 5. SYNTAX HIGHLIGHTING TRONG KẾT QUẢ GEN CODE
-- **Lỗi đã mắc:** Render code-block bằng toàn màu basic, không hề sử dụng bộ highlight đã được thiết kế sẵn.
-- **Cách khắc phục đúng:** Trong các thành phần trả về sinh code, cần tận dụng triệt để semantic.css cho Code Highlighting như `code-keyword`, `code-value`, `code-string`, `code-parameter`, `code-func`, `code-comment`... cho output thêm sinh động.
+## FRONTEND – CSS & HTML
 
-### 6. CẤU TRÚC HEADER VÀ FOOTER CỦA TRANG HTML
-- **Lưu ý quan trọng:** Khi tạo một trang HTML cho tool mới, bắt buộc phải copy nguyên mẫu cấu trúc của `<header>` và `<footer>` từ các tool có sẵn (VD: `security-headers.html` hay `dns.html`).
-- **Cách khắc phục đúng:**
-  - Không tự thiết kế lại Header và Footer để đảm bảo tính đồng bộ (consistency) với các layout chung của hệ thống.
-  - Footer chứa các tracking id như `#visit-total` và `#visit-today`, nếu tự vẽ lại sai class/id sẽ dẫn đến lỗi hiển thị visit counter. Chẳng hạn đối với link tới file config, scripts, luôn đảm bảo đường dẫn tương đối trỏ về `../../src/js/main.js` một cách chuẩn xác để plugin tracker hoạt động nha.
+### [F-01] KHÔNG DÙNG TAILWIND CSS TÙY TIỆN
 
-### 7. IMPORT FILE STYLE (CSS) CHO TOOL MỚI
-- **Lưu ý quan trọng:** Cần quy định cách import CSS cho tool mới để duy trì hiệu suất và nguyên tắc "1 file CSS duy nhất".
-- **Cách khắc phục đúng:**
-  - Trong trang HTML của tool mới, CHỈ ĐƯỢC PHÉP có duy nhất một thẻ import CSS ở `<head>`: `<link rel="stylesheet" href="../../src/css/main.css">`. Tuyệt đối không dùng nhiều thẻ `<link>` lẻ tẻ.
-  - If tool mới cần file CSS custom riêng chứa các logic layout phức tạp, hãy tạo file đó (VD: `src/css/tools/ten-tool.css`), và sau đó mở file `src/css/main.css` để **gắn câu lệnh `@import`** vào trong đó (VD: `@import url('./tools/ten-tool.css');`). Bằng cách này, mọi style sẽ được gộp chung vào 1 entry point duy nhất.
+Project này **không cài đặt Tailwind CSS đầy đủ**. Tuyệt đối không tự ý dùng các class như `text-xl`, `bg-gray-50`, `text-red-500`, `hidden`, `break-all`...
 
-### 8. CẬP NHẬT TRANG CHỦ KHI TẠO TOOL MỚI
-- **Lưu ý quan trọng:** Khi hoàn thành một tool mới, phải bổ sung đường dẫn và thông tin tool đó ra ngoài trang chủ (`index.html`) để user có thể truy cập được.
-- **Cách khắc phục đúng:**
-  - Trong file `client/views/index.html`, copy một mẫu component `tool-card` có sẵn (với đầy đủ icon, badge, title, description, footer truy cập) và sửa lại thông tin, link cho công cụ mới.
-  - Phải đặt một class riêng để định dạng màu icon cho tool đó (ví dụ: `.tool-card--[tên-tool]`).
-  - Mở file `client/src/css/components/tool-card.css` và thêm CSS variable cho màu icon tương ứng với class vừa đặt (Ví dụ: `.tool-card--security-header { --tool-card-icon: var(--blue-500); }`).
-  - **TUYỆT ĐỐI CHÚ Ý:** Token màu phải được lấy CHÍNH XÁC từ mảng biến có thật bên trong file `client/src/css/tokens/color/palette.css`. Không bao giờ được bịa ra những class như `var(--brand-red)` hay `var(--teal-500)` nếu nó không tồn tại!
+**Thay thế đúng:**
 
-### 9. QUY TRÌNH IMPLEMENTATION PLAN & TASK LIST
-- **Quy tắc bất di bất dịch:** Khi được yêu cầu tạo tool mới hoặc tính năng lớn, **KHÔNG ĐƯỢC TỰ Ý CODE NGAY**.
-- **Cách làm việc chuẩn:**
-  1. Mày phải tạo file `implementation_plan.md` phân tích kỹ lưỡng giải pháp, các bước thực hiện, design sẽ dùng, rủi ro, etc.
-  2. Dừng lại và hỏi xem tao có đồng ý với plan đó không.
-  3. **CHỈ KHI NÀO** tao comment "OK, code đi mày" (hoặc câu trả lời đồng ý tương tự) thì mới được bắt tay vào tạo file và viết code thực sự. Quá trình làm thì tạo thêm file `task.md` để tick tiến trình cho tao dễ theo dõi.
+- Layout/display → dùng helper có sẵn: `.d-none`, `.d-block`, `.d-flex`, `.justify-between` (trong `utilities/helper.css`)
+- Typography → kiểm tra `tokens/typography/semantic.css` (VD: `text-base`, `text-secondary`)
+- Spacing/background → dùng `utilities/colors.css` và `utilities/spacing.css` (VD: `.py-10`, `.mb-4`)
 
-### 10. TUÂN THỦ KIẾN TRÚC BACKEND (GOLANG MODULE)
-- **Lưu ý quan trọng:** Cấu trúc model, service, và handler của backend không được tự ý sáng tạo hay thay đổi tên.
-- **Cách khắc phục đúng:**
-  - Back-end của một tool **bắt buộc** phải đặt trong `server/internal/modules/[tên-tool]`.
-  - Bên trong đó bắt buộc chia thành 3 thư mục: `handlers/` (chứa `handlers.go`), `models/` (chứa `models.go`), và `service/` (chứa các logic xử lý chính).
-  - Tên struct request, response hay tên hàm nên dựa theo template chung. Không đặt tên linh tinh như `timing_service.go`, `timing.go`,... cứ dùng đúng `service.go`, `models.go`, `handlers.go` và để package phân biệt.
-  - Phải có file `router.go` ở ngoài cùng thư mục tool để mount endpoints.
+---
 
-### 11. XỬ LÝ CACHE NOTICE TRONG UI KẾT QUẢ
-- **Lưu ý quan trọng:** Với các tool mang tính chất "tra cứu" (lookup), tao yêu cầu LUÔN LUÔN có phần thông báo kết quả cache notice, bất kể kết quả đó là lấy dữ liệu mới (fresh) hay lấy từ cache ra.
-- **Cách khắc phục đúng:** 
-  - Trong HTML, chèn thêm khối `cache-card` bên trong `result-card` (tham khảo cấu trúc của `dns.html`).
-  - Trong JS, xử lý logic LUÔN hiển thị banner nếu có `meta.fetched_at`. Nếu `meta.cached = true` thì hiển thị: *"Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc..."*. Nếu `meta.cached = false` thì hiển thị: *"Kết quả tra cứu mới nhất lúc..."* (tham khảo logic trong `dns.js` hoặc `web-latency.js`).
-  - Gắn sự kiện cho nút "Làm mới" gửi request kèm `bypassCache=true` lên backend để ép tải lại dữ liệu mới nhất. Trừ những tool đặc biệt không làm việc bằng cache (như chmod) thì mới bỏ qua bước này.
+### [F-02] DÙNG ĐÚNG CSS TOKENS – KHÔNG HARDCODE GIÁ TRỊ
 
-### 12. BẮT BUỘC ĐỌC KỸ TOKENS VÀ CLASS TRƯỚC KHI SỬ DỤNG
-- **Lưu ý quan trọng:** Không được phép tự vẽ ra biến CSS hoặc class mới dựa trên trí nhớ hoặc suy đoán (ví dụ: `--spacing-X`, `--color-surface-hover`, `--teal-500`).
-- **Cách khắc phục đúng:** LUÔN LUÔN mở và đọc các file định nghĩa CSS của project TRƯỚC KHI viết code CSS mới cho một tool:
-  - Cấu trúc `client/src/css/base/`
-  - Tiện ích `client/src/css/utilities/`
-  - Bố cục `client/src/css/layout/`
-  - Thành phần UI `client/src/css/components/` (phải check kỹ trước, tuyệt đối không tự chế lại badge, button, form, v.v. nếu đã có sẵn).
-  - Các biến hệ thống `client/src/css/tokens/` (đặc biệt là `spacing.css`, `color/palette.css`, `color/semantic.css`)
-- **Nguyên tắc:** Nếu tao không định nghĩa trong mấy thư mục đó, nghĩa là biến đó không tồn tại. Mày dùng bậy là vỡ giao diện ráng chịu!
+Không được hardcode các giá trị như `border-radius: 4px`, `box-shadow: 0 1px 3px rgba(...)`, `transition: 0.3s ease` hay tự bịa biến color CSS.
 
-### 13. TUYỆT ĐỐI KHÔNG DÙNG INLINE CSS (`style="..."`)
-- **Lỗi đã mắc:** Viết chèn trực tiếp các thuộc tính CSS vào thẻ HTML (ví dụ: `style="display: grid; gap: var(--space-4);"` hoặc `style="background-color: var(--color-surface);"`).
-- **Cách khắc phục đúng:** 
-  - Đóng gói thuộc tính vào các class cục bộ bên trong file CSS của tool (VD: `.latency-grid`, `.latency-stat-box`).
-  - Sử dụng chung các CSS Helper/Utility đã cài đặt sẵn trong thư mục `client/src/css/utilities/` (như `helper.css`, `spacing.css`, `colors.css`). Đây là các class "chuẩn" được phép dùng trực tiếp trong HTML để xử lý layout nhanh (d-flex, justify-center, py-*, v.v.).
-  - Mã HTML phải sạch sẽ, phối hợp giữa BEM cho component và Utility cho layout.
+**Tokens bắt buộc phải dùng:**
 
-### 14. TÁI SỬ DỤNG COMPONENT CHO CÁC KHỐI KẾT QUẢ
-- **Lỗi đã mắc:** Tự ý chế ra các box bọc ngoài như `.info-card p-4 rounded border` cho các khối thông tin phụ. Ngoài ra ráp nhầm cấu trúc cho `.card__header` (quên dán chữ trắng/icon) làm layout bị ẩn hoặc vỡ.
-- **Cách khắc phục đúng:** LUÔN LUÔN dùng component Card (`components/card.css`) làm chuẩn cho bất kỳ một mảng khối nào trên UI thay vì tự đắp border và padding:
-  - Bọc bằng cụm: `<div class="card card--flat"> ... </div>`
-  - Khu vực tiêu đề bọc bằng: `<div class="card__header"><h4 class="card__title"><i class="..."></i> Tiêu đề</h4></div>`
-  - Khu vực nội dung bọc bằng: `<div class="card__body"> ... </div>`
+- Shadow: `var(--shadow-1)`, `var(--shadow-2)` — từ `shadow/primitive.css`
+- Radius: `var(--radius-xs)`, `var(--radius-md)`, `var(--radius-lg)`
+- Transition: `var(--transition-base)`, `var(--transition-slow)`
+- Color: chỉ được dùng token có thật trong `color/semantic.css` (VD: `--color-surface`, `--color-info`, `--color-text-muted`) hoặc `color/palette.css` (VD: `--gray-50`, `--green-500`). **Tuyệt đối không tự chế token màu mới.**
 
-### 15. KHÔNG LỒNG COMPONENT UI VÀO TRONG CLASS CHỨA `WHITE-SPACE: PRE-WRAP`
-- **Lỗi đã mắc:** Render `<div class="message-card">` vào thẳng bên trong vùng chứa có class của code output (thường có thuộc tính định dạng `white-space: pre-wrap`). Do dùng template literal chứa dấu cách/thụt đầu dòng, trình duyệt đã render cả đống dấu cách đó ra màn hình làm vỡ nát layout thẻ `message-card`.
-- **Cách khắc phục đúng:** Các thẻ UI Component bắt buộc phải được đặt trong vùng không gian có `white-space: normal` mặc định. Tách bạch vùng chứa kết quả Code và vùng chứa kết quả UI (Ví dụ: tạo class container riêng `.json-tools__validator-box` thay vì tái sử dụng hộp `.json-tools__output`).
+---
 
-### 16. QUẢN LÝ TRẠNG THÁI BUTTON (ENABLE/DISABLE) VÀ THÔNG BÁO LỖI REAL-TIME
-- **Lưu ý quan trọng:** Bất kỳ thao tác xử lý form nào cũng phải có UX tốt nhất.
-- **Cách khắc phục đúng:** 
-  - Phải luôn có hàm ví dụ `updateButtonStates()` quét nội dung của input. Nút hành động tương ứng (như Format, Translate, Validate...) phải chuyển qua tính năng `disabled = true` nếu ô input trống, tránh việc user nhấn "mù" tạo lỗi API.
-  - Phải cài event listener `input` vào mọi ô textarea, để khi người dùng sửa dữ liệu, lập tức dọn sạch mọi UI báo lỗi trước đó (như global `errorCard` hoặc xóa class `.is-invalid`), giúp họ không bị phân tâm.
+### [F-03] ĐỌC KỸ TOKEN VÀ CLASS TRƯỚC KHI VIẾT CSS MỚI
 
-### 17. GIỮ LẠI CLASS GỐC KHI TOGGLE STATE CỦA COMPONENT
-- **Lỗi đã mắc:** Xóa luôn định dạng `.btn` gốc khi người dùng bấm vào chuyển trạng thái nút `Split / Unified View`. Việc này làm mất padding, radius và format chuẩn của cốt lõi.
-- **Cách khắc phục đúng:** Khi cấu hình UI bằng Javascript, chỉ thêm/bớt các class Modifier (như `.btn-action`, `.btn-outline`, `.active` v.v.). **TUYỆT ĐỐI KHÔNG BAO GIỜ** được đụng vô class cấu trúc xương sống như `.btn`, `.card`, `.message-card`.
+Trước khi viết bất kỳ CSS nào cho tool mới, **bắt buộc phải mở và đọc** các file sau:
 
-### 18. UX BẮT LỖI GỠ RỐI DÙNG NATIVE HIGHTLIGHT THAY VÌ CSS OVERLAY (HACK)
-- **Lưu ý quan trọng:** Đừng cố viết thư viện Custom HTML/CSS phức tạp chèn vào `<textarea>` chỉ nhằm mục đích Highlight bôi đỏ một dòng bị lỗi nào đó. Rất nặng nề, dễ bug khi scroll/zoom window.
-- **Cách làm chuẩn:** Tận dụng tối đa API native xịn xò của trình duyệt với cú pháp cực đơn giản: `textarea.focus()` kết hợp `textarea.setSelectionRange(pos, pos+1)`. Phương thức này tốn 0 dòng CSS, lại tự động cuộn (scroll) màn hình trỏ chuột đến chuẩn xác dòng chữ chứa lỗi ở ngay cả file khổng lồ! Đồng thời, luôn Translate các thông báo lỗi thuần túy của native compiler (JS V8 - "English") ra tiếng Việt rõ ràng cho người dùng phổ thông cực kỳ dễ hiểu.
+- `client/src/css/base/` — reset và base styles
+- `client/src/css/utilities/` — helper, spacing, colors
+- `client/src/css/layout/` — layout patterns
+- `client/src/css/components/` — tất cả UI components có sẵn
+- `client/src/css/tokens/` — đặc biệt là `spacing.css`, `color/palette.css`, `color/semantic.css`
 
-### 19. TUYỆT ĐỐI KHÔNG TỰ CHẾ BIẾN FONT FAMILY (TYPOGRAPHY TOKENS)
-- **Lỗi đã mắc:** Tự ý sử dụng các biến CSS font-family theo thói quen hoặc suy đoán như `--font-family-primary`, `--font-family-base`, `--font-family-display`... trong khi chúng KHÔNG tồn tại trong hệ thống.
-- **Cách khắc phục đúng:** 
-  - Chỉ được phép sử dụng các token đã định nghĩa trong `client/src/css/tokens/typography/primitive.css`.
-  - Hiện tại hệ thống chỉ có 3 bộ font chính:
-    - `var(--font-family-sans)`: Dùng cho text thông thường, UI (Inter).
-    - `var(--font-family-serif)`: Dùng cho tiêu đề mang tính chất nghệ thuật (Philosopher).
-    - `var(--font-family-mono)`: Dùng cho code-block, dữ liệu thô (Monospace).
-  - Mọi biến font khác đều là "biến ma", tuyệt đối không được tự tiện sử dụng.
+> **Nguyên tắc:** Nếu biến/class không có trong các thư mục trên → nó không tồn tại. Tự dùng bừa sẽ vỡ giao diện.
 
-### 20. CHỈ SỬ DỤNG FONT AWESOME FREE ICONS
-- **Lỗi đã mắc:** Sử dụng các class icon độc quyền của bản Pro (ví dụ: `fa-shield-check`) khiến icon bị "tàng hình" trên giao diện. Điều này không những mất thẩm mỹ mà còn gây lỗi hiển thị khoảng trắng thừa (gap) làm méo/lệch layout của Component.
-- **Cách khắc phục đúng:** 
-  - Project này chỉ tích hợp **FontAwesome Free**. Mọi icon sử dụng phải có mặt trong bộ Free (Ví dụ: `fa-circle-check`, `fa-shield-halved`, `fa-triangle-exclamation`, `fa-circle-xmark`...).
-  - Tuyệt đối không nhét bừa tên icon dựa trên trí nhớ hoặc phiên bản cũ/Pro. Nếu cần icon Check, xài `fa-check`, `fa-check-circle` hoặc `fa-circle-check`.
+---
 
-### 21. CẨN TRỌNG VỚI ENCODING KHI DÙNG SCRIPT XỬ LÝ FILE BÀNG TERMINAL
-- **Lỗi đã mắc:** Khi viết bash/PowerShell script để duyệt và format file hàng loạt, việc tự ý dùng lệnh như `Get-Content` rồi pipe sang `Set-Content -Encoding UTF8` mà không khai báo rõ Encoding đầu vào đã gây ra hiệu ứng sai lệch Codepage. Do PowerShell mặc định decode bằng ANSI (Windows-1258 với môi trường Việt Nam), toàn bộ string Tiếng Việt dạng UTF-8 đã bị đọc sai và lưu lại thành rác mã hóa (ví dụ: màn hình xuất hiện các ký tự `Ã`, `Ä`, `PhÃ¢n tÃ­ch`).
-- **Cách khắc phục đúng:** 
-  - Hạn chế tối đa việc sử dụng script PowerShell/bash để Read/Write nội dung hàng loạt nếu không nắm vững về Codepage của OS mục tiêu. Thay vào đó, hãy dùng chức năng của môi trường runtime an toàn như Node.js (luôn mặc định Buffer UTF-8) hoặc các công cụ native của Code Editor / Tool Build có sẵn.
-  - Nếu bắt buộc dùng PowerShell để sửa nội dung file, phải khai báo tuyệt đối tường minh cả lúc đọc lẫn lúc ghi: `[System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)` và `[System.IO.File]::WriteAllText($path, $text, $utf8NoBom)`.
+### [F-04] KHÔNG DÙNG INLINE CSS (`style="..."`)
 
-### 22. TUYỆT ĐỐI KHÔNG DÙNG SCRIPT QUÉT VÀ XÓA FILE TỰ ĐỘNG
-- **Lỗi đã mắc:** Chạy script PowerShell tự động dò tìm các file "không được import ở đâu" rồi xóa hàng loạt khiến một số công cụ độc lập (ví dụ: `imaptool-admin.html` là trang quản trị không link ngoài trang chủ) bị xóa oan uổng và phải làm lại từ đầu.
-- **Cách khắc phục đúng:** 
-  - KHÔNG BAO GIỜ tự tiện tạo ra các script Cleanup/Mass Deletion để xóa file source code dựa trên các pattern tìm kiếm RegEx hay quét thẻ HTML, vì độ rủi ro sai sót cực lớn.
-  - Mọi thao tác xóa file dư thừa phải được xác nhận tường minh bởi tao (User) cho từng file hoặc từng thư mục vụn vặt và phải kiểm tra chéo độ phụ thuộc. Đừng thấy "có vẻ không dùng" là tiện tay xóa luôn!
+Tuyệt đối không viết thuộc tính CSS trực tiếp vào thẻ HTML.
 
-### 23. TỔNG HỢP CÁC COMPONENT & CLASS ĐÃ REFACTOR KỸ (BẢNG TRA CỨU BẮT BUỘC DÙNG)
-- **Tuyệt đối tuân thủ Design System thay vì viết CSS mới.** Dưới đây là danh sách các Component CỐT LÕI đã được chuẩn hóa, CHỈ ĐƯỢC PHÉP DÙNG LẠI, không tự chế thêm:
-  - **Khung giao diện (Layout & Card):** Tất cả các khối phải bọc trong `.card`. Cấu trúc chuẩn là `.card` > `.card__header` (chứa `h2.card__title` có kèm icon cách ra một khoảng bằng class `.mr-2`) > `.card__body`. (Không tự pad hay border tùy tiện).
-  - **Form nhập liệu (`form.css`):** Form luôn dùng `.form`. Từng dòng bọc bởi `.form-field` hoặc `.form-inline` (nếu nằm ngang). Label dùng `.form-label`, Textbox dùng `.form-input` và Checkbox dùng `.form-checkbox`.
-  - **Nút bấm (`button.css`):** Mọi nút đều có gốc là `.btn`. Biến thể gồm: `.btn-action` (màu chính), `.btn-outline` (viền mỏng), `.btn-danger`, `.btn-warning`, `.btn-sm`, `.btn-block` (chiếm 100% width).
-  - **Thông báo (`message-card.css`):** Dùng cho lỗi hoặc cảnh báo nổi bật. Cấu trúc `.message-card.message-card--error` > `.message-card__header` > `.message-card__title`. (Tuyệt đối không nhét thẻ này vào trong một div có `white-space: pre-wrap` để tránh bị lệch layout).
-  - **Hiển thị code (`code-block.css`):** Khu vực in code phải bọc ngoài `.code-block`, phần header có class `.code-block__header` > `.code-block__lang` và nút copy `button.code-block__btn-copy`. Mã code in ra cần nhét vào `.code-block__body` > `code.code-block__text`.
-  - **Kết quả trả về (`result-card.css`):** Bất cứ tool nào cũng cần render kết quả trong `.result-card`. Tiêu đề nằm trong `.result-card__title`. Banner báo lấy từ cache bắt buộc nằm trong class `.cache-card` (Tham khảo `components/cache-card.css`) > nút `.cache-card__btn`.
-    - **Lưu ý cấu trúc:** Cụm `.result-card` phải được đặt bên trong `.card__body` của main card. Phần `.card__header` của main card phải có cấu trúc tương tự tool DNS (Tiêu đề căn giữa, có icon và text rõ ràng).
-  - **Thẻ chia sẻ URL (`share-card.css`):** Khối chia sẻ gắn class `.share-card`. Trong đó có input text readonly `.share-card__input` và nút copy `.share-card__button.share-card__button--copy`.
-  - **Nhãn dán (`badge.css`):** Để ghi chú tĩnh, dùng `.badge.badge-default` (hoặc `.badge-success`, `.badge-warning`). Biến chữ in hoa `.uppercase`. Không dùng `font-size` để chỉnh.
+**Thay thế đúng:**
 
-### 25. CÚ PHÁP BORDER BẮT BUỘC PHẢI ĐẦY ĐỦ (SHORTHAND)
-- **Lỗi đã mắc:** Viết kiểu `border: var(--color-border);` hoặc `border: var(--color-border-subtle);`. Trình duyệt sẽ không render border vì thiếu độ dày (width) và kiểu dáng (style).
-- **Cách khắc phục đúng:** LUÔN LUÔN viết đầy đủ 3 thành phần: `border: 1px solid var(--color-border);`. Nếu muốn dùng độ dày từ token thì: `border: var(--border-width-1) solid var(--color-border);`.
+- Đóng gói vào class cục bộ trong file CSS của tool (VD: `.latency-grid`, `.latency-stat-box`)
+- Tận dụng các Utility Class có sẵn trong `utilities/` cho layout nhanh (`d-flex`, `justify-center`, `py-*`)
+- HTML phải sạch: dùng BEM cho component, Utility cho layout
+- **Với các giá trị động tính bằng JS (VD: `width` của progress bar):** Dùng biến CSS Custom Property (`style="--width: 50%"`) và map trong file CSS (`width: var(--width)`), thay vì gán property CSS trực tiếp (`style="width: 50%"`).
 
-### 26. TRÁNH XUNG ĐỘT EVENT LISTENER KHI DÙNG VALIDATOR CHUNG
-- **Lỗi đã mắc:** Gắn thêm listener `input` vào ô URL để `hideError()` nhưng lại vô tình ẩn luôn cả thông báo lỗi của `createRealtimeURLValidator` mỗi khi người dùng gõ phím.
-- **Cách khắc phục đúng:** Khi dùng các hàm Validator trong `utils/validation.js`, hãy để chúng tự quản lý việc hiện/ẩn lỗi validate. Logic riêng của tool chỉ nên can thiệp vào việc ẩn các Card kết quả cũ hoặc Card lỗi logic (lookup error), tránh đè lên element báo lỗi của Validator (`#urlValidationError`, v.v.).
+---
 
-### 27. VẼ ĐƯỜNG NỐI (CONNECTOR LINE) TRONG UI DẠNG CHUỖI (CHAIN/TIMELINE)
-- **Lưu ý quan trọng:** Để các "nút" (nodes) trong chuỗi chuyển hướng hoặc timeline trông liền mạch, sợi dây nối không được phép bị đứt đoạn khi nội dung bước đó dài ra.
-- **Cách làm chuẩn:** 
-  - Sử dụng pseudo-element `::after` trên container của mỗi bước (`.step`).
-  - Thiết lập `height: 100%` (hoặc `calc(100% + gap)`) để sợi dây phủ hết chiều cao của bước đó, tự động chạm tới điểm bắt đầu của bước tiếp theo.
-  - Dùng `z-index` để đảm bảo hình tròn của node nằm đè lên trên sợi dây.
-  - Căn chỉnh `left` chính xác theo tâm của node (Ví dụ: `calc(var(--node-size) / 2 - var(--line-width) / 2)`).
+### [F-05] KHÔNG DÙNG MÀU PALETTE TRỰC TIẾP
 
-### 28. NGÔN NGỮ GIAO TIẾP VÀ TÀI LIỆU
-- **Quy tắc bắt buộc:** Mọi giao tiếp giữa tao và mày, cũng như các tài liệu phụ trợ như `implementation_plan.md`, `task.md`, `walkthrough.md`... đều phải được viết bằng **Tiếng Việt**.
-- **Cách khắc phục đúng:** Không được dùng Tiếng Anh cho các tiêu đề task hay nội dung kế hoạch triển khai. Hãy dùng tiếng Việt rõ ràng, dễ hiểu và đúng tinh thần "Mày - Tao" thân mật.
+Tuyệt đối không dùng `var(--yellow-100)` hay `var(--gray-500)` trực tiếp trong CSS của tool.
 
-### 29. TUYỆT ĐỐI ĐỒNG BỘ CLASS KHI REFACTOR
-- **Lưu ý quan trọng:** Việc đổi tên class cho "sang" hơn trong CSS mà quên cập nhật HTML/JS là lỗi sơ đẳng gây lãng phí Token và thời gian.
-- **Cách khắc phục đúng:** Khi rewrite một khối CSS, phải dùng chức năng Search toàn project để đảm bảo mọi nơi gọi tới class cũ đều đã được cập nhật sang class mới. Luôn kiểm tra lại giao diện thực tế ngay sau khi đổi tên.
+**Thay thế đúng:** Phải map qua Semantic Token (VD: `--color-warning-bg`, `--color-text-muted`). Điều này đảm bảo hệ thống Light/Dark theme hoạt động đúng.
 
-### 30. KHÔNG DÙNG CLASS LAYOUT DƯ THỪA KHI COMPONENT ĐÃ CÓ SẴN
-- **Lỗi đã mắc:** Thêm các class utility như `.flex-row`, `.justify-between`, `.items-center` vào thẻ HTML của `.cache-card` trong khi file `components/cache-card.css` đã định nghĩa sẵn các thuộc tính này (sử dụng `!important`).
-- **Cách khắc phục đúng:** LUÔN LUÔN đọc nội dung file CSS của component trước khi viết HTML. Nếu component đã có sẵn layout bên trong, chỉ cần dùng đúng class tên component đó là đủ. Việc nhồi nhét thêm class utility chỉ làm rối mã nguồn và gây khó khăn khi bảo trì.
+---
 
-### 31. TÍNH NHẤT QUÁN UI/UX GIỮA CÁC CÔNG CỤ TƯƠNG ĐỒNG
-- **Lưu ý quan trọng:** Các công cụ có chung hành vi (như tra cứu/lookup) phải có trải nghiệm người dùng y hệt nhau.
-- **Cách khắc phục đúng:** 
-  - Nếu tool DNS dùng icon sét (`fa-bolt`) cho dữ liệu mới và icon đồng hồ (`fa-clock`) cho dữ liệu cache, thì tool WHOIS cũng phải làm y chang. 
-  - Không được tự ý thay đổi bộ icon hoặc cấu trúc thông báo (`cache-card`) nếu không có lý do cực kỳ đặc biệt.
+### [F-06] KHÔNG TỰ CHẾ BIẾN FONT FAMILY
 
-### 32. TUÂN THỦ TIÊU CHUẨN NGHIỆP VỤ (BUSINESS LOGIC) CỦA NGÀNH
-- **Lỗi đã mắc:** Thiết lập vòng đời tên miền (lifecycle) theo cảm tính hoặc thiếu các giai đoạn quan trọng (ví dụ: thiếu "Giai đoạn Chuộc - Redemption Period" của tên miền quốc tế).
-- **Cách khắc phục đúng:** Khi code các công cụ chuyên ngành (DNS, WHOIS, SSL...), phải tra cứu kỹ quy chuẩn của các tổ chức quốc tế (ICANN, VNNIC, IETF...). Một công cụ đẹp nhưng logic sai lệch so với thực tế sẽ làm mất uy tín của hệ thống.
+Không được dùng các biến như `--font-family-primary`, `--font-family-base`, `--font-family-display` — chúng **không tồn tại** trong hệ thống.
 
-### 33. TIÊU CHUẨN BACKEND PRODUCTION (SHARED COMPONENTS)
-- **Lưu ý quan trọng:** Để đảm bảo tính bảo mật, hiệu suất và đồng bộ dữ liệu, mọi tool backend mới PHẢI tuân thủ bộ khung Shared Components đã được refactor.
-- **Cách khắc phục đúng:**
-  - **Phản hồi chuẩn:** LUÔN LUÔN dùng package `internal/response` (hàm `Success`, `SuccessWithMessage`, `Error`) để trả về dữ liệu. Tuyệt đối không dùng `c.JSON` thủ công cho các endpoint API.
-  - **Dịch lỗi bảo mật:** LUÔN LUÔN truyền lỗi qua `errutil.TranslateError(err)` trước khi trả về cho user. Không bao giờ được trả lỗi `err.Error()` gốc ra client để tránh lộ lọt thông tin hệ thống (path, IP, stack trace).
-  - **Bộ nhớ tạm (Cache):** Sử dụng bộ Cache Generics mới (`cache.New[K, V]`) thay vì các legacy cache cũ. Đảm bảo có logic bypass cache (`bypassCache=true`) cho các tool tra cứu.
-  - **Kiểm tra dữ liệu (Validation):** Sử dụng `internal/platform/validator` cho mọi input từ người dùng. Đặc biệt lưu ý dùng `IsSafeHostname` để chống tấn công SSRF (quét mạng nội bộ).
-  - **Mã lỗi HTTP:** Trả về đúng Status Code theo ngữ cảnh (400: Input sai, 429: Too many requests, 422: Lỗi logic nghiệp vụ, 500: Lỗi server). Đừng lạm dụng 200 OK cho mọi trường hợp `success: false`.
+**Chỉ 3 font token hợp lệ** (định nghĩa trong `tokens/typography/primitive.css`):
 
-### 34. PHÒNG TRÁNH LỖI ENCODING (FONT) KHI EDIT TRÊN WINDOWS
-- **Lưu ý quan trọng:** Môi trường Windows (PowerShell/CMD) rất dễ làm sai lệch Codepage, dẫn đến việc các chuỗi Tiếng Việt UTF-8 bị biến thành rác (VD: `Ã´`, `áº`, `ờ‹`). Một khi file đã bị lỗi font, việc dùng các tool Search/Replace thông thường sẽ rất khó khớp dữ liệu.
-- **Cách khắc phục đúng:**
-  - **Mặc định UTF-8:** Luôn đảm bảo Editor và các script xử lý file sử dụng Encoding là `UTF-8 (No BOM)`.
-  - **Cẩn trọng với Scripts:** Tuyệt đối không dùng lệnh redirect `>` hoặc `Set-Content` của PowerShell để ghi file chứa Tiếng Việt nếu không khai báo rõ `-Encoding utf8`.
-  - **Xử lý khi bị lỗi:** Nếu phát hiện lỗi font (xuất hiện các ký tự lạ trên UI), không nên cố sửa thủ công bằng tay vì dễ sót. Hãy dùng script Python (môi trường xử lý chuỗi cực tốt) để quét và replace hàng loạt dựa trên bảng mã map UTF-8 chuẩn.
-  - **Kiểm tra sau khi Edit:** Sau khi dùng các công cụ tự động để refactor code backend, phải mở file kiểm tra tận mắt các chuỗi String trong file Go xem có còn nguyên vẹn Tiếng Việt hay không trước khi commit/chạy server.
+- `var(--font-family-sans)` — text thông thường, UI (Inter)
+- `var(--font-family-serif)` — tiêu đề nghệ thuật (Philosopher)
+- `var(--font-family-mono)` — code block, dữ liệu thô (Monospace)
 
-### 35. NGÔN NGỮ PHẢN HỒI (TIẾNG VIỆT) VÀ ENCODING UTF-8
-- **Lưu ý quan trọng:** Mọi thông báo lỗi, hướng dẫn hoặc kết quả trả về cho người dùng PHẢI sử dụng Tiếng Việt rõ ràng, dễ hiểu. Tránh dùng thuật ngữ kỹ thuật khô khan hoặc lỗi gốc tiếng Anh từ hệ thống.
-- **Cách làm chuẩn:**
-  - Sử dụng `internal/platform/errutil.TranslateError(err)` để dịch lỗi.
-  - Nếu lỗi mang tính chất đặc thù của tool, hãy định nghĩa thêm trong `translator.go` hoặc xử lý riêng tại tool đó bằng Tiếng Việt.
-  - **TUYỆT ĐỐI TUÂN THỦ ENCODING:** Mọi file chứa ký tự Tiếng Việt (Go, HTML, JS) phải được lưu ở định dạng **UTF-8 (No BOM)**. Khi sửa file trên Windows, phải cực kỳ cẩn thận để không làm biến thành rác mã hóa (ví dụ: `Ã´`, `áº`).
+---
 
-### 36. CHẶN TRUY CẬP NỘI BỘ (SSRF PROTECTION) CHO MỌI TOOL
-- **Lưu ý quan trọng:** Mọi tool nhận input là Domain hoặc IP (DNS, SSL, Redirect, etc.) đều tiềm ẩn rủi ro hacker dùng để thăm dò mạng nội bộ của server.
-- **Cách làm chuẩn:**
-  - Tại Backend, trước khi thực hiện bất kỳ logic nào, phải gọi `validator.IsSafeHostname(req.Hostname)` (hoặc `IsSafeIP`).
-  - Nếu kết quả trả về là `false`, lập tức trả về lỗi `400 Bad Request` kèm thông báo chặn truy cập nội bộ rõ ràng. Không bao giờ được "thả cửa" cho tra cứu IP Private trừ khi có lý do cực kỳ đặc biệt.
+### [F-07] CHỈ DÙNG FONT AWESOME FREE
 
-### 37. ĐỒNG BỘ VALIDATOR KHI GÁN GIÁ TRỊ BẰNG JAVASCRIPT
-- **Lỗi đã mắc:** Khi chuẩn hóa giá trị (normalize) và gán lại vào `input.value = newValue`, trình duyệt không tự phát ra sự kiện `input`, khiến các validator realtime không biết giá trị đã thay đổi (vẫn hiện lỗi đỏ dù giá trị mới đã đúng).
-- **Cách khắc phục đúng:** Sau mỗi dòng lệnh gán giá trị cho input bằng code, bắt buộc phải gọi: `input.dispatchEvent(new Event('input'));` để kích hoạt lại logic kiểm tra của validator.
+Project chỉ tích hợp **FontAwesome Free**. Không được dùng icon của bản Pro (VD: `fa-shield-check` sẽ bị ẩn, gây lệch layout).
 
-### 38. THỐNG NHẤT CƠ CHẾ ẨN/HIỆN LỖI TRONG UI
-- **Lỗi đã mắc:** Validator dùng class `.d-none` để ẩn hiện, nhưng hàm `resetUI` lại dùng `element.style.display = 'none'`. Việc này gây xung đột (style display có độ ưu tiên cao hơn class) khiến validator không thể hiện lại lỗi sau khi đã reset.
-- **Cách khắc phục đúng:** Thống nhất sử dụng cơ chế của validator. Trong hàm `resetUI`, hãy ẩn bảng lỗi bằng cách gọi `errorEl.classList.add('d-none')` và xóa class `is-invalid` trên ô input.
+**Ví dụ icon Free hợp lệ:** `fa-circle-check`, `fa-shield-halved`, `fa-triangle-exclamation`, `fa-circle-xmark`, `fa-check`, `fa-bolt`, `fa-clock`
 
-### 39. PHÂN ĐỊNH LỖI INPUT (400) VÀ LỖI NGHIỆP VỤ (200/FALSE)
-- **Quy tắc Backend:** 
-  - Trả về mã **400 Bad Request** khi: Định dạng sai, IP không hợp lệ, IP bị chặn (SSRF). Đây là những lỗi do người dùng nhập sai.
-  - Trả về mã **200 OK** kèm `success: false` khi: Hệ thống hoạt động tốt nhưng không tìm thấy dữ liệu (ví dụ: Không có bản ghi PTR cho IP hợp lệ). Việc trả về 200 cho phép gửi kèm các dữ liệu phụ như `traceLogs` để người dùng hiểu tại sao không có kết quả.
-- **Quy tắc Frontend:** 
-  - Trong block `catch`, xử lý các lỗi 400/500 thành `message-card--error`.
-  - Trong logic xử lý response, nếu nhận được `success: false` nhưng có dữ liệu phụ (trace), vẫn phải render các dữ liệu đó thay vì chỉ hiện một bảng lỗi trống trơn.
+---
 
-### 40. BẢO MẬT LOG VÀ TRÁNH LOG INJECTION
-- **Lưu ý quan trọng:** Việc log trực tiếp dữ liệu từ người dùng (URL, Query String...) mà không qua xử lý có thể tạo điều kiện cho hacker tấn công Log Injection hoặc làm giả file log.
-- **Cách làm chuẩn:**
-  - Luôn sanitize input trước khi log: Cắt tỉa độ dài (truncate), loại bỏ các ký tự điều khiển như xuống dòng (`\n`, `\r`).
-  - Sử dụng structured logging (zerolog) với các field riêng biệt (`.Str("url", safeURL)`) thay vì cộng chuỗi vào message.
+### [F-08] TÁI SỬ DỤNG COMPONENT – KHÔNG TỰ CHẾ
 
-### 41. QUẢN LÝ TIMEOUT VÀ CONTEXT TRONG HANDLER
-- **Lưu ý quan trọng:** Các tool có thời gian xử lý lâu (fetch trang web, parse DOM phức tạp) có thể làm treo goroutine nếu không giới hạn thời gian thực thi.
-- **Cách làm chuẩn:**
-  - **Tầng Handler:** Phải tạo một context có deadline (ví dụ `context.WithTimeout(c.Request.Context(), 20*time.Second)`) cho mọi flow scan.
-  - **Tầng Service:** Các vòng lặp hoặc quá trình xử lý CPU-intensive (như walk DOM) phải kiểm tra `ctx.Done()` định kỳ để dừng ngay lập tức nếu request bị hủy hoặc timeout.
+Nếu file CSS của component đã tồn tại trong `client/src/css/components/` → **đọc file đó, dùng class có sẵn, không viết CSS mới cho giao diện tương tự.**
 
-### 42. PHÂN LOẠI MÃ LỖI HTTP CHI TIẾT (FAIL-SAFE)
-- **Lưu ý quan trọng:** Việc chỉ trả về 400 cho mọi lỗi khiến frontend khó xử lý logic thông minh và người dùng khó hiểu vấn đề.
-- **Cách làm chuẩn:** Phải phân loại lỗi cụ thể dựa trên error type:
-  - `429 Too Many Requests`: Khi user vượt quá rate limit (ví dụ bấm Làm mới quá nhanh).
-  - `504 Gateway Timeout`: Khi xử lý phía backend bị quá giờ (context timeout).
-  - `502 Bad Gateway`: Khi trang web đích không thể kết nối hoặc trả về lỗi mạng (upstream error).
-  - `400 Bad Request`: Chỉ dùng cho lỗi input, sai định dạng, hoặc bị chặn bởi SSRF.
+**Bảng component cốt lõi bắt buộc dùng:**
 
-### 43. QUY CHUẨN ĐẶT CACHE KEY (UNIQUE IDENTIFIER)
-- **Lưu ý quan trọng:** Sử dụng cache key quá đơn giản (chỉ mỗi URL) sẽ dẫn đến việc trả về kết quả sai nếu người dùng yêu cầu các tùy chọn khác nhau (ví dụ: quét có bỏ qua SSL hay không).
-- **Cách làm chuẩn:**
-  - Cache key phải bao gồm tất cả các tham số ảnh hưởng đến kết quả đầu ra.
-  - Ví dụ: `fmt.Sprintf("%s|tls=%v", rawURL, req.IgnoreTLSErrors)`.
+| Component         | Class gốc                           | Cấu trúc chuẩn                                                                                                          |
+| ----------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Card (khung chứa) | `.card`                             | `.card` > `.card__header` > `h2.card__title` (có icon + `.mr-2`) > `.card__body`                                        |
+| Card phẳng        | `.card.card--flat`                  | Tương tự Card                                                                                                           |
+| Form              | `.form`                             | `.form-field` / `.form-inline` > `.form-label` + `.form-input` / `.form-checkbox`                                       |
+| Button            | `.btn`                              | Modifier: `.btn-action`, `.btn-outline`, `.btn-danger`, `.btn-warning`, `.btn-sm`, `.btn-block`                         |
+| Thông báo lỗi     | `.message-card.message-card--error` | > `.message-card__header` > `.message-card__title`                                                                      |
+| Code block        | `.code-block`                       | > `.code-block__header` > `.code-block__lang` + `.code-block__btn-copy` → `.code-block__body` > `code.code-block__text` |
+| Kết quả           | `.result-card`                      | > `.result-card__title` + `.cache-card` (bắt buộc với tool lookup)                                                      |
+| Chia sẻ URL       | `.share-card`                       | > `.share-card__input` (readonly) + `.share-card__button.share-card__button--copy`                                      |
+| Badge             | `.badge.badge-default`              | Variant: `.badge-success`, `.badge-warning`. Chữ hoa: `.uppercase`                                                      |
 
-### 44. BẢO MẬT IP CLIENT (SETTRUSTEDPROXIES)
-- **Lưu ý quan trọng:** Gin mặc định tin tưởng header `X-Forwarded-For`, cho phép attacker giả mạo IP để bypass rate limit nếu không cấu hình đúng.
-- **Cách làm chuẩn:**
-  - Trong `router.go`, luôn phải gọi `r.SetTrustedProxies(nil)` để mặc định không tin tưởng header nào.
-  - Chỉ cấu hình danh sách IP proxy tin cậy (như Nginx nội bộ) qua biến môi trường `TRUSTED_PROXIES`.
+---
 
-### 45. ƯU TIÊN SENTINEL ERRORS THAY VÌ SO SÁNH CHUỖI
-- **Lưu ý quan trọng:** So sánh chuỗi lỗi (`strings.Contains`) rất dễ vỡ khi thư viện update và không an toàn với Unicode (Tiếng Việt).
-- **Cách làm chuẩn:**
-    - Định nghĩa các lỗi cố định ở tầng Service: `var ErrSomething = errors.New("something_error")`.
-    - Tại Handler, sử dụng `errors.Is(err, service.ErrSomething)` để kiểm tra.
-    - Đối với các lỗi hệ thống (Network, DNS), sử dụng `errors.As(err, &target)` để kiểm tra type-safe.
+### [F-09] KHÔNG LỒNG UI COMPONENT VÀO VÙNG `WHITE-SPACE: PRE-WRAP`
 
-### 46. HẠN CHẾ OVER-COUPLING CONTEXT TRONG HELPER
-- **Lưu ý quan trọng:** Không nên truyền cả `context.Context` vào các hàm helper thuần túy (tính toán, phân loại mã lỗi) nếu chỉ cần lấy `ctx.Err()`.
-- **Cách làm chuẩn:**
-    - Hàm helper nên nhận các tham số cụ thể cần thiết: `func resolveStatus(err error, ctxErr error) int`.
-    - Điều này giúp hàm dễ test hơn và không bị phụ thuộc vào vòng đời của context.
+Không render các thẻ như `<div class="message-card">` bên trong container có `white-space: pre-wrap` (thường là vùng output code). Template literal có dấu cách/indent sẽ bị render ra màn hình, phá vỡ layout.
 
-### 47. THỨ TỰ CHECK ERRORS.AS (INTERFACE VS STRUCT)
-- **Lưu ý quan trọng:** Nhiều struct lỗi (như `net.DNSError`) thực thi các interface chung (như `net.Error`). Nếu check interface trước, struct con sẽ bị "nuốt" mất, dẫn đến dead code ở các branch sau.
-- **Cách làm chuẩn:**
-    - Luôn check các struct lỗi cụ thể (Specialized) TRƯỚC khi check interface chung (Generalized).
-    - Hoặc nếu cả hai đều trả về cùng một kết quả, hãy gộp chung vào check interface để code gọn sạch.
+**Thay thế đúng:** Tách riêng container kết quả Code và container UI (VD: tạo class `.json-tools__validator-box` riêng, không tái dùng `.json-tools__output`).
 
-### 48. TỐI ƯU HÓA ALLOCATION CHO CÁC HELPER IMMUTABLE
-- **Lưu ý quan trọng:** Việc khởi tạo các đối tượng immutable như `strings.Replacer` hay `regexp.Regexp` bên trong hàm được gọi thường xuyên sẽ gây lãng phí tài nguyên và tăng áp lực cho Garbage Collector (GC).
-- **Cách làm chuẩn:**
-    - Khởi tạo các đối tượng này một lần duy nhất dưới dạng biến cấp package (`var`).
-    - Các đối tượng này của Go thường là thread-safe, nên có thể dùng chung giữa các goroutine mà không cần khóa (mutex).
+---
 
-### 49. TIÊU CHUẨN BẢO MẬT BACKEND (HARDENING)
-- **SSRF Protection:** Mọi tool có thực hiện HTTP Request bắt buộc phải sử dụng `DialContext` tùy chỉnh để kiểm tra IP qua `validator.IsSafeIP` và `validator.IsSafeHostname`. Tuyệt đối không cho phép truy cập IP nội bộ.
-- **Cookie Isolation:** Mỗi request phải sử dụng một `http.CookieJar` riêng biệt (khởi tạo bên trong hàm Service). Tuyệt đối không dùng chung Jar cho singleton client để tránh rò rỉ session giữa các người dùng.
-- **Secure Cache Key:** Nếu Cache Key có chứa thông tin từ Header (như User-Agent) hoặc các tham số tùy chọn, bắt buộc phải băm bằng **SHA256** (`crypto/sha256`) trước khi lưu vào bộ nhớ cache để chống Cache Poisoning/Injection.
-- **Resource Limits:** Luôn kiểm tra `Content-Length` từ Header của mục tiêu. Nếu vượt quá giới hạn (ví dụ 1MB cho tool tra cứu text), hãy ngắt kết nối hoặc skip phần đọc Body. Sử dụng `io.LimitReader` khi đọc dữ liệu để tránh tấn công cạn kiệt bộ nhớ.
+### [F-10] BORDER PHẢI VIẾT ĐẦY ĐỦ 3 THÀNH PHẦN
 
-### 50. QUY TẮC XỬ LÝ CHUỖI VÀ LOGGING (UNICODE SAFE)
-- **Truncation:** Khi cần cắt ngắn chuỗi để ghi log (ví dụ `logURL`), tuyệt đối không dùng byte slicing (`s[:253]`) vì có thể cắt ngang một ký tự đa byte (Tiếng Việt, Emoji). 
-- **Cách làm đúng:** Ép kiểu sang `[]rune`, cắt trên slice rune, rồi mới ép ngược lại string.
-- **Sanitization:** Luôn quét và xóa các ký tự điều khiển (`\r`, `\n`) bằng `strings.Map` TRƯỚC KHI thực hiện cắt chuỗi để đảm bảo format log không bị hỏng.
+Sai: `border: var(--color-border);` — trình duyệt sẽ không render vì thiếu `width` và `style`.
 
-### 51. DATA INTEGRITY TẠI FRONTEND (IMMUTABILITY)
-- **Không Mutate API Response:** Tuyệt đối không thêm thắt các field tính toán (như `computedScore`, `isLoop`, `dnsMs`) trực tiếp vào object `res` nhận được từ API. Việc này làm "bẩn" dữ liệu gốc và gây sai lệch khi user sử dụng tính năng Export JSON.
-- **Cách làm đúng:** Tạo một bản sao (Shallow Clone) bằng Spread Operator (`{...step}`) hoặc dùng `map` để tạo array mới trước khi bổ sung dữ liệu render.
+**Đúng:** `border: 1px solid var(--color-border);` hoặc `border: var(--border-width-1) solid var(--color-border);`
 
-### 52. PHÒNG CHỐNG XSS TRONG DỮ LIỆU ĐỘNG (PROTOCOL VALIDATION)
-- **Dynamic Image/Link:** Khi render các thẻ `<img>` hoặc `<a>` từ dữ liệu trả về của API (ví dụ OG Image, Canonical URL), việc chỉ sử dụng `escHtml` là CHƯA ĐỦ.
-- **Cách làm đúng:** Phải kiểm tra Protocol của URL đó. Chỉ cho phép các protocol an toàn (`http:`, `https:`) để chặn đứng các cuộc tấn công XSS qua `javascript:` protocol.
+---
 
-### 53. TỐI ƯU HÓA KẾT NỐI (CONNECTION POOLING)
-- **MaxIdleConnsPerHost:** Với các tool có đặc thù truy vấn nhiều lần tới cùng một domain (như Redirect Checker quét chuỗi chuyển hướng), cần tăng `MaxIdleConnsPerHost` trong `http.Transport` lên (khoảng 10-20) thay vì để mặc định là 2 nhằm tăng tốc độ phản hồi.
+### [F-11] KHÔNG THÊM CLASS UTILITY THỪA VÀO COMPONENT ĐÃ CÓ LAYOUT SẴN
 
-- **Quy tắc cuối:** "Nếu tao (User) đã có file ở `client/src/css/components/`, tức là mọi chức năng của Component đó đã hoàn thiện. Việc của mày là MỞ XEM FILE ĐÓ, đọc danh sách class, và mang ra xài, **KHÔNG VIẾT THÊM CSS MỚI CHO GIAO DIỆN TƯƠNG TỰ!**"
+VD: `.cache-card` đã có `display: flex`, `justify-content: space-between`, `align-items: center` bên trong CSS của nó. Không cần thêm `.flex-row .justify-between .items-center` vào HTML.
+
+→ Đọc CSS của component trước khi viết HTML.
+
+---
+
+### [F-12] CẤU TRÚC HEADER VÀ FOOTER
+
+Khi tạo trang HTML mới, **copy nguyên xi** cấu trúc `<header>` và `<footer>` từ tool có sẵn (VD: `dns.html`). Không tự thiết kế lại.
+
+- Footer chứa `#visit-total` và `#visit-today` cho visit counter — sai class/id sẽ vỡ counter.
+- Script path phải trỏ đúng: `../../src/js/main.js`
+
+---
+
+### [F-13] IMPORT CSS: CHỈ MỘT THẺ LINK DUY NHẤT
+
+Trong `<head>` của tool mới, chỉ được có **một thẻ** `<link rel="stylesheet" href="../../src/css/main.css">`.
+
+Nếu tool cần CSS riêng: tạo file `src/css/tools/ten-tool.css`, rồi thêm `@import url('./tools/ten-tool.css');` vào `src/css/main.css`. Không dùng nhiều thẻ `<link>` lẻ.
+
+---
+
+### [F-14] CẬP NHẬT TRANG CHỦ KHI TẠO TOOL MỚI
+
+Sau khi hoàn thành tool mới:
+
+1. Trong `client/views/index.html`: copy một `tool-card` mẫu, sửa icon/title/description/link.
+2. Thêm class `.tool-card--[tên-tool]` cho màu icon riêng.
+3. Trong `client/src/css/components/tool-card.css`: thêm CSS variable màu icon (VD: `.tool-card--security-header { --tool-card-icon: var(--blue-500); }`).
+4. Token màu phải lấy từ `client/src/css/tokens/color/palette.css` — không tự bịa.
+
+---
+
+### [F-15] CONNECTOR LINE TRONG UI CHUỖI / TIMELINE
+
+Để đường nối giữa các node không bị đứt khi nội dung dài:
+
+- Dùng pseudo-element `::after` trên container của mỗi step
+- `height: 100%` (hoặc `calc(100% + gap)`) để dây phủ hết chiều cao
+- Dùng `z-index` để node circle đè lên trên dây
+- `left` căn theo tâm node: `calc(var(--node-size) / 2 - var(--line-width) / 2)`
+
+---
+
+### [F-16] HIỂN THỊ LUỒNG REDIRECT: NGUỒN TRƯỚC – ĐÍCH SAU
+
+Dòng trên: URL Nguồn (link người dùng nhập / tìm thấy trên trang).
+Dòng dưới: URL Đích kèm mũi tên `→`.
+
+Không được hiển thị ngược lại — gây nhầm lẫn hướng chuyển hướng.
+
+---
+
+### [F-17] TỐI ƯU MOBILE: GRID NHIỀU CỘT CÓ TEXT DÀI
+
+Không dùng `flex-row` hay grid nhiều cột trên mobile nếu content text dài.
+
+**Thay thế đúng:** Media query để chuyển sang `display: block` hoặc `flex-direction: column`. Đảm bảo icon và label luôn đi cùng nhau. Màu sắc nhãn phải nhất quán Desktop ↔ Mobile.
+
+---
+
+## FRONTEND – JAVASCRIPT
+
+### [J-01] MODULE JS PHẢI CÓ `init()` PATTERN
+
+Không được chạy code hay lấy element ở global scope của file script.
+
+**Cấu trúc bắt buộc:**
+
+```javascript
+function init() {
+  // Toàn bộ logic khởi tạo, event listener, biến local ở đây
+}
+document.addEventListener("DOMContentLoaded", init);
+```
+
+---
+
+### [J-02] SYNTAX HIGHLIGHTING TRONG CODE OUTPUT
+
+Khi render code block kết quả, phải tận dụng các class highlight có sẵn trong `semantic.css`: `code-keyword`, `code-value`, `code-string`, `code-parameter`, `code-func`, `code-comment`...
+
+---
+
+### [J-03] QUẢN LÝ TRẠNG THÁI BUTTON VÀ LỖI REAL-TIME
+
+Mọi form phải có:
+
+1. Hàm `updateButtonStates()`: set `disabled = true` cho nút hành động khi input trống, tránh user nhấn mù.
+2. Event listener `input` trên mọi textarea: khi user gõ phím, dọn sạch ngay lỗi cũ (xóa `errorCard`, xóa class `.is-invalid`).
+
+---
+
+### [J-04] KHÔNG XÓA CLASS GỐC KHI TOGGLE STATE
+
+Khi toggle trạng thái button bằng JavaScript, chỉ thêm/bớt class Modifier (`.btn-action`, `.btn-outline`, `.active`...). **Tuyệt đối không bao giờ xóa class cấu trúc xương sống** như `.btn`, `.card`, `.message-card`.
+
+---
+
+### [J-05] HIGHLIGHT LỖI DÙNG NATIVE BROWSER API
+
+Không viết thư viện CSS overlay phức tạp để highlight dòng lỗi trong textarea.
+
+**Dùng native API:** `textarea.focus()` + `textarea.setSelectionRange(pos, pos+1)`. Tự động scroll đến đúng vị trí, không tốn dòng CSS nào. Đồng thời dịch thông báo lỗi từ tiếng Anh (V8) sang tiếng Việt dễ hiểu.
+
+---
+
+### [J-06] ĐỒNG BỘ VALIDATOR KHI GÁN GIÁ TRỊ BẰNG CODE
+
+Khi normalize và gán lại `input.value = newValue` bằng JS, trình duyệt không tự phát sự kiện `input`. Validator realtime sẽ không biết giá trị đã đổi.
+
+**Bắt buộc gọi sau mỗi lần gán:** `input.dispatchEvent(new Event('input'));`
+
+---
+
+### [J-07] THỐNG NHẤT CƠ CHẾ ẨN/HIỆN LỖI
+
+Không mix `element.style.display = 'none'` (inline style) với class `.d-none`. Inline style có priority cao hơn class, khiến validator không thể hiện lại lỗi.
+
+**Chọn một cơ chế duy nhất:** dùng `classList.add('d-none')` / `classList.remove('d-none')` để nhất quán với validator.
+
+---
+
+### [J-08] TRÁNH XUNG ĐỘT EVENT LISTENER VỚI VALIDATOR CHUNG
+
+Khi dùng `createRealtimeURLValidator` từ `utils/validation.js`, không được gắn thêm listener `input` để `hideError()` vào cùng ô input — sẽ ẩn luôn thông báo lỗi của validator.
+
+**Nguyên tắc:** Để validator tự quản lý hiện/ẩn lỗi validate. Logic tool chỉ ẩn Card kết quả cũ hoặc Card lỗi logic (lookup error) — không được đụng vào `#urlValidationError` hay element nào của validator.
+
+---
+
+### [J-09] XỬ LÝ CACHE NOTICE TRONG UI LOOKUP
+
+Với mọi tool tra cứu (lookup), **bắt buộc hiển thị cache notice** dù kết quả là fresh hay từ cache.
+
+**Logic:**
+
+- Nếu `meta.cached = true` → hiển thị: _"Kết quả này được xuất từ bộ nhớ tạm phục hồi lúc..."_
+- Nếu `meta.cached = false` → hiển thị: _"Kết quả tra cứu mới nhất lúc..."_
+- Nút "Làm mới" phải gửi request kèm `bypassCache=true`
+
+Tham khảo cấu trúc HTML (class `.cache-card`) từ `dns.html`, logic JS từ `dns.js` hoặc `web-latency.js`.
+
+---
+
+### [J-10] NHẤT QUÁN UI/UX GIỮA CÁC TOOL TƯƠNG ĐỒNG
+
+Các tool có cùng hành vi phải có UX y hệt nhau. VD: nếu DNS dùng icon `fa-bolt` cho dữ liệu mới và `fa-clock` cho cache, WHOIS phải làm y chang. Không tự thay đổi icon hay cấu trúc `cache-card` nếu không có lý do đặc biệt.
+
+---
+
+### [J-11] AUTO PREPEND HTTPS CHO INPUT DOMAIN
+
+Không trả về lỗi khô khan khi user nhập `google.com` thiếu `https://`.
+
+**Frontend:** Tự động thêm `https://` nếu thiếu protocol trước khi gửi request. **Backend:** Normalize URL để luôn có scheme đầy đủ. **Validator:** Regex phải chấp nhận hostname thuần.
+
+---
+
+### [J-12] DATA IMMUTABILITY: KHÔNG MUTATE API RESPONSE
+
+Không thêm các field tính toán (`computedScore`, `isLoop`, `dnsMs`...) trực tiếp vào object `res` từ API — sẽ làm sai lệch tính năng Export JSON.
+
+**Đúng:** Tạo bản sao bằng spread operator (`{...step}`) hoặc dùng `map` để tạo array mới.
+
+---
+
+### [J-13] PHÒNG CHỐNG XSS KHI RENDER URL ĐỘNG
+
+Khi render `<img src="...">` hoặc `<a href="...">` từ dữ liệu API (VD: OG image, canonical URL), dùng `escHtml` là chưa đủ.
+
+**Phải kiểm tra protocol:** chỉ cho phép `http:` và `https:`. Chặn `javascript:` protocol tránh XSS.
+
+---
+
+### [J-14] TRUNCATE CHUỖI AN TOÀN (RUNE-SAFE) TRONG JAVASCRIPT
+
+`string.slice()` có thể cắt ngang ký tự đa byte (emoji, ký tự đặc biệt).
+
+**Đúng:**
+
+```javascript
+function truncate(str, max) {
+  const chars = [...str]; // Array spread = rune-safe
+  return chars.length > max ? chars.slice(0, max - 3).join("") + "..." : str;
+}
+```
+
+---
+
+### [J-15] PHÂN ĐỊNH LỖI INPUT (400) VÀ LỖI NGHIỆP VỤ (200/FALSE) TRÊN FRONTEND
+
+- Block `catch`: xử lý lỗi HTTP 400/500 → render `message-card--error`
+- Nếu response trả về `success: false` nhưng kèm dữ liệu phụ (VD: `traceLogs`) → vẫn phải render dữ liệu đó, không chỉ hiện bảng lỗi trống.
+
+---
+
+### [J-16] DÙNG API_BASE_URL KHI GỌI FETCH
+
+Tuyệt đối không hardcode endpoint dạng `fetch('/api/...')` trong các file JS. Khi user chạy giao diện qua Live Server (port 5500), nó sẽ trỏ sai host.
+**Bắt buộc:** Import `API_BASE_URL` từ `../../utils/network.js` và dùng dạng `fetch(\`${API_BASE_URL}/api/...\`)`.
+
+---
+
+### [J-17] SỬ DỤNG ABORTCONTROLLER CHO NÚT THỰC THI
+
+Để tránh "stale response" (phản hồi chậm từ request cũ đè lên giao diện của request mới) khi user bấm liên tục hoặc chuyển URL, mọi form tra cứu phải được cài đặt `AbortController`.
+**Luôn hủy `currentAbortController.abort()` trước khi gán mới và gọi `fetch()`.** Bỏ qua lỗi `err.name === 'AbortError'` trong block catch.
+
+---
+
+## BACKEND – GO ARCHITECTURE
+
+### [B-01] KIẾN TRÚC MODULE BACKEND BẮT BUỘC
+
+Cấu trúc thư mục cho mọi tool backend phải tuân thủ:
+
+```
+server/internal/modules/[tên-tool]/
+├── handlers/
+│   └── handlers.go
+├── models/
+│   └── models.go
+├── service/
+│   └── service.go   ← chứa logic xử lý chính
+└── router.go        ← mount endpoints
+```
+
+Không đặt tên file linh tinh như `timing_service.go`, `timing.go`. Tên file cố định là `service.go`, `models.go`, `handlers.go` — để package phân biệt.
+
+---
+
+### [B-02] DÙNG SHARED COMPONENTS BẮT BUỘC
+
+| Shared component  | Cách dùng đúng                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Response          | Luôn dùng `response.Success()`, `response.SuccessWithMessage()`, `response.Error()` — **không** dùng `c.JSON` thủ công |
+| Error translation | Truyền lỗi qua `errutil.TranslateError(err)` trước khi trả về client — không bao giờ trả `err.Error()` gốc             |
+| Cache             | Dùng Generic Cache `cache.New[K, V]` — không dùng legacy cache cũ                                                      |
+| Validation        | Dùng `internal/platform/validator` cho mọi input người dùng                                                            |
+
+---
+
+### [B-03] PHÂN ĐỊNH MÃ LỖI HTTP
+
+Không lạm dụng 200 OK hay 400 cho mọi tình huống.
+
+| Mã                          | Khi nào dùng                                                                                  |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| `400 Bad Request`           | Input sai định dạng, IP/hostname không hợp lệ, bị chặn SSRF                                   |
+| `200 OK` + `success: false` | Hệ thống OK nhưng không tìm thấy dữ liệu (VD: không có bản ghi PTR). Cho phép kèm `traceLogs` |
+| `422 Unprocessable Entity`  | Lỗi logic nghiệp vụ                                                                           |
+| `429 Too Many Requests`     | Vượt rate limit                                                                               |
+| `502 Bad Gateway`           | Upstream error, không kết nối được trang đích                                                 |
+| `504 Gateway Timeout`       | Context timeout trong quá trình xử lý                                                         |
+
+---
+
+### [B-04] ĐẶC THÙ GENERIC CACHE (STRUCT BỌC)
+
+`cache.New[K, V]` trả về `(V, bool)`, không có `FetchedAt`. Nếu tool cần hiển thị thời điểm lấy dữ liệu (Cache Notice), dùng struct bọc:
+
+```go
+type cachedResult struct {
+    Data      *models.YourData
+    FetchedAt time.Time
+}
+// Khởi tạo: cache.New[string, cachedResult](size, ttl)
+// Khi Set: luôn truyền time.Now() vào FetchedAt
+```
+
+---
+
+### [B-05] CACHE KEY PHẢI CHỨA TẤT CẢ THAM SỐ ẢNH HƯỞNG ĐẾN KẾT QUẢ
+
+Không dùng cache key chỉ có URL. Nếu tool có tùy chọn ảnh hưởng đến kết quả (VD: `IgnoreTlsErrors`, `Scope`), phải gộp vào key:
+
+```go
+rawKey := fmt.Sprintf("%s|tls=%v|scope=%s", rawURL, req.IgnoreTLSErrors, req.Scope)
+// Sau đó hash SHA256 rawKey trước khi lưu
+```
+
+---
+
+### [B-06] SINGLETON HTTP CLIENT QUA `func init()`
+
+Không dùng `sync.Once` trong getter function. Khởi tạo HTTP Client dùng chung một lần duy nhất trong `func init()` khi server startup — an toàn về concurrency, tối ưu connection pooling.
+
+---
+
+### [B-07] SINGLETON CLIENT VỚI REDIRECT CHAIN
+
+Tool capture chuỗi redirect không được để client tự follow. Cấu hình:
+
+```go
+CheckRedirect: func(req *http.Request, via []*http.Request) error {
+    return http.ErrUseLastResponse
+}
+```
+
+Trong Service, dùng vòng lặp để tự quản lý từng hop và ghi lại chain.
+
+---
+
+### [B-08] DOUBLE-SELECT PATTERN: ƯU TIÊN KẾT QUẢ THỰC
+
+Go `select` chọn case ngẫu nhiên — nếu goroutine xong đúng lúc timeout, handler có thể trả 504 dù data đã có.
+
+**Dùng Double-select:**
+
+1. `select` với `default` để check channel data/error ngay lập tức
+2. Nếu chưa có, mới vào `select` chính block với `ctx.Done()`
+
+---
+
+### [B-09] QUẢN LÝ TIMEOUT VÀ CONTEXT
+
+- **Handler:** tạo context có deadline: `context.WithTimeout(c.Request.Context(), 20*time.Second)`
+- **Service:** các vòng lặp CPU-intensive (VD: walk DOM) phải kiểm tra `ctx.Done()` định kỳ để dừng khi request bị hủy hoặc timeout
+
+---
+
+### [B-10] SENTINEL ERRORS – KHÔNG SO SÁNH CHUỖI LỖI
+
+`strings.Contains(err.Error(), "something")` dễ vỡ khi thư viện update, không an toàn với Unicode.
+
+**Đúng:**
+
+```go
+// Service: định nghĩa sentinel error
+var ErrSomething = errors.New("something_error")
+
+// Handler: kiểm tra type-safe
+errors.Is(err, service.ErrSomething)     // cho sentinel errors
+errors.As(err, &target)                   // cho system errors (network, DNS)
+```
+
+---
+
+### [B-11] THỨ TỰ CHECK `errors.As`: SPECIFIC TRƯỚC, GENERAL SAU
+
+Nhiều struct lỗi (VD: `net.DNSError`) thực thi interface chung (VD: `net.Error`). Check interface trước sẽ "nuốt" mất struct cụ thể → dead code.
+
+→ Luôn check struct cụ thể trước, interface chung sau.
+
+---
+
+### [B-12] KHỞI TẠO HELPER IMMUTABLE Ở CẤP PACKAGE
+
+Không khởi tạo `strings.Replacer` hay `regexp.Regexp` bên trong hàm được gọi nhiều lần — gây allocation lãng phí, tăng áp lực GC.
+
+→ Khai báo là biến cấp package (`var`). Các object này thread-safe, dùng chung giữa goroutine được.
+
+---
+
+### [B-13] KHÔNG OVER-COUPLING CONTEXT VÀO HELPER THUẦN
+
+Không truyền cả `context.Context` vào hàm helper chỉ cần `ctx.Err()`.
+
+**Đúng:** `func resolveStatus(err error, ctxErr error) int` — dễ test hơn, không phụ thuộc vào vòng đời context.
+
+---
+
+### [B-14] TUÂN THỦ NGHIỆP VỤ NGÀNH
+
+Khi code tool chuyên ngành (DNS, WHOIS, SSL...), phải tra cứu chuẩn của ICANN, VNNIC, IETF trước khi implement. VD: vòng đời tên miền phải có đủ giai đoạn Redemption Period. Logic sai lệch so với thực tế làm mất uy tín hệ thống.
+
+---
+
+### [B-15] CHUẨN HÓA URL TRƯỚC KHI VALIDATE Ở BACKEND
+
+Frontend validation thường tự động thêm protocol (`https://`) vào trước domain trần để hỗ trợ UX. Handler backend cũng phải **dùng chung logic normalize này** (prepend `https://` nếu thiếu) trước khi parse `url.ParseRequestURI()`, để tránh tình trạng frontend báo hợp lệ nhưng backend lại reject.
+
+---
+
+## BACKEND – SECURITY & PERFORMANCE
+
+### [S-01] SSRF PROTECTION: BẮT BUỘC VỚI MỌI TOOL NHẬN DOMAIN/IP
+
+Mọi tool nhận input là domain hoặc IP đều có nguy cơ bị dùng để scan mạng nội bộ.
+
+**Cú pháp chuẩn trong handler:**
+
+```go
+u, err := url.Parse(inputURL)
+if err != nil || !validator.IsSafeHostname(u.Hostname()) {
+    response.Error(c, http.StatusBadRequest, "URL không an toàn hoặc trỏ vào địa chỉ nội bộ")
+    return
+}
+```
+
+Không dùng hàm không tồn tại như `validator.IsSafeURL`. Phải parse URL trước, sau đó check hostname.
+
+---
+
+### [S-09] SSRF GUARD CHO HEADLESS BROWSER (CHROMEDP)
+
+Khi dùng `chromedp`, browser sẽ tự động follow redirect và load hàng loạt subresources (image, iframe, css...). Không đủ an toàn nếu chỉ check URL đầu vào ở Handler.
+**Bắt buộc:** Phải chặn SSRF ở tầng Browser Network bằng cách bật `fetch.Enable()` và intercept sự kiện `fetch.EventRequestPaused`. Sau đó kiểm tra `validator.IsSafeHostname(u.Hostname())` trước khi gọi `fetch.ContinueRequest()`.
+
+---
+
+### [S-02] SSRF PROTECTION Ở TẦNG HTTP CLIENT
+
+Singleton HTTP Client phải dùng `DialContext` tùy chỉnh để kiểm tra IP qua `validator.IsSafeIP` trước khi kết nối. Không được phép kết nối tới IP nội bộ (192.168.x.x, 10.x.x.x, 127.0.0.1...).
+
+---
+
+### [S-03] COOKIE ISOLATION
+
+Mỗi request phải khởi tạo một `http.CookieJar` riêng bên trong hàm Service. Không dùng chung Jar cho singleton client — tránh rò rỉ session giữa các user.
+
+---
+
+### [S-04] SECURE CACHE KEY (SHA256 HASH)
+
+Nếu cache key chứa thông tin từ Header người dùng (User-Agent) hoặc tham số tùy chọn, bắt buộc hash SHA256 trước khi lưu — chống Cache Poisoning/Injection.
+
+---
+
+### [S-05] GIỚI HẠN DUNG LƯỢNG RESPONSE BODY
+
+Đọc data từ website ngoài mà không giới hạn → nguy cơ OOM.
+
+```go
+// Kiểm tra Content-Length trước khi đọc
+// Dùng io.LimitReader khi đọc body
+body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024)) // 10MB
+```
+
+10MB đủ dư dả cho 99% trang HTML thuần.
+
+---
+
+### [S-06] BẢO MẬT IP CLIENT – SETTRUSTEDPROXIES
+
+Gin mặc định tin tưởng `X-Forwarded-For` — attacker có thể giả mạo IP để bypass rate limit.
+
+```go
+// Trong router.go
+r.SetTrustedProxies(nil) // Không tin tưởng bất kỳ proxy nào theo mặc định
+// Cấu hình proxy tin cậy qua biến môi trường TRUSTED_PROXIES
+```
+
+---
+
+### [S-07] `isSafeURL` Ở FRONTEND PHẢI ĐẦY ĐỦ
+
+Không chỉ check protocol `http/https`. Còn phải:
+
+- Chặn URL có thông tin định danh: `http://user:pass@domain.com`
+- Chặn đường dẫn tương đối: `/`, `./` (nếu tool quét website bên ngoài)
+
+---
+
+### [S-08] KHÔNG DÙNG TRAILING SLASH NORMALIZATION TRONG LOOP DETECTION
+
+`/blog` và `/blog/` là hai URL khác nhau trong HTTP. Xóa trailing slash khi check loop sẽ gây False Positive — báo lỗi "vòng lặp" oan cho redirect chuẩn hóa của server.
+
+---
+
+### [P-01] CONNECTION POOLING: TĂNG `MaxIdleConnsPerHost`
+
+Với tool truy vấn nhiều lần tới cùng domain (VD: Redirect Checker), tăng `MaxIdleConnsPerHost` lên 10-20 (mặc định là 2) trong `http.Transport`.
+
+---
+
+### [P-02] LAZY LOGGING – LOG SAU KHI KIỂM TRA CACHE
+
+Không thực hiện sanitization/mapping chuỗi log trước khi kiểm tra cache — lãng phí nếu cache hit.
+
+Mọi log lỗi (`log.Error()`) phải đính kèm field `request_id` từ context để trace lỗi trong production.
+
+---
+
+### [P-03] BẢO MẬT LOG – TRÁNH LOG INJECTION
+
+Không log trực tiếp data từ người dùng (URL, query string).
+
+**Đúng:**
+
+- Truncate độ dài (xem [P-04] bên dưới)
+- Loại bỏ ký tự điều khiển `\r`, `\n` bằng `strings.Map`
+- Dùng structured logging: `.Str("url", safeURL)` thay vì cộng chuỗi vào message
+
+---
+
+### [P-04] TRUNCATE CHUỖI AN TOÀN TRONG GO (RUNE-SAFE)
+
+Không dùng byte slicing `s[:253]` — có thể cắt ngang ký tự đa byte (Tiếng Việt, emoji).
+
+**Đúng:** Ép sang `[]rune`, cắt trên rune slice, rồi ép ngược về string. Sanitize `\r`, `\n` bằng `strings.Map` **trước khi** cắt.
+
+---
+
+## QUY TRÌNH LÀM VIỆC
+
+### [W-01] IMPLEMENTATION PLAN TRƯỚC KHI CODE
+
+Khi nhận yêu cầu tạo tool mới hoặc tính năng lớn, **không được tự ý code ngay**.
+
+**Quy trình bắt buộc:**
+
+1. Tạo file `implementation_plan.md` phân tích: giải pháp, các bước, design sẽ dùng, rủi ro
+2. Trình bày plan và chờ xác nhận từ user
+3. **Chỉ bắt đầu code khi user đồng ý.** Trong quá trình làm, tạo thêm `task.md` để track tiến độ.
+
+---
+
+### [W-02] NGÔN NGỮ: TIẾNG VIỆT XUYÊN SUỐT
+
+Mọi giao tiếp, tài liệu (`implementation_plan.md`, `task.md`, `walkthrough.md`...) đều phải viết bằng **Tiếng Việt**. Không dùng tiếng Anh cho tiêu đề task hay nội dung kế hoạch.
+
+---
+
+### [W-03] ĐỒNG BỘ CLASS KHI REFACTOR
+
+Khi đổi tên class CSS, phải dùng Search toàn project để cập nhật mọi nơi gọi tới class cũ (HTML, JS). Kiểm tra giao diện thực tế ngay sau khi đổi tên.
+
+---
+
+### [W-04] ENCODING UTF-8 KHI EDIT TRÊN WINDOWS
+
+PowerShell/CMD Windows rất dễ làm sai Codepage, biến Tiếng Việt thành rác (`Ã´`, `áº`...).
+
+**Nguyên tắc:**
+
+- Editor và script luôn dùng `UTF-8 (No BOM)`
+- Không dùng redirect `>` hay `Set-Content` trong PowerShell không có `-Encoding utf8`
+- Nếu bắt buộc: dùng `[System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)` và `WriteAllText` tương ứng
+- Nếu phát hiện file bị lỗi font: dùng Python script để fix hàng loạt (không sửa tay)
+- Sau mỗi lần refactor tự động: mở file Go kiểm tra string Tiếng Việt còn nguyên vẹn không
+
+---
+
+### [W-05] KHÔNG CHẠY SCRIPT XÓA FILE TỰ ĐỘNG
+
+Không tạo script Cleanup/Mass Deletion dựa trên pattern RegEx hay quét thẻ HTML — rủi ro xóa nhầm file độc lập (VD: trang admin không link từ homepage).
+
+Mọi thao tác xóa file phải được user xác nhận từng file/thư mục, sau khi đã kiểm tra dependency.
+
+---
+
+### [W-06] THÔNG BÁO LỖI CHO USER: TIẾNG VIỆT, DỄ HIỂU
+
+Mọi thông báo lỗi, hướng dẫn trả về cho user phải bằng Tiếng Việt. Không trả lỗi gốc tiếng Anh từ hệ thống.
+
+- Dùng `errutil.TranslateError(err)` để dịch lỗi
+- Nếu lỗi đặc thù của tool: định nghĩa thêm trong `translator.go` hoặc xử lý riêng bằng Tiếng Việt
+
+---
+
+### [W-07] XƯNG HÔ VÀ GIAO TIẾP
+
+Trong mọi quá trình giao tiếp, giải thích code hoặc báo cáo tiến độ, AI Assistant bắt buộc phải xưng hô là **"em"** và gọi user là **"anh"**.
+Tuyệt đối không sử dụng các cách xưng hô khác như "mày - tao" hay "tôi - bạn".
+
+---
+
+_Tài liệu này cần được cập nhật mỗi khi phát hiện thêm bài học mới từ quá trình phát triển._

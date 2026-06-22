@@ -2,19 +2,19 @@ package models
 
 // ScanRequest là payload gửi từ client
 type ScanRequest struct {
-	URL              string `json:"url" binding:"required"`
-	IgnoreTLSErrors  bool   `json:"ignoreTLSErrors"`
-	BypassCache      bool   `json:"bypassCache"`
+	URL             string `json:"url" binding:"required"`
+	IgnoreTLSErrors bool   `json:"ignoreTLSErrors"`
+	BypassCache     bool   `json:"bypassCache"`
 }
 
 // MixedItem đại diện một tài nguyên HTTP tìm thấy trên trang HTTPS
 type MixedItem struct {
-	URL           string `json:"url"`            // URL dạng http://...
-	Type          string `json:"type"`           // Active | Passive
-	Subtype       string `json:"subtype"`        // script, img, iframe, audio, video, css, font, other
-	Origin        string `json:"origin"`         // same-domain | third-party
-	FoundIn       string `json:"foundIn"`        // HTML element tìm thấy, VD: <script src>, <img src>
-	FixSuggestion string `json:"fixSuggestion"`  // gợi ý fix: thay http:// → https://
+	URL           string `json:"url"`           // URL dạng http://...
+	Type          string `json:"type"`          // Active | Passive
+	Subtype       string `json:"subtype"`       // script, img, iframe, audio, video, css, font, other
+	Origin        string `json:"origin"`        // same-domain | third-party
+	FoundIn       string `json:"foundIn"`       // HTML element tìm thấy, VD: <script src>, <img src>
+	FixSuggestion string `json:"fixSuggestion"` // gợi ý fix: thay http:// → https://
 }
 
 // ScanData chứa kết quả scan

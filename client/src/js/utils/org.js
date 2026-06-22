@@ -96,7 +96,7 @@ export function getISPDisplay(record) {
 
     // 1️⃣ Nếu là NIC / Registry → giữ nguyên
     if (shouldKeepFullName(source)) {
-        return truncateByWords(source, 3);
+        return truncateByWords(source, 1);
     }
 
 
@@ -108,14 +108,14 @@ export function getISPDisplay(record) {
 
         const inner = stripLegalSuffix(match[1]);
 
-        return truncateByWords(inner, 3);
+        return truncateByWords(inner, 1);
     }
 
 
     // 3️⃣ Chuẩn hóa thông thường
     const normalized = stripLegalSuffix(source);
 
-    const truncated = truncateByWords(normalized, 3);
+    const truncated = truncateByWords(normalized, 1);
 
 
     // Viết hoa chữ cái đầu từng từ

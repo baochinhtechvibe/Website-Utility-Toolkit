@@ -19,6 +19,7 @@
 .share-card__input {
     flex: 1 1 auto;
     min-width: 150px;
+    text-overflow: ellipsis;
 
     padding: var(--pad-y-2) var(--pad-x-3);
     border: var(--border-default);

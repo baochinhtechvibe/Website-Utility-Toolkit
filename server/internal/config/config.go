@@ -38,9 +38,9 @@ func LoadConfig() Config {
 	domscanKey := os.Getenv("DOMSCAN_API_KEY")
 
 	return Config{
-		Port:           port,
-		LogLevel:       logLevel,
-		AppEnv:         appEnv,
-		DomScanAPIKey:  domscanKey,
+		Port:          port,
+		LogLevel:      logLevel,
+		AppEnv:        appEnv,
+		DomScanAPIKey: domscanKey,
 	}
 }

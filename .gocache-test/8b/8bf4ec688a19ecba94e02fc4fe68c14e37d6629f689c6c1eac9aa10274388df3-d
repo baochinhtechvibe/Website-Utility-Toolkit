@@ -1,0 +1,16 @@
+# test log
+getenv RUN_DNS_INTEGRATION_TESTS
+getenv SPAMHAUS_DQS_KEY
+getenv ABUSIX_API_KEY
+getenv SPAMHAUS_DQS_KEY
+getenv ABUSIX_API_KEY
+getenv RUN_DNS_INTEGRATION_TESTS
+getenv HTTP_PROXY
+getenv http_proxy
+getenv HTTPS_PROXY
+getenv https_proxy
+getenv NO_PROXY
+getenv no_proxy
+getenv REQUEST_METHOD
+getenv RUN_DNS_INTEGRATION_TESTS
+getenv RUN_DNS_INTEGRATION_TESTS

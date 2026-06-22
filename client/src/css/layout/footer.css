@@ -5,3 +5,10 @@
 .footer {
     border-top: var(--border-default);
 }
+
+@media (max-width: 479px) {
+    .footer__stats.d-flex {
+        flex-direction: column !important;
+        gap: var(--space-2);
+    }
+}

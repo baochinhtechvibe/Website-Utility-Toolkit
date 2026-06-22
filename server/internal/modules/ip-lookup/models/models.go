@@ -12,6 +12,7 @@ type IPInfo struct {
 	CountryCode string  `json:"country_code"` // Luôn là lowercase (vi, en,...)
 	Region      string  `json:"region"`
 	City        string  `json:"city"`
+	PostalCode  string  `json:"postal_code"`
 	Latitude    float64 `json:"latitude"`
 	Longitude   float64 `json:"longitude"`
 	TimeZone    string  `json:"timezone"`

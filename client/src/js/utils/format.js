@@ -63,7 +63,7 @@ export function truncateByWords(text = "", maxWords = 3) {
     }
 
     // Nếu > maxWords → cắt + ...
-    return words.slice(0, maxWords).join(" ") + " ...";
+    return words.slice(0, maxWords).join(" ") + "...";
 }
 
 

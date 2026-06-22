@@ -35,7 +35,7 @@
 .encode-tools__input:focus {
     outline: none;
     border-color: var(--color-brand);
-    box-shadow: var(--elevation-tooltip), 0 4px 10px 3px color-mix(in srgb, var(--color-brand) 30%, transparent);
+    box-shadow: var(--elevation-focus);
 }
 
 /* ===== Input Label ===== */

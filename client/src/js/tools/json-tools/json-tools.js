@@ -139,6 +139,13 @@ function init() {
                 panel.classList.add("json-tools__panel--active");
             }
 
+            // Tự động dọn dẹp sạch sẽ toàn bộ input/output của các tab khác
+            if (btnClearFormatter) btnClearFormatter.click();
+            if (btnClearValidator) btnClearValidator.click();
+            if (btnClearDiff) btnClearDiff.click();
+            if (btnClearGo) btnClearGo.click();
+            if (btnClearYaml) btnClearYaml.click();
+
             // Hide error card on tab switch
             hide(errorCard);
         });

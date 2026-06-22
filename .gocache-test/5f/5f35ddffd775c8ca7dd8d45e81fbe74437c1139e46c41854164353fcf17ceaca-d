@@ -1,0 +1,12 @@
+./cache.go
+./check.go
+./client.go
+./extract.go
+./job_result.go
+./job_store.go
+./robots.go
+./check_test.go
+./crawler_test.go
+./extract_test.go
+./job_store_test.go
+./robots_test.go

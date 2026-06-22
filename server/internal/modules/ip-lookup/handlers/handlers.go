@@ -37,7 +37,15 @@ func HandleMyIP(c *gin.Context) {
 
 	userAgent := c.GetHeader("User-Agent")
 	refresh := c.Query("refresh") == "true"
+	mode := c.Query("mode")
 	cacheKey := "myip:" + clientIP
+
+	if mode == "fast" {
+		// Fast mode: chỉ lấy data từ MaxMind nội bộ, không dùng cache, trả về tức thì
+		info := service.GetIPDetails(c.Request.Context(), clientIP, userAgent, "fast")
+		response.Success(c, info, false, time.Now())
+		return
+	}
 
 	if refresh {
 		ipCache.Delete(cacheKey)
@@ -55,8 +63,8 @@ func HandleMyIP(c *gin.Context) {
 	}
 
 	now := time.Now()
-	// Gọi sang service layer để xử lý nghiệp vụ
-	info := service.GetIPDetails(c.Request.Context(), clientIP, userAgent)
+	// Gọi sang service layer để xử lý nghiệp vụ (Deep mode)
+	info := service.GetIPDetails(c.Request.Context(), clientIP, userAgent, "deep")
 
 	// Clone một bản sạch (không UA/Browser) để cache dùng chung cho mọi user trùng IP
 	cleanCacheInfo := *info
@@ -64,10 +72,15 @@ func HandleMyIP(c *gin.Context) {
 	cleanCacheInfo.Browser = ""
 	cleanCacheInfo.OS = ""
 
+	ttl := time.Duration(0) // default TTL
+	if cleanCacheInfo.City == "" || cleanCacheInfo.City == "N/A" {
+		ttl = 5 * time.Minute
+	}
+
 	ipCache.Set(cacheKey, cachedIPInfo{
 		Data:      &cleanCacheInfo,
 		FetchedAt: now,
-	}, 0) // 0 = default TTL
+	}, ttl)
 
 	response.Success(c, info, false, now)
 }

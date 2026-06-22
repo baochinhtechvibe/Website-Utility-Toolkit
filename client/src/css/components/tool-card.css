@@ -99,7 +99,7 @@
     --tool-card-icon: var(--blue-500);
 }
 
-.tool-card--web-latency {
+.tool-card--speed-test {
     --tool-card-icon: var(--cyan-500);
 }
 

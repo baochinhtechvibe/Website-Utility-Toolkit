@@ -360,7 +360,7 @@
 .page--dns .results-table td:nth-child(1),
 .page--dns .results-table th:nth-child(1) {
     width: 1%;
-    min-width: 175px;
+    min-width: 200px;
     white-space: nowrap;
     text-align: left;
 }

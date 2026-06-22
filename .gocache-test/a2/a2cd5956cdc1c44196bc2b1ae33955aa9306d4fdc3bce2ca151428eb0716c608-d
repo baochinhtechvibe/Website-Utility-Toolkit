@@ -1,0 +1,6 @@
+./error.go
+./parser.go
+./prepare.go
+./rule.go
+./struct.go
+./util.go

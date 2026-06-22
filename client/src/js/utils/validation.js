@@ -37,6 +37,9 @@ export function createRealtimeURLValidator(inputEl, errorEl, submitBtn) {
         if (/^https?:\/\//i.test(str)) {
             try {
                 const u = new URL(str);
+                // Phải đảm bảo hostname hợp lệ (không vi phạm label > 63 chars, v.v.)
+                if (!isValidHostname(u.hostname)) return false;
+                
                 return (u.protocol === 'http:' || u.protocol === 'https:') && u.host.length > 0;
             } catch { return false; }
         }

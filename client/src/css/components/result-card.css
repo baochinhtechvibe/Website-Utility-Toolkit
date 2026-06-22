@@ -19,6 +19,14 @@
 .result-card__title {
     margin: 0;
     color: var(--color-success-text);
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.result-card__actions {
+    flex-shrink: 0;
 }
 
 .result-card__body {

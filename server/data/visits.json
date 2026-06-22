@@ -1,52 +1,8 @@
 {
-  "bot-simulator": {
-    "total_visits": 2,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-09",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "broken-link-scanner": {
-    "total_visits": 10,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-18",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "chmod": {
-    "total_visits": 7,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-17",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "dns": {
-    "total_visits": 16,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-21",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
   "encode-decode": {
     "total_visits": 1,
     "today_visits": 1,
-    "last_reset_date": "2026-04-07",
+    "last_reset_date": "2026-06-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -54,21 +10,10 @@
       "127.0.0.1"
     ]
   },
-  "home": {
-    "total_visits": 14,
-    "today_visits": 1,
-    "last_reset_date": "2026-03-28",
-    "daily_ips": {
-      "::1": {}
-    },
-    "daily_ip_vals": [
-      "::1"
-    ]
-  },
   "imap-migrator": {
-    "total_visits": 7,
+    "total_visits": 1,
     "today_visits": 1,
-    "last_reset_date": "2026-04-09",
+    "last_reset_date": "2026-06-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -77,86 +22,9 @@
     ]
   },
   "index": {
-    "total_visits": 14,
+    "total_visits": 1,
     "today_visits": 1,
-    "last_reset_date": "2026-04-21",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "ip-lookup": {
-    "total_visits": 5,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-22",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "json-tools": {
-    "total_visits": 4,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-09",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "mixed-content": {
-    "total_visits": 7,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-22",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "redirect-checker": {
-    "total_visits": 11,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-22",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "security-headers": {
-    "total_visits": 3,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-07",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "ssl-checker": {
-    "total_visits": 10,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-21",
-    "daily_ips": {
-      "127.0.0.1": {}
-    },
-    "daily_ip_vals": [
-      "127.0.0.1"
-    ]
-  },
-  "web-latency": {
-    "total_visits": 5,
-    "today_visits": 1,
-    "last_reset_date": "2026-04-22",
+    "last_reset_date": "2026-06-22",
     "daily_ips": {
       "127.0.0.1": {}
     },
@@ -165,9 +33,9 @@
     ]
   },
   "whois": {
-    "total_visits": 16,
+    "total_visits": 1,
     "today_visits": 1,
-    "last_reset_date": "2026-04-22",
+    "last_reset_date": "2026-06-22",
     "daily_ips": {
       "127.0.0.1": {}
     },

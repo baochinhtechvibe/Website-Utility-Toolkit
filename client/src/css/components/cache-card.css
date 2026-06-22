@@ -16,6 +16,7 @@
     font-size: var(--text-sm);
     color: var(--color-text-primary);
     padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
 .cache-card span {
@@ -25,7 +26,8 @@
     gap: 4px;
 }
 
-.cache-card b, .cache-card strong {
+.cache-card b,
+.cache-card strong {
     color: var(--color-info);
     display: inline-flex;
 }

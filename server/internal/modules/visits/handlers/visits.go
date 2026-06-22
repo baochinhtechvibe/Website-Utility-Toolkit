@@ -15,7 +15,7 @@ type VisitStats struct {
 	TotalVisits   int64               `json:"total_visits"`
 	TodayVisits   int64               `json:"today_visits"`
 	LastResetDate string              `json:"last_reset_date"`
-	DailyIPs      map[string]struct{} `json:"daily_ips"` // Used internally, saved as map for O(1)
+	DailyIPs      map[string]struct{} `json:"daily_ips"`     // Used internally, saved as map for O(1)
 	DailyIPVals   []string            `json:"daily_ip_vals"` // Used for JSON marshal
 }
 
@@ -114,7 +114,7 @@ func GetStats(c *gin.Context) {
 	if globalStats == nil {
 		initStats()
 	}
-	
+
 	toolName := c.DefaultQuery("tool", "home")
 
 	statsMu.Lock()
@@ -150,7 +150,7 @@ func TrackVisit(c *gin.Context) {
 
 	stats := getOrCreateToolStats(toolName)
 	today := time.Now().Format("2006-01-02")
-	
+
 	// Reset logic at midnight
 	if stats.LastResetDate != today {
 		stats.TodayVisits = 0
